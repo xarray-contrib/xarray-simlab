@@ -5,6 +5,8 @@ import yaml
 import numpy as np
 from xarray import Dataset, Variable
 
+from .fscape import FastscapeAccessor
+
 
 # fix parsing scientific notation
 # see http://stackoverflow.com/questions/30458977/yaml-loads-5e-6-as-string-and-not-a-number
@@ -77,9 +79,9 @@ def create_model_setup(filename_or_dict):
 
     ds = Dataset()
 
-    for c in ('x', 'y'):
-        cdata, cattrs = _extract_value_and_attrs(inputs['grid'][c])
-        ds.coords[c] = Variable(c, cdata, attrs=cattrs)
+    input_grid = inputs['grid'].copy()
+    grid_dims = input_grid.pop('dims')
+    ds.fscape.set_regular_grid(grid_dims, **input_grid)
 
     clock_data, clock_attrs = _extract_value_and_attrs(inputs['clock'])
     ds.coords['clock'] = Variable('clock', clock_data, attrs=clock_attrs)

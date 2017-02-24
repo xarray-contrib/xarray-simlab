@@ -2,9 +2,12 @@
 Fastscape extension to xarray.
 
 """
-import numpy as np
-from xarray import Dataset, Variable, register_dataset_accessor
+from collections import OrderedDict
 
+import numpy as np
+from xarray import Variable, register_dataset_accessor
+
+from .core.utils import Frozen, SortedKeysDict, _get_args_not_none
 from .core.nputils import _expand_value
 
 
@@ -26,63 +29,117 @@ class FastscapeAccessor(object):
     def __init__(self, xarray_obj):
         self._obj = xarray_obj
 
-    def create_regular_grid(self, coord_names=('x', 'y'), nnodes=None,
-                            spacing=None, length=None, origin=0.):
+    def set_regular_grid(self, dims, nnodes=None, spacing=None, length=None,
+                         origin=0.):
         """Create a n-dimensional regular grid and add its coordinates
         to this `Dataset` object.
 
         Parameters
         ----------
-        coord_names : str or tuple
-            Name of the grid coordinate(s).
-        nnodes : int or tuple or None, optional
+        dims : str or array-like
+            Name of the grid dimension(s) / coordinate(s).
+        nnodes : int or array-like or None, optional
             Number of grid nodes in each dimension. If a single
             value is given, it will be applied to every dimension.
-        spacing : float or tuple or None, optional
+        spacing : float or array-like or None, optional
             Distance between two grid points in each dimension.
-        length : float or tuple or None, optional
+        length : float or array-like or None, optional
             Total length of the grid in each dimension.
-        origin : float or tuple, optional
+        origin : float or array-like, optional
             Coordinate(s) of the grid origin.
 
         Raises
         ------
         ValueError
-            In case of ambiguous combination of `nnodes`,
-            `spacing` and `length`.
+            In case of ambiguous combination of `nnodes`, `spacing`
+            and `length`.
 
         """
-        if isinstance(coord_names, str):
-            coord_names = [coord_names],
-        ndim = len(coord_names)
+        if isinstance(dims, str):
+            dims = [dims],
+        ndim = len(dims)
 
         nnodes = _expand_value(nnodes, ndim)
         spacing = _expand_value(spacing, ndim)
         length = _expand_value(length, ndim)
         origin = _expand_value(origin, ndim)
 
-        grid_coord = {}
-        test_none = [a is None for a in (nnodes, spacing, length)]
+        coords = OrderedDict()
+        args = _get_args_not_none(('nnodes', 'spacing', 'length'),
+                                  (nnodes, spacing, length))
 
-        if test_none == [False, False, False]:
-            test_length = ((nnodes - 1) * spacing == length).astype(bool)
-            if np.all(test_length):
-                test_none = [False, True, False]
+        if args == ('nnodes', 'spacing', 'length'):
+            eq_length = ((nnodes - 1) * spacing == length).astype(bool)
+            if np.all(eq_length):
+                args = ('nnodes', 'length')
 
-        if test_none == [False, True, False]:
-            for c, o, n, l in zip(coord_names, origin, nnodes, length):
-                grid_coord[c] = np.linspace(o, o + l, n)
-        elif test_none == [True, False, False]:
-            for c, o, s, l in zip(coord_names, origin, spacing, length):
-                grid_coord[c] = np.arange(o, o + l + s, s)
-        elif test_none == [False, False, True]:
-            for c, o, n, s in zip(coord_names, origin, nnodes, spacing):
-                grid_coord[c] = np.arange(o, o + (n * s), s)
+        if args == ('nnodes', 'length'):
+            for c, o, n, l in zip(dims, origin, nnodes, length):
+                coords[c] = np.linspace(o, o + l, n)
+        elif args == ('spacing', 'length'):
+            for c, o, s, l in zip(dims, origin, spacing, length):
+                coords[c] = np.arange(o, o + l + s, s)
+        elif args == ('nnodes', 'spacing'):
+            for c, o, n, s in zip(dims, origin, nnodes, spacing):
+                coords[c] = np.arange(o, o + (n * s), s)
         else:
             raise ValueError("Invalid combination of number of grid nodes, "
-                             "node spacing and grid length")
+                             "node spacing and grid length: (%r, %r, %r)"
+                             % (nnodes, spacing, length))
 
-        self._obj.coords.update(grid_coord)
+        self._obj.coords.update(coords)
+
+    def set_clock(self, dim, data=None, nsteps=None, step=None, duration=None,
+                  start=0.):
+        """Set a clock (model or output time steps) and add the
+        corresponding dimension / coordinate to this Dataset.
+
+        Parameters
+        ----------
+        dim : str
+            Name of the clock dimension.
+        data : array-like or None, optional
+            Clock values. If not None, the other parameters below will be
+            ignored.
+        nsteps : int or None, optional
+            Total number of time steps.
+        step : float or None, optional
+            Time step duration.
+        duration : float or None, optional
+            Total duration.
+        start : float, optional
+            Start time (default: 0.).
+
+        Raises
+        ------
+        ValueError
+            In case of ambiguous combination of `nsteps`, `step` and
+            `duration`.
+
+        """
+        if data is not None:
+            self._obj.coords[dim] = data
+            return
+
+        args = _get_args_not_none(('nsteps', 'step', 'duration'),
+                                  (nsteps, step, duration))
+
+        if args == ('nsteps', 'step', 'duration'):
+            if (nsteps - 1) * step == duration:
+                args = ('nsteps', 'duration')
+
+        if args == ('nsteps', 'duration'):
+            data = np.linspace(start, start + duration, nsteps)
+        elif args == ('nsteps', 'step'):
+            data = np.arange(start, start + nsteps * step, step)
+        elif args == ('step', 'duration'):
+            data = np.arange(start, start + duration, step)
+        else:
+            raise ValueError("Invalid combination of number of time steeps, "
+                             "time step duration and total duration "
+                             "(%r, %r, %r)" % (nsteps, step, duration))
+
+        self._obj.coords[dim] = data
 
     def set_params(self, component, **kwargs):
         """Set one or several model parameters and their values.
@@ -90,15 +147,15 @@ class FastscapeAccessor(object):
         Parameters
         ----------
         component : str
-           Name of the model component to which the parameters
-           given by **kwargs are related.
+           Name of the model component to which the parameters given by
+           **kwargs are related.
         **kwargs : key=value
             key : str
                 Name of the parameter. If not present, it will be added to this
                 Dataset object with the name '<component>__<parameter_name>'.
             value : float or array-like
-                Parameter value. It will be added either as a data variable or a
-                coordinate depending on whether the value is a scalar or a >1
+                Parameter value. It will be added either as a data variable or
+                a coordinate depending on whether the value is a scalar or a >1
                 length array.
 
         """
@@ -118,9 +175,13 @@ class FastscapeAccessor(object):
     @property
     def param_dims(self):
         """Return model parameter dimensions."""
-        coords = {k: v for k, v in self._obj.coords.items()
-                  if self._var_in_context(v, 'param')}
-        return Dataset(coords=coords).dims
+        coords = [v for k, v in self._obj.coords.items()
+                  if self._var_in_context(v, 'param')]
+        dims = OrderedDict()
+        for var in coords:
+            for dim, size in zip(var.dims, var.shape):
+                dims[dim] = size
+        return Frozen(SortedKeysDict(dims))
 
     def reduce_param_dims(self, new_dim, method='product'):
         """Reduce the parameter dimensions down to a single dimension.
@@ -139,8 +200,8 @@ class FastscapeAccessor(object):
         Returns
         -------
         reduced : Dataset
-            A new dataset with the same data but with only one dimension for all
-            model parameters.
+            A new dataset with the same data but with only one dimension for
+            all model parameters.
 
         See Also
         --------
@@ -172,7 +233,8 @@ class FastscapeAccessor(object):
         Raises
         ------
         ValueError
-            If the given dimension doesn't correspond to model parameter values.
+            If the given dimension doesn't correspond to model parameter
+            values.
 
         See Also
         --------
@@ -190,3 +252,6 @@ class FastscapeAccessor(object):
             new_dataset[k].attrs[self._context_attr] = 'param'
 
         return new_dataset
+
+    def run_model(self, model):
+        model.run(self._obj)

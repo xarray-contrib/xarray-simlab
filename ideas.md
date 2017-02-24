@@ -1,6 +1,12 @@
 # Ideas
 
 
+## `overwrite` to `set_` methods?
+
+`set_` methods update the Dataset inplace. Maybe less error-prone
+to add an overwrite argument that defaults to `False`.
+
+
 ## Multiple input files
 
 Common Use case: a top-level working directory for a project
@@ -39,6 +45,13 @@ Do we want to follow strict yaml syntax so that input files
 can be loaded using other tools / languages?
 
 Look in Ansible code how pyaml is extended (custom Loader?)
+
+## Set variables in input file
+
+Like in Ansible. It can be useful, for example to reuse the same
+value at different places (e.g., master clock and output clocks...)
+
+Require Jinja templating
 
 
 ## Correspondance between input file and cmd args
