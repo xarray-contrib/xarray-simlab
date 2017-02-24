@@ -17,6 +17,29 @@ settings.
 
 Option 2 seems the best.
 
+## extend yaml syntax?
+
+Option 1: inline spec like in Ansible
+
+```
+grid: nnodes=101, length=1e5
+```
+
+Option 2: indent
+
+```
+grid:
+    nnodes: 101
+    length: 1e5
+```
+
+Option 1 not supported by default with pyaml, but
+more succint and closer to the API. Maybe allow both?
+Do we want to follow strict yaml syntax so that input files
+can be loaded using other tools / languages?
+
+Look in Ansible code how pyaml is extended (custom Loader?)
+
 
 ## Correspondance between input file and cmd args
 
