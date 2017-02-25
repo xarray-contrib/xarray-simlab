@@ -1,7 +1,25 @@
 # Ideas
 
 
-## `overwrite` to `set_` methods?
+## xarray accessors
+
+- fscape (for setup model runs)
+
+- ftopo (for toolbox)
+
+- fplot (for plotting, e.g., river profiles)?
+
+
+## Organizing the documentation
+
+1. xarray datamodel (load data from a netcdf resulting from a
+   model run and show some useful dataset handling)
+2. fscape extension
+3. ftopo extension
+4. fplot extension?
+
+
+## `overwrite` kwarg to `set_` methods?
 
 `set_` methods update the Dataset inplace. Maybe less error-prone
 to add an overwrite argument that defaults to `False`.
