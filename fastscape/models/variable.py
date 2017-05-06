@@ -83,6 +83,7 @@ class Variable(AbstractVariable):
         self.kind = kind
         self.default_value = default_value
         self._validators = list(validators)
+        self._state = None
 
     @property
     def validators(self):
@@ -94,6 +95,14 @@ class Variable(AbstractVariable):
 
     def validate(self, xr_variable):
         pass
+
+    @property
+    def state(self):
+        return self._state
+
+    @state.setter
+    def state(self, value):
+        self._state = value
 
 
 class ForeignVariable(AbstractVariable):
@@ -135,6 +144,14 @@ class ForeignVariable(AbstractVariable):
 
         return cls_or_obj._variables[self.var_name]
 
+    @property
+    def state(self):
+        return self.ref_var._state
+
+    @state.setter
+    def state(self, value):
+        self.ref_var.state = value
+
 
 class DiagnosticVariable(AbstractVariable):
     """Variable for model diagnostic purpose only.
@@ -164,6 +181,10 @@ class DiagnosticVariable(AbstractVariable):
 
     def assign_process_obj(self, process_obj):
         self._process_obj = process_obj
+
+    @property
+    def state(self):
+        return self._func(self._process_obj)
 
     def __call__(self):
         return self._func(self._process_obj)
