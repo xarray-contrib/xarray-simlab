@@ -1,8 +1,12 @@
 import numpy as np
 from xarray import Variable
 
-from .base import Model
-from .. import algos
+from ... import algos
+
+
+class Model(object):
+    def __init__py(self):
+        pass
 
 
 class StreamPowerModel(Model):

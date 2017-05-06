@@ -31,3 +31,6 @@ bin/
 
 # IPython / Jupyter
 .ipynb_checkpoints
+
+# misc
+.DS_Store

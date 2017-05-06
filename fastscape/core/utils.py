@@ -1,11 +1,124 @@
 """
 Internal utilties; not for external use.
+
+Part of the code below is copied and modified from:
+
+- xarray 0.9.3 (Copyright 2014-2017, xarray Developers)
+  Licensed under the Apache License, Version 2.0
+  https://github.com/pydata/xarray
+
+- python standard library (abc.collections module)
+  Copyright 2001-2017 Python Software Foundation; All Rights Reserved
+  PSF License
+  https://www.python.org/
+
 """
-from collections import Mapping, MutableMapping, OrderedDict
+from collections import (Mapping, MutableMapping, OrderedDict,
+                         KeysView, ItemsView, ValuesView)
+from functools import wraps
+from contextlib import suppress
 
 
 def _get_args_not_none(arg_names, arg_vals):
     return tuple((n for n, v in zip(arg_names, arg_vals) if v is not None))
+
+
+class combomethod(object):
+    def __init__(self, method):
+        self.method = method
+
+    def __get__(self, obj=None, objtype=None):
+        @wraps(self.method)
+        def _wrapper(*args, **kwargs):
+            if obj is not None:
+                return self.method(obj, *args, **kwargs)
+            else:
+                return self.method(objtype, *args, **kwargs)
+        return _wrapper
+
+
+class AttrMapping(object):
+    """A class similar to `collections.abc.Mapping`,
+    which also allows getting keys with attribute access.
+
+    This class doesn't use `abc.ABCMeta` so it can be
+    inherited in classes that use other metaclasses.
+
+    """
+    _map_obj = {}
+    _initialized = False
+
+    def __iter__(self):
+        return iter(self._map_obj)
+
+    def __len__(self):
+        return len(self._map_obj)
+
+    def __getitem__(self, key):
+        return self._map_obj[key]
+
+    def get(self, key, default=None):
+        'D.get(k[,d]) -> D[k] if k in D, else d.  d defaults to None.'
+        try:
+            return self[key]
+        except KeyError:
+            return default
+
+    def __contains__(self, key):
+        try:
+            self[key]
+        except KeyError:
+            return False
+        else:
+            return True
+
+    def keys(self):
+        "D.keys() -> a set-like object providing a view on D's keys"
+        return KeysView(self)
+
+    def items(self):
+        "D.items() -> a set-like object providing a view on D's items"
+        return ItemsView(self)
+
+    def values(self):
+        "D.values() -> an object providing a view on D's values"
+        return ValuesView(self)
+
+    def __eq__(self, other):
+        if not isinstance(other, (Mapping, AttrMapping)):
+            return NotImplemented
+        return dict(self.items()) == dict(other.items())
+
+    __reversed__ = None
+
+    def __hash__(self):
+        if self._hash is None:
+            self._hash = hash(tuple(self._map_obj.items()))
+        return self._hash
+
+    def __getattr__(self, name):
+        if name != '__setstate__':
+            # this avoids an infinite loop when pickle looks for the
+            # __setstate__ attribute before the object is initialized
+            with suppress(KeyError):
+                return self._map_obj[name]
+        raise AttributeError("%r object has no attribute %r" %
+                             (type(self).__name__, name))
+
+    def __setattr__(self, name, value):
+        if self._initialized and name in self._map_obj:
+            raise AttributeError(
+                "cannot override attribute %r of this %r object"
+                % (name, type(self).__name__)
+            )
+        object.__setattr__(self, name, value)
+
+    def __dir__(self):
+        """Provide method name lookup and completion. Only provide 'public'
+        methods.
+        """
+        extra_attrs = list(self._map_obj)
+        return sorted(set(dir(type(self)) + extra_attrs))
 
 
 class SingleSlotPickleMixin(object):
