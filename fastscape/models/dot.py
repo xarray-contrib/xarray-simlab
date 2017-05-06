@@ -12,8 +12,7 @@ from __future__ import absolute_import, division, print_function
 import os
 from functools import partial
 
-from dask.core import get_dependencies
-from dask.utils import import_required
+from ..core.utils import import_required
 
 
 graphviz = import_required("graphviz", "Drawing dask graphs requires the "
@@ -22,21 +21,16 @@ graphviz = import_required("graphviz", "Drawing dask graphs requires the "
                                        "installed.")
 
 
-def name(x):
-    try:
-        return str(hash(x))
-    except TypeError:
-        return str(hash(str(x)))
+PROC_NODE_ATTRS = {'shape': 'oval', 'color': '#3454b4', 'fontcolor': '#131f43',
+                   'style': 'filled', 'fillcolor': '#c6d2f6'}
+PROC_EDGE_ATTRS = {'color': '#3454b4'}
+VAR_NODE_ATTRS = {'shape': 'box', 'color': '#b49434', 'fontcolor': '#2d250d',
+                  'style': 'filled', 'fillcolor': '#f3e3b3'}
+VAR_EDGE_ATTRS = {'arrowhead': 'none', 'color': '#b49434'}
 
 
-def to_graphviz(model, data_attributes=None, function_attributes=None,
-                rankdir='BT', graph_attr={}, node_attr=None, edge_attr=None,
-                **kwargs):
-    if data_attributes is None:
-        data_attributes = {}
-    if function_attributes is None:
-        function_attributes = {}
-
+def to_graphviz(model, rankdir='TB', show_inputs=True, graph_attr={},
+                node_attr=None, edge_attr=None, **kwargs):
     graph_attr = graph_attr or {}
     graph_attr['rankdir'] = rankdir
     graph_attr.update(kwargs)
@@ -45,28 +39,27 @@ def to_graphviz(model, data_attributes=None, function_attributes=None,
                          edge_attr=edge_attr)
 
     seen = set()
-    dsk = model._get_dsk()
 
-    for k, v in dsk.items():
-        k_name = name(k)
-        k_label = "'{}'\n{}()".format(
-            k, model._processes[k].__class__.__name__
-        )
-        if k_name not in seen:
-            seen.add(k_name)
-            g.node(k_name, label=k_label, shape='ellipse',
-                   **data_attributes.get(k, {}))
+    for proc_name, proc in model._processes.items():
+        label = proc_name
+        if proc_name not in seen:
+            seen.add(proc_name)
+            g.node(proc_name, label=label, **PROC_NODE_ATTRS)
 
-        for dep in get_dependencies(dsk, k):
-            dep_name = name(dep)
-            if dep_name not in seen:
-                seen.add(dep_name)
-                dep_label = "'{}'\n{}()".format(
-                    dep, model._processes[dep].__class__.__name__
-                )
-                g.node(dep_name, label=dep_label, shape='ellipse',
-                       **data_attributes.get(dep, {}))
-            g.edge(dep_name, k_name)
+        for dep_proc_name in model._dep_processes[proc_name]:
+            if dep_proc_name not in seen:
+                seen.add(dep_proc_name)
+                dep_label = dep_proc_name
+                g.node(dep_proc_name, label=dep_label, **PROC_NODE_ATTRS)
+            g.edge(dep_proc_name, proc_name, **PROC_EDGE_ATTRS)
+
+    if show_inputs:
+        for proc_name, variables in model._input_vars.items():
+            for var_name in variables:
+                var_key = '.'.join([proc_name, var_name])
+                g.node(var_key, label=var_name, **VAR_NODE_ATTRS)
+                g.edge(var_key, proc_name, **VAR_EDGE_ATTRS)
+
     return g
 
 
@@ -104,22 +97,25 @@ def _get_display_cls(format):
         raise ValueError("Unknown format '%s' passed to `dot_graph`" % format)
 
 
-def dot_graph(model, filename='mymodel', format=None, **kwargs):
+def dot_graph(model, filename='mymodel', format=None, show_inputs=True,
+              **kwargs):
     """
-    Render a task graph using dot.
+    Render a model as a graph using dot.
     If `filename` is not None, write a file to disk with that name in the
     format specified by `format`.  `filename` should not include an extension.
 
     Parameters
     ----------
-    dsk : dict
-        The graph to display.
+    model : object
+        The Model instance to display.
     filename : str or None, optional
         The name (without an extension) of the file to write to disk.  If
         `filename` is None, no file will be written, and we communicate with
         dot using only pipes.  Default is 'mydask'.
     format : {'png', 'pdf', 'dot', 'svg', 'jpeg', 'jpg'}, optional
         Format in which to write output file.  Default is 'png'.
+    show_inputs : bool, optional
+        If True (default), show all input variables in the graph.
     **kwargs
         Additional keyword arguments to forward to `to_graphviz`.
 
@@ -139,7 +135,7 @@ def dot_graph(model, filename='mymodel', format=None, **kwargs):
     --------
     dask.dot.to_graphviz
     """
-    g = to_graphviz(model, **kwargs)
+    g = to_graphviz(model, show_inputs=show_inputs, **kwargs)
 
     fmts = ['.png', '.pdf', '.dot', '.svg', '.jpeg', '.jpg']
     if format is None and any(filename.lower().endswith(fmt) for fmt in fmts):

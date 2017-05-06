@@ -211,9 +211,21 @@ class Model(AttrMapping):
         return {k: (getattr(self._processes[k], func), v)
                 for k, v in self._dep_processes.items()}
 
-    def visualize(self):
+    def visualize(self, show_inputs=True):
+        """Render the model as a graph using dot (require graphviz).
+
+        Parameters
+        ----------
+        show_inputs : bool, optional
+            If True (default), show all input variables in the graph.
+
+        See Also
+        --------
+        dot.dot_graph
+
+        """
         from .dot import dot_graph
-        return dot_graph(self)
+        return dot_graph(self, show_inputs=show_inputs)
 
     def update_processes(self, processes):
         """Add or replace processe(s) in this model.

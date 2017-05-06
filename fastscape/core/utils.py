@@ -17,10 +17,21 @@ from collections import (Mapping, MutableMapping, OrderedDict,
                          KeysView, ItemsView, ValuesView)
 from functools import wraps
 from contextlib import suppress
+from importlib import import_module
 
 
 def _get_args_not_none(arg_names, arg_vals):
     return tuple((n for n, v in zip(arg_names, arg_vals) if v is not None))
+
+
+def import_required(mod_name, error_msg):
+    """Attempt to import a required dependency.
+    Raises a RuntimeError if the requested module is not available.
+    """
+    try:
+        return import_module(mod_name)
+    except ImportError:
+        raise RuntimeError(error_msg)
 
 
 class combomethod(object):
