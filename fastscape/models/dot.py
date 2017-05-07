@@ -138,7 +138,7 @@ def _get_display_cls(format):
         raise ValueError("Unknown format '%s' passed to `dot_graph`" % format)
 
 
-def dot_graph(model, filename='mymodel', format=None, show_inputs=True,
+def dot_graph(model, filename=None, format=None, show_inputs=True,
               show_vars=False, **kwargs):
     """
     Render a model as a graph using dot.
@@ -151,8 +151,8 @@ def dot_graph(model, filename='mymodel', format=None, show_inputs=True,
         The Model instance to display.
     filename : str or None, optional
         The name (without an extension) of the file to write to disk.  If
-        `filename` is None, no file will be written, and we communicate with
-        dot using only pipes.  Default is 'mydask'.
+        `filename` is None (default), no file will be written, and we
+        communicate with dot using only pipes.
     format : {'png', 'pdf', 'dot', 'svg', 'jpeg', 'jpg'}, optional
         Format in which to write output file.  Default is 'png'.
     show_inputs : bool, optional
@@ -180,6 +180,9 @@ def dot_graph(model, filename='mymodel', format=None, show_inputs=True,
     """
     g = to_graphviz(model, show_inputs=show_inputs, show_vars=show_vars,
                     **kwargs)
+
+    if filename is None:
+        filename = ''
 
     fmts = ['.png', '.pdf', '.dot', '.svg', '.jpeg', '.jpg']
     if format is None and any(filename.lower().endswith(fmt) for fmt in fmts):
