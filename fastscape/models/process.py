@@ -12,6 +12,33 @@ _process_meta_default = {
 }
 
 
+def _extract_variables(mapping):
+    # type: Dict[str, Any] -> Dict[str, Union[AbstractVariable, tuple]]
+    """extract from the input mapping all `AbstractVariable`
+    objects and/or tuples/lists of `AbstractVariable` objects.
+    """
+    var_dict = {}
+
+    for key, value in mapping.items():
+        if isinstance(value, AbstractVariable):
+            var_dict[key] = value
+
+        elif getattr(value, '_diagnostic', False):
+            var = DiagnosticVariable(value, description=value.__doc__,
+                                     attrs=value._diagnostic_attrs)
+            var_dict[key] = var
+
+        elif isinstance(value, (tuple, list)):
+            is_obj_var = [isinstance(obj, AbstractVariable) for obj in value]
+            if all(is_obj_var):
+                var_dict[key] = tuple(value)
+            elif any(is_obj_var):
+                raise ValueError("found variables mixed with other objects\n"
+                                 "%s = %s" % (key, value))
+
+    return var_dict
+
+
 class ProcessBase(type):
     """Metaclass for all processes."""
 
@@ -56,15 +83,7 @@ class ProcessBase(type):
         new_class._meta = meta_dict
 
         # add all variables and diagnostics defined in the class
-        new_class._variables = {}
-
-        for k, v in attrs.items():
-            if isinstance(v, AbstractVariable):
-                new_class._variables[k] = v
-            if getattr(v, '_diagnostic', False):
-                var = DiagnosticVariable(v, description=v.__doc__,
-                                         attrs=v._diagnostic_attrs)
-                new_class._variables[k] = var
+        new_class._variables = _extract_variables(attrs)
 
         return new_class
 
@@ -120,13 +139,16 @@ class Process(AttrMapping, metaclass=ProcessBase):
             # TODO: more logic, e.g., when required variables are missing
         if variables:
             # TODO: check for non valid variable names.
-            self._variables.update(copy.deepcopy(variables))
+            self._variables.update(
+                copy.deepcopy(_extract_variables(variables)))
+
+        super(Process, self).__init__(self._variables)
 
         for var in self._variables.values():
             if isinstance(var, DiagnosticVariable):
                 var.assign_process_obj(self)
 
-        super(Process, self).__init__(self._variables)
+        self._name = None
         self._initialized = True
 
     @property
@@ -138,6 +160,11 @@ class Process(AttrMapping, metaclass=ProcessBase):
     def meta(self):
         """Process metadata."""
         return self._meta
+
+    @property
+    def name(self):
+        """Process name (None if not used in any Model object)."""
+        return self._name
 
     def initialize(self):
         pass

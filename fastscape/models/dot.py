@@ -13,6 +13,7 @@ import os
 from functools import partial
 
 from ..core.utils import import_required
+from .variable import ForeignVariable, DiagnosticVariable
 
 
 graphviz = import_required("graphviz", "Drawing dask graphs requires the "
@@ -24,20 +25,18 @@ graphviz = import_required("graphviz", "Drawing dask graphs requires the "
 PROC_NODE_ATTRS = {'shape': 'oval', 'color': '#3454b4', 'fontcolor': '#131f43',
                    'style': 'filled', 'fillcolor': '#c6d2f6'}
 PROC_EDGE_ATTRS = {'color': '#3454b4'}
-VAR_NODE_ATTRS = {'shape': 'box', 'color': '#b49434', 'fontcolor': '#2d250d',
-                  'style': 'filled', 'fillcolor': '#f3e3b3'}
-VAR_EDGE_ATTRS = {'arrowhead': 'none', 'color': '#b49434'}
+INPUT_NODE_ATTRS = {'shape': 'box', 'color': '#b49434', 'fontcolor': '#2d250d',
+                    'style': 'filled', 'fillcolor': '#f3e3b3'}
+INPUT_EDGE_ATTRS = {'arrowhead': 'none', 'color': '#b49434'}
+VAR_NODE_ATTRS = {'shape': 'box', 'color': '#555555', 'fontcolor': '#555555'}
+VAR_EDGE_ATTRS = {'arrowhead': 'none', 'color': '#555555'}
 
 
-def to_graphviz(model, rankdir='TB', show_inputs=True, graph_attr={},
-                node_attr=None, edge_attr=None, **kwargs):
-    graph_attr = graph_attr or {}
-    graph_attr['rankdir'] = rankdir
-    graph_attr.update(kwargs)
-    g = graphviz.Digraph(graph_attr=graph_attr,
-                         node_attr=node_attr,
-                         edge_attr=edge_attr)
+def hash_variable(var):
+    return str(hash(var))
 
+
+def _add_processes(g, model):
     seen = set()
 
     for proc_name, proc in model._processes.items():
@@ -53,12 +52,54 @@ def to_graphviz(model, rankdir='TB', show_inputs=True, graph_attr={},
                 g.node(dep_proc_name, label=dep_label, **PROC_NODE_ATTRS)
             g.edge(dep_proc_name, proc_name, **PROC_EDGE_ATTRS)
 
+
+def _add_input_vars(g, model):
+    for proc_name, variables in model._input_vars.items():
+        for var_name, var in variables.items():
+            var_key = hash_variable(var)
+            g.node(var_key, label=var_name, **INPUT_NODE_ATTRS)
+            g.edge(var_key, proc_name, **INPUT_EDGE_ATTRS)
+
+
+def _add_vars(g, model):
+    for proc_name, variables in model._processes.items():
+        for var_name, var in variables.items():
+            if (proc_name in model._input_vars
+                    and var_name in model._input_vars[proc_name]):
+                continue
+
+            node_attrs = VAR_NODE_ATTRS.copy()
+            edge_attrs = VAR_EDGE_ATTRS.copy()
+            var_key = hash_variable(var)
+
+            if isinstance(var, DiagnosticVariable):
+                node_attrs['style'] = 'diagonals'
+            elif isinstance(var, ForeignVariable):
+                node_attrs['style'] = 'dashed'
+                edge_attrs['style'] = 'dashed'
+            elif isinstance(var, (tuple, list)):
+                node_attrs['shape'] = 'box3d'
+
+            g.node(var_key, label=var_name, **node_attrs)
+            g.edge(var_key, proc_name, **edge_attrs)
+
+
+def to_graphviz(model, rankdir='TB', show_inputs=True, show_vars=False,
+                graph_attr={}, node_attr=None, edge_attr=None, **kwargs):
+    graph_attr = graph_attr or {}
+    graph_attr['rankdir'] = rankdir
+    graph_attr.update(kwargs)
+    g = graphviz.Digraph(graph_attr=graph_attr,
+                         node_attr=node_attr,
+                         edge_attr=edge_attr)
+
+    _add_processes(g, model)
+
     if show_inputs:
-        for proc_name, variables in model._input_vars.items():
-            for var_name in variables:
-                var_key = '.'.join([proc_name, var_name])
-                g.node(var_key, label=var_name, **VAR_NODE_ATTRS)
-                g.edge(var_key, proc_name, **VAR_EDGE_ATTRS)
+        _add_input_vars(g, model)
+
+    if show_vars:
+        _add_vars(g, model)
 
     return g
 
@@ -98,7 +139,7 @@ def _get_display_cls(format):
 
 
 def dot_graph(model, filename='mymodel', format=None, show_inputs=True,
-              **kwargs):
+              show_vars=False, **kwargs):
     """
     Render a model as a graph using dot.
     If `filename` is not None, write a file to disk with that name in the
@@ -116,6 +157,8 @@ def dot_graph(model, filename='mymodel', format=None, show_inputs=True,
         Format in which to write output file.  Default is 'png'.
     show_inputs : bool, optional
         If True (default), show all input variables in the graph.
+    show_vars : bool, optional
+        If True, show also the other variables (default: False).
     **kwargs
         Additional keyword arguments to forward to `to_graphviz`.
 
@@ -135,7 +178,8 @@ def dot_graph(model, filename='mymodel', format=None, show_inputs=True,
     --------
     dask.dot.to_graphviz
     """
-    g = to_graphviz(model, show_inputs=show_inputs, **kwargs)
+    g = to_graphviz(model, show_inputs=show_inputs, show_vars=show_vars,
+                    **kwargs)
 
     fmts = ['.png', '.pdf', '.dot', '.svg', '.jpeg', '.jpg']
     if format is None and any(filename.lower().endswith(fmt) for fmt in fmts):

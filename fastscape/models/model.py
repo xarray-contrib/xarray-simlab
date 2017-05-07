@@ -181,7 +181,7 @@ class Model(AttrMapping):
             objects as values. The order doesn't matter.
 
         """
-        for p in processes.values():
+        for k, p in processes.items():
             if not isinstance(p, Process):
                 raise TypeError("%s is not a Process object" % p)
 
@@ -211,13 +211,15 @@ class Model(AttrMapping):
         return {k: (getattr(self._processes[k], func), v)
                 for k, v in self._dep_processes.items()}
 
-    def visualize(self, show_inputs=True):
+    def visualize(self, show_inputs=True, show_vars=False):
         """Render the model as a graph using dot (require graphviz).
 
         Parameters
         ----------
         show_inputs : bool, optional
             If True (default), show all input variables in the graph.
+        show_vars : bool, optional
+            If True, show also the other variables (default: False).
 
         See Also
         --------
@@ -225,7 +227,7 @@ class Model(AttrMapping):
 
         """
         from .dot import dot_graph
-        return dot_graph(self, show_inputs=show_inputs)
+        return dot_graph(self, show_inputs=show_inputs, show_vars=show_vars)
 
     def update_processes(self, processes):
         """Add or replace processe(s) in this model.
