@@ -84,6 +84,7 @@ class Variable(AbstractVariable):
         self.default_value = default_value
         self._validators = list(validators)
         self._state = None
+        self._rate = None
 
     @property
     def validators(self):
@@ -98,11 +99,25 @@ class Variable(AbstractVariable):
 
     @property
     def state(self):
+        """State value of the variable, i.e., the instant value at a given
+        time or simply the value if the variable is not time dependent.
+        """
         return self._state
 
     @state.setter
     def state(self, value):
         self._state = value
+
+    @property
+    def rate(self):
+        """Rate value of the variable, i.e., the rate of change in time
+        (time derivative).
+        """
+        return self._rate
+
+    @rate.setter
+    def rate(self, value):
+        self._rate = value
 
 
 class ForeignVariable(AbstractVariable):
@@ -130,7 +145,7 @@ class ForeignVariable(AbstractVariable):
         self._other_process_obj = None
         self.var_name = var_name
 
-    def assign_other_process_obj(self, other_process_obj):
+    def _assign_other_process_obj(self, other_process_obj):
         self._other_process_obj = other_process_obj
 
     @property
@@ -146,11 +161,21 @@ class ForeignVariable(AbstractVariable):
 
     @property
     def state(self):
+        """State value of the original variable."""
         return self.ref_var._state
 
     @state.setter
     def state(self, value):
         self.ref_var.state = value
+
+    @property
+    def rate(self):
+        """Rate value of the original variable."""
+        return self.ref_var._rate
+
+    @rate.setter
+    def rate(self, value):
+        self.ref_var.rate = value
 
 
 class DiagnosticVariable(AbstractVariable):
@@ -184,10 +209,14 @@ class DiagnosticVariable(AbstractVariable):
 
     @property
     def state(self):
+        """State value of this variable (read-only), i.e., the instant value
+        at a given time or simply the value if the variable is time
+        independent.
+        """
         return self._func(self._process_obj)
 
     def __call__(self):
-        return self._func(self._process_obj)
+        return self.state
 
 
 class UndefinedVariable(AbstractVariable):

@@ -56,17 +56,19 @@ class AttrMapping(object):
     inherited in classes that use other metaclasses.
 
     """
-    _map_obj = {}
     _initialized = False
 
+    def __init__(self, mapping=None):
+        self._mapping = mapping if mapping is not None else {}
+
     def __iter__(self):
-        return iter(self._map_obj)
+        return iter(self._mapping)
 
     def __len__(self):
-        return len(self._map_obj)
+        return len(self._mapping)
 
     def __getitem__(self, key):
-        return self._map_obj[key]
+        return self._mapping[key]
 
     def get(self, key, default=None):
         'D.get(k[,d]) -> D[k] if k in D, else d.  d defaults to None.'
@@ -104,7 +106,7 @@ class AttrMapping(object):
 
     def __hash__(self):
         if self._hash is None:
-            self._hash = hash(tuple(self._map_obj.items()))
+            self._hash = hash(tuple(self._mapping.items()))
         return self._hash
 
     def __getattr__(self, name):
@@ -112,12 +114,12 @@ class AttrMapping(object):
             # this avoids an infinite loop when pickle looks for the
             # __setstate__ attribute before the object is initialized
             with suppress(KeyError):
-                return self._map_obj[name]
+                return self._mapping[name]
         raise AttributeError("%r object has no attribute %r" %
                              (type(self).__name__, name))
 
     def __setattr__(self, name, value):
-        if self._initialized and name in self._map_obj:
+        if self._initialized and name in self._mapping:
             raise AttributeError(
                 "cannot override attribute %r of this %r object"
                 % (name, type(self).__name__)
@@ -128,7 +130,7 @@ class AttrMapping(object):
         """Provide method name lookup and completion. Only provide 'public'
         methods.
         """
-        extra_attrs = list(self._map_obj)
+        extra_attrs = list(self._mapping)
         return sorted(set(dir(type(self)) + extra_attrs))
 
 

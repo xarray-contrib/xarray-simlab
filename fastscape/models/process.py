@@ -68,6 +68,16 @@ class ProcessBase(type):
 
         return new_class
 
+    @property
+    def variables(cls):
+        """Process variables."""
+        return cls._variables
+
+    @property
+    def meta(cls):
+        """Process metadata."""
+        return cls._meta
+
 
 class Process(AttrMapping, metaclass=ProcessBase):
     """Base class that represents a logical unit in a computational model.
@@ -116,8 +126,13 @@ class Process(AttrMapping, metaclass=ProcessBase):
             if isinstance(var, DiagnosticVariable):
                 var.assign_process_obj(self)
 
-        self._map_obj = self._variables
+        super(Process, self).__init__(self._variables)
         self._initialized = True
+
+    @property
+    def variables(self):
+        """Process variables."""
+        return self._variables
 
     @property
     def meta(self):

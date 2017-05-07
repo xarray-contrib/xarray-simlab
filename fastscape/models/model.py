@@ -154,7 +154,7 @@ def _link_foreign_vars(processes):
     for variables in _get_foreign_vars(processes).values():
         for var in variables:
             proc_obj = processes[proc_cls_name[var.other_process]]
-            var.assign_other_process_obj(proc_obj)
+            var._assign_other_process_obj(proc_obj)
 
 
 class Model(AttrMapping):
@@ -194,7 +194,7 @@ class Model(AttrMapping):
             [(k, processes[k]) for k in _sort_processes(self._dep_processes)]
         )
 
-        self._map_obj = self._processes
+        super(Model, self).__init__(self._processes)
         self._initialized = True
 
     @property
