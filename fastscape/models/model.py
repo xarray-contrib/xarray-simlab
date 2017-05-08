@@ -9,7 +9,7 @@ Part of the code below is copied and modified from:
 """
 from collections import OrderedDict
 
-from .variable import Variable, ForeignVariable
+from .variable import AbstractVariable, Variable, ForeignVariable
 from .process import Process
 from ..core.utils import AttrMapping
 from ..core.formatting import (_calculate_col_width, pretty_print,
@@ -197,6 +197,14 @@ class Model(AttrMapping):
         super(Model, self).__init__(self._processes)
         self._initialized = True
 
+    def _get_proc_var_name(self, variable):
+        # type: AbstractVariable -> Union[tuple[str, str], None]
+        for proc_name, variables in self._processes.items():
+            for var_name, var in variables.items():
+                if var is variable:
+                    return proc_name, var_name
+        return None
+
     @property
     def input_vars(self):
         """Returns all variables that require setting a
@@ -207,19 +215,43 @@ class Model(AttrMapping):
         """
         return self._input_vars
 
+    def is_input(self, variable):
+        """Returns True if the variable is a model input.
+
+        Parameters
+        ----------
+        variable : object or tuple
+            Either a Variable object or a (str, str) tuple
+            corresponding to process name and variable name.
+
+        """
+        if isinstance(variable, AbstractVariable):
+            proc_name, var_name = self._get_proc_var_name(variable)
+        else:
+            proc_name, var_name = variable
+
+        return self._input_vars.get(proc_name, {}).get(var_name, False)
+
     def _get_dsk(self, func='run_step'):
         return {k: (getattr(self._processes[k], func), v)
                 for k, v in self._dep_processes.items()}
 
-    def visualize(self, show_inputs=True, show_vars=False):
+    def visualize(self, show_only_variable=None, show_inputs=True,
+                  show_variables=False):
         """Render the model as a graph using dot (require graphviz).
 
         Parameters
         ----------
+        show_only_variable : object or tuple, optional
+            Show only a variable (and all other linked variables) given either
+            as a Variable object or a tuple corresponding to process name and
+            variable name. Deactivated by default.
         show_inputs : bool, optional
             If True (default), show all input variables in the graph.
-        show_vars : bool, optional
+            Ignored if `show_only_variable` is not None.
+        show_variabless : bool, optional
             If True, show also the other variables (default: False).
+            Ignored if `show_only_variable` is not None.
 
         See Also
         --------
@@ -227,7 +259,9 @@ class Model(AttrMapping):
 
         """
         from .dot import dot_graph
-        return dot_graph(self, show_inputs=show_inputs, show_vars=show_vars)
+        return dot_graph(self, show_only_variable=show_only_variable,
+                         show_inputs=show_inputs,
+                         show_variables=show_variables)
 
     def update_processes(self, processes):
         """Add or replace processe(s) in this model.

@@ -13,7 +13,7 @@ import os
 from functools import partial
 
 from ..core.utils import import_required
-from .variable import ForeignVariable, DiagnosticVariable
+from .variable import AbstractVariable, ForeignVariable, DiagnosticVariable
 
 
 graphviz = import_required("graphviz", "Drawing dask graphs requires the "
@@ -24,7 +24,7 @@ graphviz = import_required("graphviz", "Drawing dask graphs requires the "
 
 PROC_NODE_ATTRS = {'shape': 'oval', 'color': '#3454b4', 'fontcolor': '#131f43',
                    'style': 'filled', 'fillcolor': '#c6d2f6'}
-PROC_EDGE_ATTRS = {'color': '#3454b4'}
+PROC_EDGE_ATTRS = {'color': '#3454b4', 'style': 'bold'}
 INPUT_NODE_ATTRS = {'shape': 'box', 'color': '#b49434', 'fontcolor': '#2d250d',
                     'style': 'filled', 'fillcolor': '#f3e3b3'}
 INPUT_EDGE_ATTRS = {'arrowhead': 'none', 'color': '#b49434'}
@@ -53,53 +53,94 @@ def _add_processes(g, model):
             g.edge(dep_proc_name, proc_name, **PROC_EDGE_ATTRS)
 
 
-def _add_input_vars(g, model):
+def _add_var(g, var, label, link_2_node, is_input=False):
+    node_attrs = VAR_NODE_ATTRS.copy()
+    edge_attrs = VAR_EDGE_ATTRS.copy()
+    var_key = hash_variable(var)
+
+    if is_input:
+        node_attrs = INPUT_NODE_ATTRS.copy()
+        edge_attrs = INPUT_EDGE_ATTRS.copy()
+    elif isinstance(var, DiagnosticVariable):
+        node_attrs['style'] = 'diagonals'
+    elif isinstance(var, ForeignVariable):
+        node_attrs['style'] = 'dashed'
+        edge_attrs['style'] = 'dashed'
+    elif isinstance(var, tuple):
+        node_attrs['shape'] = 'box3d'
+
+    if not isinstance(var, tuple) and var.provided:
+        edge_attrs.update({'arrowhead': 'empty'})
+        edge_ends = link_2_node, var_key
+    else:
+        edge_ends = var_key, link_2_node
+
+    g.node(var_key, label=label, **node_attrs)
+    g.edge(*edge_ends, weight='200', **edge_attrs)
+
+
+def _add_inputs(g, model):
     for proc_name, variables in model._input_vars.items():
         for var_name, var in variables.items():
-            var_key = hash_variable(var)
-            g.node(var_key, label=var_name, **INPUT_NODE_ATTRS)
-            g.edge(var_key, proc_name, **INPUT_EDGE_ATTRS)
+            _add_var(g, var, var_name, proc_name, is_input=True)
 
 
-def _add_vars(g, model):
+def _add_variables(g, model):
     for proc_name, variables in model._processes.items():
         for var_name, var in variables.items():
-            if (proc_name in model._input_vars
-                    and var_name in model._input_vars[proc_name]):
+            if model.is_input(var):
                 continue
+            _add_var(g, var, var_name, proc_name)
 
-            node_attrs = VAR_NODE_ATTRS.copy()
-            edge_attrs = VAR_EDGE_ATTRS.copy()
-            var_key = hash_variable(var)
-
-            if isinstance(var, DiagnosticVariable):
-                node_attrs['style'] = 'diagonals'
-            elif isinstance(var, ForeignVariable):
-                node_attrs['style'] = 'dashed'
-                edge_attrs['style'] = 'dashed'
-            elif isinstance(var, (tuple, list)):
-                node_attrs['shape'] = 'box3d'
-
-            g.node(var_key, label=var_name, **node_attrs)
-            g.edge(var_key, proc_name, **edge_attrs)
+            if isinstance(var, tuple):
+                for v in var:
+                    _add_var(g, v, '\<no_name\>', hash_variable(var))
 
 
-def to_graphviz(model, rankdir='TB', show_inputs=True, show_vars=False,
-                graph_attr={}, node_attr=None, edge_attr=None, **kwargs):
+def _add_var_and_foreign_vars(g, model, proc_name, var_name):
+    variable = model[proc_name][var_name]
+
+    if isinstance(variable, ForeignVariable):
+        variable = variable.ref_var
+
+    for p_name, variables in model._processes.items():
+        for v_name, var in variables.items():
+            if model.is_input(var):
+                is_input = True
+            else:
+                is_input = False
+
+            if var is variable or getattr(var, 'ref_var', None) is variable:
+                _add_var(g, var, v_name, p_name, is_input=is_input)
+            elif isinstance(var, tuple):
+                for v in var:
+                    if v is variable or getattr(v, 'ref_var', None) is variable:
+                        _add_var(g, var, v_name, p_name, is_input=is_input)
+                        _add_var(g, v, '\<no_name\>', hash_variable(var))
+
+
+def to_graphviz(model, rankdir='LR', show_only_variable=None, show_inputs=True,
+                show_variables=False, graph_attr={}, **kwargs):
     graph_attr = graph_attr or {}
     graph_attr['rankdir'] = rankdir
     graph_attr.update(kwargs)
-    g = graphviz.Digraph(graph_attr=graph_attr,
-                         node_attr=node_attr,
-                         edge_attr=edge_attr)
+    g = graphviz.Digraph(graph_attr=graph_attr)
 
     _add_processes(g, model)
 
-    if show_inputs:
-        _add_input_vars(g, model)
+    if show_only_variable is not None:
+        if isinstance(show_only_variable, AbstractVariable):
+            proc_name, var_name = model._get_proc_var_name(show_only_variable)
+        else:
+            proc_name, var_name = show_only_variable
+        _add_var_and_foreign_vars(g, model, proc_name, var_name)
 
-    if show_vars:
-        _add_vars(g, model)
+    else:
+        if show_inputs:
+            _add_inputs(g, model)
+
+        if show_variables:
+            _add_variables(g, model)
 
     return g
 
@@ -138,8 +179,8 @@ def _get_display_cls(format):
         raise ValueError("Unknown format '%s' passed to `dot_graph`" % format)
 
 
-def dot_graph(model, filename=None, format=None, show_inputs=True,
-              show_vars=False, **kwargs):
+def dot_graph(model, filename=None, format=None, show_only_variable=None,
+              show_inputs=True, show_variables=False, **kwargs):
     """
     Render a model as a graph using dot.
     If `filename` is not None, write a file to disk with that name in the
@@ -155,10 +196,16 @@ def dot_graph(model, filename=None, format=None, show_inputs=True,
         communicate with dot using only pipes.
     format : {'png', 'pdf', 'dot', 'svg', 'jpeg', 'jpg'}, optional
         Format in which to write output file.  Default is 'png'.
+    show_only_variable : object or tuple, optional
+        Show only a variable (and all other linked variables) given either
+        as a Variable object or a tuple corresponding to process name and
+        variable name. Deactivated by default.
     show_inputs : bool, optional
         If True (default), show all input variables in the graph.
-    show_vars : bool, optional
+        Ignored if `show_only_variable` is not None.
+    show_variabless : bool, optional
         If True, show also the other variables (default: False).
+        Ignored if `show_only_variable` is not None.
     **kwargs
         Additional keyword arguments to forward to `to_graphviz`.
 
@@ -178,7 +225,8 @@ def dot_graph(model, filename=None, format=None, show_inputs=True,
     --------
     dask.dot.to_graphviz
     """
-    g = to_graphviz(model, show_inputs=show_inputs, show_vars=show_vars,
+    g = to_graphviz(model, show_only_variable=show_only_variable,
+                    show_inputs=show_inputs, show_variables=show_variables,
                     **kwargs)
 
     if filename is None:
