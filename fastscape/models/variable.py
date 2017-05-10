@@ -14,6 +14,9 @@ class AbstractVariable(object):
         self.description = description
         self.attrs = attrs
 
+    def __repr__(self):
+        return "<fastscape.models.%s>" % type(self).__name__
+
 
 class Variable(AbstractVariable):
     """Base class that represents a variable in a process or a model.
@@ -33,22 +36,19 @@ class Variable(AbstractVariable):
     """
     default_validators = []  # Default set of validators
 
-    def __init__(self, dims, kind='state_only', provided=False,
-                 optional=False, default_value=None, validators=(),
-                 description='', attrs=None):
+    def __init__(self, allowed_dims, provided=False, optional=False,
+                 default_value=None, validators=(), description='',
+                 attrs=None):
         """
         Parameters
         ----------
-        dims : str or tuple or list
-            Dimension label(s) of the variable. An empty tuple corresponds
-            to a scalar variable, a string or a 1-length tuple corresponds
-            to a 1-d variable and a n-length tuple corresponds to a n-d
-            variable. A list of str or tuple items may also be provided if
+        allowed_dims : str or tuple or list
+            Dimension label(s) allowed for the variable. An empty tuple
+            corresponds to a scalar variable, a string or a 1-length tuple
+            corresponds to a 1-d variable and a n-length tuple corresponds to a
+            n-d variable. A list of str or tuple items may also be provided if
             the variable accepts different numbers of dimensions.
-        kind : {'state_only', 'state_rate'}, optional
-            A 'state_rate' variable accepts two values: a state and a rate
-            (i.e., a time-derivative), while a 'state_only' variable (default)
-            has only a state value.
+            This should not include a time dimension, which is always allowed.
         provided : bool, optional
             Defines whether a value for the variable is required (False)
             or provided (True) by the process in which it is defined
@@ -56,8 +56,8 @@ class Variable(AbstractVariable):
             If `provided=True`, then the variable in a process/model won't
             be considered as an input of that process/model.
         optional : bool, optional
-            True if a value is required for the variable (default: False).
-            Ignored when `provided` is True.
+            If True, a value may not be required for the variable
+            (default: False). Ignored when `provided` is True.
         default_value : any, optional
             Single default value for the variable (default: None). It
             will be automatically broadcasted to all of its dimensions.
@@ -68,7 +68,7 @@ class Variable(AbstractVariable):
             It may be useful for custom, advanced validation that
             can be reused for different variables.
         description : str, optional
-            Short description of the variable (one-line).
+            Short description of the variable (ideally one-line).
         attrs : dict, optional
             Dictionnary of additional metadata (e.g., standard_name,
             units, math_symbol...).
@@ -78,9 +78,16 @@ class Variable(AbstractVariable):
             provided=provided, description=description, attrs=attrs
         )
 
-        self.dims = dims
+        if not len(allowed_dims):
+            allowed_dims = [tuple()]
+        if isinstance(allowed_dims, str):
+            allowed_dims = [(allowed_dims,)]
+        elif isinstance(allowed_dims, list):
+            allowed_dims = [tuple([d]) if isinstance(d, str) else tuple(d)
+                            for d in allowed_dims]
+        self.allowed_dims = tuple(allowed_dims)
+
         self.optional = optional
-        self.kind = kind
         self.default_value = default_value
         self._validators = list(validators)
         self._state = None
@@ -119,6 +126,11 @@ class Variable(AbstractVariable):
     def rate(self, value):
         self._rate = value
 
+    def __repr__(self):
+        dims_str = ', '.join(['(%s)' % ', '.join(['%r' % d for d in dims])
+                              for dims in self.allowed_dims])
+        return ("<fastscape.models.%s %s>" % (type(self).__name__, dims_str))
+
 
 class ForeignVariable(AbstractVariable):
     """Reference to a variable that is defined in another `Process` class.
@@ -141,23 +153,26 @@ class ForeignVariable(AbstractVariable):
         """
         super(ForeignVariable, self).__init__(provided=provided)
 
-        self.other_process = other_process
+        self._other_process_cls = other_process
         self._other_process_obj = None
         self.var_name = var_name
 
-    def _assign_other_process_obj(self, other_process_obj):
-        self._other_process_obj = other_process_obj
+    @property
+    def ref_process(self):
+        """The process where the original variable is defined.
+
+        Returns either the Process class or a Process instance attached to
+        a model.
+        """
+        if self._other_process_obj is None:
+            return self._other_process_cls
+
+        return self._other_process_obj
 
     @property
     def ref_var(self):
         """The original variable object."""
-
-        if self._other_process_obj is None:
-            cls_or_obj = self.other_process
-        else:
-            cls_or_obj = self._other_process_obj
-
-        return cls_or_obj._variables[self.var_name]
+        return self.ref_process.variables[self.var_name]
 
     @property
     def state(self):
@@ -176,6 +191,11 @@ class ForeignVariable(AbstractVariable):
     @rate.setter
     def rate(self, value):
         self.ref_var.rate = value
+
+    def __repr__(self):
+        ref_str = "%s.%s" % (self.ref_process.name, self.var_name)
+
+        return "<fastscape.models.%s (%s)>" % (type(self).__name__, ref_str)
 
 
 class DiagnosticVariable(AbstractVariable):
@@ -219,21 +239,6 @@ class DiagnosticVariable(AbstractVariable):
         return self.state
 
 
-class UndefinedVariable(AbstractVariable):
-    """Represent variable(s) that has to be defined later, i.e.,
-    when creating a new `Process` object.
-
-    Undefined variables are useful in cases when we want to reuse
-    the same process in different contexts without having to re-write
-    other `Process` subclasses. Good examples are processes that
-    aggregate (e.g., sum, product, mean) variables provided by
-    other processes.
-
-    """
-    def __init__(self):
-        super(UndefinedVariable, self).__init__(provided=False)
-
-
 def diagnostic(attrs_or_function=None, attrs=None):
     """Applied to a method of a `Process` subclass, this decorator
     allows registering that method as a diagnostic variable.
@@ -274,3 +279,31 @@ def diagnostic(attrs_or_function=None, attrs=None):
         return _add_diagnostic_attrs(func)
     else:
         return _add_diagnostic_attrs
+
+
+class UndefinedVariable(AbstractVariable):
+    """Represent variable(s) that has to be defined later, i.e.,
+    when creating a new `Process` object.
+
+    Undefined variables are useful in cases when we want to reuse
+    the same process in different contexts without having to re-write
+    other `Process` subclasses. Good examples are processes that
+    aggregate (e.g., sum, product, mean) variables provided by
+    other processes.
+
+    """
+    def __init__(self):
+        super(UndefinedVariable, self).__init__(provided=False)
+
+
+class VariableList(tuple):
+    """A tuple of only `Variable` or `ForeignVariable` objects."""
+    def __new__(cls, variables):
+        var_list = [var for var in variables
+                    if isinstance(var, (Variable, ForeignVariable))]
+
+        if len(var_list) != len(variables):
+            raise ValueError("found variables mixed with objects of other "
+                             "types in %s" % variables)
+
+        return tuple.__new__(cls, var_list)

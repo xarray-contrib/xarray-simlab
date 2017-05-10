@@ -9,15 +9,19 @@ Part of the code below is copied and modified from:
 """
 from collections import OrderedDict
 
-from .variable import AbstractVariable, Variable, ForeignVariable
+from .variable import (AbstractVariable, Variable, ForeignVariable,
+                       UndefinedVariable)
 from .process import Process
 from ..core.utils import AttrMapping
 from ..core.formatting import (_calculate_col_width, pretty_print,
                                maybe_truncate)
 
 
-def _reverse_processes_dict(processes):
-    return {v.__class__: k for k, v in processes.items()}
+def _set_process_names(processes):
+    # type: Dict[str, Process]
+    """Set process names using keys of the mapping."""
+    for k, p in processes.items():
+        p._name = k
 
 
 def _get_foreign_vars(processes):
@@ -39,11 +43,19 @@ def _get_foreign_vars(processes):
     return foreign_vars
 
 
+def _link_foreign_vars(processes):
+    """Assign process instances to foreign variables."""
+    proc_lookup = {v.__class__: v for v in processes.values()}
+
+    for variables in _get_foreign_vars(processes).values():
+        for var in variables:
+            var._other_process_obj = proc_lookup[var._other_process_cls]
+
+
 def _get_input_vars(processes):
     # type: Dict[str, Process] -> Dict[str, Dict[str, Variable]]
 
     input_vars = {}
-    proc_cls_name = _reverse_processes_dict(processes)
 
     for proc_name, proc in processes.items():
         input_vars[proc_name] = {}
@@ -56,10 +68,9 @@ def _get_input_vars(processes):
     foreign_vars = _get_foreign_vars(processes)
     for variables in foreign_vars.values():
         for var in variables:
-            other_proc_name = proc_cls_name[var.other_process]
-            if input_vars[other_proc_name].get(var.var_name, False):
+            if input_vars[var.ref_process.name].get(var.var_name, False):
                 if var.provided:
-                    del input_vars[other_proc_name][var.var_name]
+                    del input_vars[var.ref_process.name][var.var_name]
 
     return {k: v for k, v in input_vars.items() if v}
 
@@ -68,18 +79,16 @@ def _get_process_dependencies(processes):
     # type: Dict[str, Process] -> Dict[str, List[Process]]
 
     dep_processes = {k: set() for k in processes}
-    proc_cls_name = _reverse_processes_dict(processes)
     foreign_vars = _get_foreign_vars(processes)
 
     for proc_name, variables in foreign_vars.items():
         for var in variables:
-            other_proc_name = proc_cls_name[var.other_process]
             if var.provided:
-                dep_processes[other_proc_name].add(proc_name)
+                dep_processes[var.ref_process.name].add(proc_name)
             else:
-                pvar = var.other_process._variables[var.var_name]
-                if pvar.provided or getattr(pvar, 'optional', False):
-                    dep_processes[proc_name].add(other_proc_name)
+                ref_var = var.ref_var
+                if ref_var.provided or getattr(ref_var, 'optional', False):
+                    dep_processes[proc_name].add(var.ref_process.name)
 
     return {k: list(v) for k, v in dep_processes.items()}
 
@@ -147,16 +156,6 @@ def _sort_processes(dep_processes):
     return ordered
 
 
-def _link_foreign_vars(processes):
-    """Assign process instances to foreign variables."""
-    proc_cls_name = _reverse_processes_dict(processes)
-
-    for variables in _get_foreign_vars(processes).values():
-        for var in variables:
-            proc_obj = processes[proc_cls_name[var.other_process]]
-            var._assign_other_process_obj(proc_obj)
-
-
 class Model(AttrMapping):
     """An immutable collection (mapping) of process units that together
     form a computational model.
@@ -185,11 +184,11 @@ class Model(AttrMapping):
             if not isinstance(p, Process):
                 raise TypeError("%s is not a Process object" % p)
 
-        self._hash = None
-        self._input_vars = _get_input_vars(processes)
-        self._dep_processes = _get_process_dependencies(processes)
+        _set_process_names(processes)
         _link_foreign_vars(processes)
 
+        self._input_vars = _get_input_vars(processes)
+        self._dep_processes = _get_process_dependencies(processes)
         self._processes = OrderedDict(
             [(k, processes[k]) for k in _sort_processes(self._dep_processes)]
         )
@@ -236,7 +235,7 @@ class Model(AttrMapping):
         return {k: (getattr(self._processes[k], func), v)
                 for k, v in self._dep_processes.items()}
 
-    def visualize(self, show_only_variable=None, show_inputs=True,
+    def visualize(self, show_only_variable=None, show_inputs=False,
                   show_variables=False):
         """Render the model as a graph using dot (require graphviz).
 
@@ -247,7 +246,7 @@ class Model(AttrMapping):
             as a Variable object or a tuple corresponding to process name and
             variable name. Deactivated by default.
         show_inputs : bool, optional
-            If True (default), show all input variables in the graph.
+            If True, show all input variables in the graph (default: False).
             Ignored if `show_only_variable` is not None.
         show_variabless : bool, optional
             If True, show also the other variables (default: False).
@@ -262,6 +261,19 @@ class Model(AttrMapping):
         return dot_graph(self, show_only_variable=show_only_variable,
                          show_inputs=show_inputs,
                          show_variables=show_variables)
+
+    def _create_new_model(self, processes):
+        """Create a new Model object with new process instances."""
+        new_processes = {}
+
+        for proc_name, proc in processes.items():
+            proc_cls = type(proc)
+            undef_var_names = [k for k, v in proc_cls.variables.items()
+                               if isinstance(v, UndefinedVariable)]
+            undef_vars = {k: proc.variables[k] for k in undef_var_names}
+            new_processes[proc_name] = type(proc)(**undef_vars)
+
+        return type(self)(new_processes)
 
     def update_processes(self, processes):
         """Add or replace processe(s) in this model.
@@ -278,10 +290,9 @@ class Model(AttrMapping):
             New Model instance with updated processes.
 
         """
-        # TODO: also copy process instances (deep)?
         new_processes = self._processes.copy()
         new_processes.update(processes)
-        return type(self)(new_processes)
+        return self._create_new_model(new_processes)
 
     def drop_processes(self, names):
         """Drop processe(s) from this model.
@@ -300,13 +311,10 @@ class Model(AttrMapping):
         if isinstance(names, str):
             names = [names]
 
-        # TODO: also automatically remove dependent ForeingVariables
-        #       if they are defined within lists?
-        # TODO: also copy process instances (deep)?
         new_processes = self._processes.copy()
         for n in names:
             del new_processes[n]
-        return type(self)(new_processes)
+        return self._create_new_model(new_processes)
 
     def __repr__(self):
         n_inputs = sum([len(v) for v in self._input_vars.values()])

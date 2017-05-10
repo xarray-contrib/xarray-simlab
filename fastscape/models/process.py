@@ -2,7 +2,8 @@ import sys
 import inspect
 import copy
 
-from .variable import AbstractVariable, DiagnosticVariable, UndefinedVariable
+from .variable import (AbstractVariable, DiagnosticVariable, UndefinedVariable,
+                       VariableList)
 from ..core.formatting import process_info
 from ..core.utils import AttrMapping, combomethod
 
@@ -13,28 +14,18 @@ _process_meta_default = {
 
 
 def _extract_variables(mapping):
-    # type: Dict[str, Any] -> Dict[str, Union[AbstractVariable, tuple]]
-    """extract from the input mapping all `AbstractVariable`
-    objects and/or tuples/lists of `AbstractVariable` objects.
-    """
+    # type: Dict[str, Any] -> Dict[str, Union[AbstractVariable, Variablelist]]
+
     var_dict = {}
 
     for key, value in mapping.items():
-        if isinstance(value, AbstractVariable):
+        if isinstance(value, (AbstractVariable, VariableList)):
             var_dict[key] = value
 
         elif getattr(value, '_diagnostic', False):
             var = DiagnosticVariable(value, description=value.__doc__,
                                      attrs=value._diagnostic_attrs)
             var_dict[key] = var
-
-        elif isinstance(value, (tuple, list)):
-            is_obj_var = [isinstance(obj, AbstractVariable) for obj in value]
-            if all(is_obj_var):
-                var_dict[key] = tuple(value)
-            elif any(is_obj_var):
-                raise ValueError("found variables mixed with other objects\n"
-                                 "%s = %s" % (key, value))
 
     return var_dict
 
@@ -96,6 +87,11 @@ class ProcessBase(type):
     def meta(cls):
         """Process metadata."""
         return cls._meta
+
+    @property
+    def name(cls):
+        """Process name."""
+        return cls.__name__
 
 
 class Process(AttrMapping, metaclass=ProcessBase):
@@ -163,7 +159,14 @@ class Process(AttrMapping, metaclass=ProcessBase):
 
     @property
     def name(self):
-        """Process name (None if not used in any Model object)."""
+        """Process name.
+
+        Returns the name of the Process subclass if it is not attached to
+        any Model object.
+        """
+        if self._name is None:
+            return type(self).__name__
+
         return self._name
 
     def initialize(self):

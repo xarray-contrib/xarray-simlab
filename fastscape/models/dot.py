@@ -119,7 +119,7 @@ def _add_var_and_foreign_vars(g, model, proc_name, var_name):
                         _add_var(g, v, '\<no_name\>', hash_variable(var))
 
 
-def to_graphviz(model, rankdir='LR', show_only_variable=None, show_inputs=True,
+def to_graphviz(model, rankdir='LR', show_only_variable=None, show_inputs=False,
                 show_variables=False, graph_attr={}, **kwargs):
     graph_attr = graph_attr or {}
     graph_attr['rankdir'] = rankdir
@@ -180,7 +180,7 @@ def _get_display_cls(format):
 
 
 def dot_graph(model, filename=None, format=None, show_only_variable=None,
-              show_inputs=True, show_variables=False, **kwargs):
+              show_inputs=False, show_variables=False, **kwargs):
     """
     Render a model as a graph using dot.
     If `filename` is not None, write a file to disk with that name in the
@@ -201,7 +201,7 @@ def dot_graph(model, filename=None, format=None, show_only_variable=None,
         as a Variable object or a tuple corresponding to process name and
         variable name. Deactivated by default.
     show_inputs : bool, optional
-        If True (default), show all input variables in the graph.
+        If True, show all input variables in the graph (default: False).
         Ignored if `show_only_variable` is not None.
     show_variabless : bool, optional
         If True, show also the other variables (default: False).
@@ -223,7 +223,8 @@ def dot_graph(model, filename=None, format=None, show_only_variable=None,
 
     See Also
     --------
-    dask.dot.to_graphviz
+    to_graphviz
+
     """
     g = to_graphviz(model, show_only_variable=show_only_variable,
                     show_inputs=show_inputs, show_variables=show_variables,
