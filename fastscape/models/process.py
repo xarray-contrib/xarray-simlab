@@ -76,6 +76,11 @@ class ProcessBase(type):
         # add all variables and diagnostics defined in the class
         new_class._variables = _extract_variables(attrs)
 
+        # add methods
+        for m in ('run_model', 'initialize', 'finalize'):
+            if attrs.get(m, False):
+                setattr(new_class, m, attrs[m])
+
         return new_class
 
     @property
