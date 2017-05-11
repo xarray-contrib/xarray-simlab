@@ -14,7 +14,9 @@ _process_meta_default = {
 
 
 def _extract_variables(mapping):
-    # type: Dict[str, Any] -> Dict[str, Union[AbstractVariable, Variablelist]]
+    # type: Dict[str, Any] -> Tuple[
+    #     Dict[str, Union[AbstractVariable, Variablelist]],
+    #     Dict[str, Any]]
 
     var_dict = {}
 
@@ -27,7 +29,9 @@ def _extract_variables(mapping):
                                      attrs=value._diagnostic_attrs)
             var_dict[key] = var
 
-    return var_dict
+    no_var_dict = {k: v for k, v in mapping.items() if k not in var_dict}
+
+    return var_dict, no_var_dict
 
 
 class ProcessBase(type):
@@ -48,12 +52,11 @@ class ProcessBase(type):
                 raise TypeError("subclassing a subclass of Process "
                                 "is not supported")
 
-        # Create the class with new attributes
+        # start with new attributes
         new_attrs = {'__module__': attrs.pop('__module__')}
         classcell = attrs.pop('__classcell__', None)
         if classcell is not None:
             new_attrs['__classcell__'] = classcell
-        new_class = super().__new__(cls, name, bases, new_attrs)
 
         # check and add metadata
         meta_cls = attrs.pop('Meta', None)
@@ -67,19 +70,20 @@ class ProcessBase(type):
                 keys = ", ".join(["%r" % k for k in invalid_attrs])
                 raise AttributeError(
                     "invalid attribute(s) %s set in class %s.Meta"
-                    % (keys, new_class.__name__)
+                    % (keys, cls.__name__)
                 )
             meta_dict.update(meta_attrs)
 
-        new_class._meta = meta_dict
+        new_attrs['_meta'] = meta_dict
 
-        # add all variables and diagnostics defined in the class
-        new_class._variables = _extract_variables(attrs)
+        # add variables and diagnostics separately from the rest of
+        # attributes and methods defined in the class
+        vars, novars = _extract_variables(attrs)
+        new_attrs['_variables'] = vars
+        for k, v in novars.items():
+            new_attrs[k] = v
 
-        # add methods
-        for m in ('run_model', 'initialize', 'finalize'):
-            if attrs.get(m, False):
-                setattr(new_class, m, attrs[m])
+        new_class = super().__new__(cls, name, bases, new_attrs)
 
         return new_class
 
@@ -140,8 +144,8 @@ class Process(AttrMapping, metaclass=ProcessBase):
             # TODO: more logic, e.g., when required variables are missing
         if variables:
             # TODO: check for non valid variable names.
-            self._variables.update(
-                copy.deepcopy(_extract_variables(variables)))
+            vars, _ = _extract_variables(variables)
+            self._variables.update(copy.deepcopy(vars))
 
         super(Process, self).__init__(self._variables)
 
