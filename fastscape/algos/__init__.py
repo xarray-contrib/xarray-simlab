@@ -77,7 +77,7 @@ def compute_uplift(elevation, active_nodes, uplift_rate, dt):
 
 
 @numba.njit
-def compute_stream_power(elevation, stack, receiver, dist2receiver,
+def compute_stream_power(erosion, elevation, stack, receiver, dist2receiver,
                          area, k, m, n, dt, tolerance, nn):
     for ij in range(nn):
         ijk = stack[ij]
@@ -92,10 +92,12 @@ def compute_stream_power(elevation, stack, receiver, dist2receiver,
             slope = elevation[ijk] - elevation[ijr]
             e_num = elevation[ijk] - elevation_0 + factor * (slope)**n
             e_den = 1. + factor * n * slope**(n-1)
-            erosion = e_num / e_den
-            elevation[ijk] = elevation[ijk] - erosion
+            ers = e_num / e_den
+            new_elevation = elevation[ijk] - ers
 
-            diff = elevation[ijk] - elevation_p
-            elevation_p = elevation[ijk]
+            diff = new_elevation - elevation_p
+            elevation_p = new_elevation
             if np.abs(diff) <= tolerance:
                 break
+
+        erosion[ijk] = ers

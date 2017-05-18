@@ -192,6 +192,10 @@ class Model(AttrMapping):
         self._processes = OrderedDict(
             [(k, processes[k]) for k in _sort_processes(self._dep_processes)]
         )
+        self._time_processes = OrderedDict(
+            [(k, proc) for k, proc in self._processes.items()
+             if proc.meta['time_dependent']]
+        )
 
         super(Model, self).__init__(self._processes)
         self._initialized = True
@@ -231,10 +235,6 @@ class Model(AttrMapping):
 
         return self._input_vars.get(proc_name, {}).get(var_name, False)
 
-    def _get_dsk(self, func='run_step'):
-        return {k: (getattr(self._processes[k], func), v)
-                for k, v in self._dep_processes.items()}
-
     def visualize(self, show_only_variable=None, show_inputs=False,
                   show_variables=False):
         """Render the model as a graph using dot (require graphviz).
@@ -261,6 +261,25 @@ class Model(AttrMapping):
         return dot_graph(self, show_only_variable=show_only_variable,
                          show_inputs=show_inputs,
                          show_variables=show_variables)
+
+    def _get_dsk(self, func='run_step'):
+        return {k: (getattr(self._processes[k], func), v)
+                for k, v in self._dep_processes.items()}
+
+    def initalize(self):
+        """Initalize a model run for all processes in the model."""
+        for proc in self._processes.values():
+            proc.initialize()
+
+    def run_step(self, step):
+        """Run a (time) step."""
+        for proc in self._time_processes.values():
+            proc.run_step(step)
+
+    def finalize(self):
+        """Finalize a model run for all processes in the model."""
+        for proc in self._processes.values():
+            proc.finalize()
 
     def _create_new_model(self, processes):
         """Create a new Model object with new process instances."""

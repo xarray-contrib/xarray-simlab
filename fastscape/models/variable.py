@@ -92,6 +92,7 @@ class Variable(AbstractVariable):
         self._validators = list(validators)
         self._state = None
         self._rate = None
+        self._change = None
 
     @property
     def validators(self):
@@ -115,6 +116,8 @@ class Variable(AbstractVariable):
     def state(self, value):
         self._state = value
 
+    value = state
+
     @property
     def rate(self):
         """Rate value of the variable, i.e., the rate of change in time
@@ -125,6 +128,17 @@ class Variable(AbstractVariable):
     @rate.setter
     def rate(self, value):
         self._rate = value
+
+    @property
+    def change(self):
+        """Change value of the variable, i.e., the rate of change in time
+        (time derivative) integrated over the time step.
+        """
+        return self._change
+
+    @change.setter
+    def change(self, value):
+        self._change = value
 
     def __repr__(self):
         dims_str = ', '.join(['(%s)' % ', '.join(['%r' % d for d in dims])
@@ -176,26 +190,39 @@ class ForeignVariable(AbstractVariable):
 
     @property
     def state(self):
-        """State value of the original variable."""
         return self.ref_var._state
 
     @state.setter
     def state(self, value):
         self.ref_var.state = value
 
+    value = state
+
     @property
     def rate(self):
-        """Rate value of the original variable."""
         return self.ref_var._rate
 
     @rate.setter
     def rate(self, value):
         self.ref_var.rate = value
 
+    @property
+    def change(self):
+        return self.ref_var._change
+
+    @change.setter
+    def change(self, value):
+        self.ref_var._change = value
+
     def __repr__(self):
         ref_str = "%s.%s" % (self.ref_process.name, self.var_name)
 
         return "<fastscape.models.%s (%s)>" % (type(self).__name__, ref_str)
+
+
+ForeignVariable.state.__doc__ = Variable.state.__doc__
+ForeignVariable.rate.__doc__ = Variable.rate.__doc__
+ForeignVariable.change.__doc__ = Variable.change.__doc__
 
 
 class DiagnosticVariable(AbstractVariable):
@@ -234,6 +261,8 @@ class DiagnosticVariable(AbstractVariable):
         independent.
         """
         return self._func(self._process_obj)
+
+    value = state
 
     def __call__(self):
         return self.state

@@ -77,7 +77,7 @@ class ProcessBase(type):
         new_attrs['_meta'] = meta_dict
 
         # add variables and diagnostics separately from the rest of
-        # attributes and methods defined in the class
+        # the attributes and methods defined in the class
         vars, novars = _extract_variables(attrs)
         new_attrs['_variables'] = vars
         for k, v in novars.items():
