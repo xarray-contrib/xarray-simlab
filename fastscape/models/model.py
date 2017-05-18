@@ -10,7 +10,7 @@ Part of the code below is copied and modified from:
 from collections import OrderedDict
 
 from .variable import (AbstractVariable, Variable, ForeignVariable,
-                       UndefinedVariable)
+                       UndefinedVariable, VariableList)
 from .process import Process
 from ..core.utils import AttrMapping
 from ..core.formatting import (_calculate_col_width, pretty_print,
@@ -230,6 +230,9 @@ class Model(AttrMapping):
         """
         if isinstance(variable, AbstractVariable):
             proc_name, var_name = self._get_proc_var_name(variable)
+        elif isinstance(variable, VariableList):
+            # VariableList objects are never model inputs
+            return False
         else:
             proc_name, var_name = variable
 
