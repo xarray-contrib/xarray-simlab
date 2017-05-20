@@ -46,22 +46,23 @@ class StackedGridXY(Process):
         grid_params = {'size': (xsize, ysize),
                        'length': (xlength, ylength),
                        'spacing': (xspacing, yspacing)}
-        is_provided = {k for k, v in grid_params.items() if v != (None, None)}
+        provided_params = {k for k, v in grid_params.items()
+                           if v[0] is not None and v[1] is not None}
 
-        if is_provided == {'size', 'length'}:
+        if provided_params == {'size', 'length'}:
             x = np.linspace(xo, xo + xlength, xsize)
             self.x_spacing.value = xlength / (xsize - 1)
             y = np.linspace(yo, yo + ylength, ysize)
             self.y_spacing.value = ylength / (ysize - 1)
 
-        elif is_provided == {'spacing', 'length'}:
+        elif provided_params == {'spacing', 'length'}:
             x = np.arange(xo, xo + xlength + xspacing, xspacing)
             self.x_size.value = x.size
             y = np.arange(yo, yo + ylength + yspacing, yspacing)
             self.y_size.value = y.size
 
-        elif (is_provided == {'size', 'spacing'}
-              or is_provided == {'size', 'spacing', 'length'}):
+        elif (provided_params == {'size', 'spacing'}
+              or provided_params == {'size', 'spacing', 'length'}):
             x = np.arange(xo, xo + (xsize * xspacing), xspacing)
             self.x_length.value = xspacing * (xsize - 1)
             y = np.arange(yo, yo + (ysize * yspacing), yspacing)
@@ -138,6 +139,9 @@ class Topography(Process):
     def run_step(self, *args):
         self.elevation.change = (
             self.total_exhumation.change - self.total_erosion.change)
+
+    def finalize_step(self):
+        self.elevation.state += self.elevation.change
 
     @diagnostic
     def slope(self):

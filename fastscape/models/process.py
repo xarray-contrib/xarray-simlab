@@ -108,15 +108,16 @@ class Process(AttrMapping, metaclass=ProcessBase):
 
     A subclass of `Process` usually implements:
 
-    - A process interface as a set of `Variable`, `ForeignVariable`
-      or `UndefinedVariable` objects (all defined as class attributes).
+    - A process interface as a set of `Variable`, `ForeignVariable`,
+      `UndefinedVariable` or `VariableList` objects, all defined as class
+      attributes.
 
-    - Three `.initialize()`, `.run_step()` and `.finalize()` methods,
-      which use or compute values of the variables defined in the
-      interface.
+    - Some of the four `.initialize()`, `.run_step()`, `.finalize_step()` and
+      `.finalize()` methods, which use or compute values of the variables
+      defined in the interface during a model run.
 
     - Additional methods decorated with `@diagnostic` that compute
-      the values of diagnostic variables.
+      the values of diagnostic variables during a model run.
 
     Once created, a `Process` object provides both dict-like and
     attribute-like access for all its variables, including diagnostic
@@ -179,15 +180,38 @@ class Process(AttrMapping, metaclass=ProcessBase):
         return self._name
 
     def initialize(self):
+        """This method will be called once at the beginning of a model run.
+
+        Implementation is optional (by default it does nothing).
+        """
         pass
 
-    def run_step(self):
+    def run_step(self, *args):
+        """This method will be called at every time step of a model run.
+
+        It should accepts one argument that corresponds to the time step
+        duration.
+
+        This must be implemented for all time dependent processes.
+        """
         raise NotImplementedError(
             "class %s has no method 'run_step' implemented"
             % type(self).__name__
         )
 
+    def finalize_step(self):
+        """This method will be called at the end of every time step, i.e,
+        when `run_step` has been executed for all processes in a model.
+
+        Implementation is optional (by default it does nothing).
+        """
+        pass
+
     def finalize(self):
+        """This method will be called once at the end of a model run.
+
+        Implementation is optional (by default does nothing).
+        """
         pass
 
     @combomethod
