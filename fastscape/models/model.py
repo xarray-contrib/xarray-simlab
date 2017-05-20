@@ -269,20 +269,78 @@ class Model(AttrMapping):
         return {k: (getattr(self._processes[k], func), v)
                 for k, v in self._dep_processes.items()}
 
+    def _set_inputs_values(self, ds):
+        """Set model inputs values from xarray.Dataset."""
+        for name, var in ds.data_vars.items():
+            proc_name, var_name = name.split('__')
+
+            if self.is_input((proc_name, var_name)):
+                self[proc_name][var_name].value = var.values
+
     def initalize(self):
-        """Initalize a model run for all processes in the model."""
+        """Run `.initalize()` for each processes in the model."""
         for proc in self._processes.values():
             proc.initialize()
 
     def run_step(self, step):
-        """Run a (time) step."""
+        """Run `.run_step()` for each time dependent processes in the model.
+        """
         for proc in self._time_processes.values():
             proc.run_step(step)
 
+    def finalize_step(self):
+        """Run `.finalize_step()` for each time dependent processes
+        in the model.
+        """
+        for proc in self._time_processes.values():
+            proc.finalize_step()
+
     def finalize(self):
-        """Finalize a model run for all processes in the model."""
+        """Run `.finalize()` for each processes in the model."""
         for proc in self._processes.values():
             proc.finalize()
+
+    def run(self, ds, time_dim='time'):
+        """Run the model.
+
+        Parameters
+        ----------
+        ds : xarray.Dataset object
+            Dataset to use as model input.
+        time_dim : str, optional
+            Name of the dimension in the Dataset that is used to set
+            the time steps (default: 'time'). The dimension must have absolute
+            time coordinates.
+
+        Returns
+        -------
+        out_ds : xarray.Dataset object
+            Another Dataset with model inputs and outputs.
+
+        """
+        ds_no_time = ds.filter(lambda v: time_dim not in v.dims)
+        self._set_inputs_values(ds_no_time)
+
+        self.initalize()
+
+        ds_time = ds.filter(lambda v: time_dim in v.dims)
+        has_time_var = bool(ds_time.data_vars)
+
+        time_steps = ds[time_dim].diff(time_dim).values
+
+        for i, dt in enumerate(time_steps):
+            if has_time_var:
+                ds_step = ds_time.isel(**{time_dim: i})
+                self._set_inputs_values(ds_step)
+
+            self.run_step(dt)
+            self.finalize_step()
+
+        self.finalize()
+
+        out_ds = ds.copy()
+
+        return out_ds
 
     def _create_new_model(self, processes):
         """Create a new Model object with new process instances."""
