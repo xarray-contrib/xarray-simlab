@@ -14,9 +14,14 @@ from .core.nputils import _expand_value
 @register_dataset_accessor('filter')
 def filter_accessor(dataset):
     """A temporary hack until `filter` is available in xarray (GH916)."""
+
     def filter(func=None, like=None, regex=None):
-        # TODO
-        pass
+        variables = {k: v for k, v in dataset._variables.items() if func(v)}
+        coord_names = [c for c in dataset._coord_names if c in variables]
+
+        return dataset._replace_vars_and_dims(variables,
+                                              coord_names=coord_names)
+
     return filter
 
 
