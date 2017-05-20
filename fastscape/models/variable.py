@@ -1,6 +1,11 @@
 # coding: utf-8
 import itertools
 
+from xarray.core.variable import as_variable
+
+
+EMPTY_VALUES = (None, '', [], (), {})
+
 
 class AbstractVariable(object):
     """Abstract class for all variables.
@@ -12,7 +17,7 @@ class AbstractVariable(object):
     def __init__(self, provided=False, description='', attrs=None):
         self.provided = provided
         self.description = description
-        self.attrs = attrs
+        self.attrs = attrs or {}
 
     def __repr__(self):
         return "<fastscape.models.%s>" % type(self).__name__
@@ -98,12 +103,55 @@ class Variable(AbstractVariable):
     def validators(self):
         return list(itertools.chain(self.default_validators, self._validators))
 
-    def run_validators(self, variable):
+    def run_validators(self, xarray_variable):
         for vfunc in self.validators:
-            vfunc(variable)
+            vfunc(xarray_variable)
 
-    def validate(self, xr_variable):
+    def validate(self, xarray_variable):
         pass
+
+    def to_xarray_variable(self, value):
+        """Convert the input value to an `xarray.Variable` object and
+        perform some validation.
+
+        Parameters
+        ----------
+        value : any
+            The input value can be in the form of a single value,
+            an array-like, a ``(dims, data[, attrs])`` tuple, another
+            `xarray.Variable` object or a `xarray.DataArray` object.
+
+        Returns
+        -------
+        variable : `xarray.Variable`
+            The value converted to an xarray variable if it passed all
+            validation tests.
+
+        Raises
+        ------
+        ValueError
+            If the value doesn't pass the validation tests.
+
+        """
+        if value in EMPTY_VALUES:
+            value = self.default_value
+
+        try:
+            xarray_variable = as_variable(value)
+        except TypeError:
+            # handle allowed case of a coordinate
+            # dimension has to be further renamed by the name of the variable
+            # in a model.
+            dim = 'this_variable_name'
+            xarray_variable = as_variable((dim, value))
+
+        self.run_validators(xarray_variable)
+        self.validate(xarray_variable)
+
+        xarray_variable.attrs.update(self.attrs)
+        xarray_variable.attrs['description'] = self.description
+
+        return xarray_variable
 
     @property
     def state(self):

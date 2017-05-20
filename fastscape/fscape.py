@@ -9,6 +9,7 @@ from xarray import Variable, register_dataset_accessor
 
 from .core.utils import Frozen, SortedKeysDict, _get_args_not_none
 from .core.nputils import _expand_value
+from .models import Model, Process
 
 
 @register_dataset_accessor('filter')
@@ -33,6 +34,7 @@ class FastscapeAccessor(object):
 
     def __init__(self, xarray_obj):
         self._obj = xarray_obj
+        self._model = None
 
     def set_regular_grid(self, dims, nnodes=None, spacing=None, length=None,
                          origin=0.):
@@ -94,15 +96,15 @@ class FastscapeAccessor(object):
 
         self._obj.coords.update(coords)
 
-    def set_clock(self, dim, data=None, nsteps=None, step=None, duration=None,
-                  start=0.):
+    def set_clock(self, dim='time', data=None, nsteps=None, step=None,
+                  duration=None, start=0.):
         """Set a clock (model or output time steps) and add the
         corresponding dimension / coordinate to this Dataset.
 
         Parameters
         ----------
-        dim : str
-            Name of the clock dimension.
+        dim : str, optional
+            Name of the clock dimension (default: 'time').
         data : array-like or None, optional
             Clock values. If not None, the other parameters below will be
             ignored.
@@ -145,6 +147,62 @@ class FastscapeAccessor(object):
                              "(%r, %r, %r)" % (nsteps, step, duration))
 
         self._obj.coords[dim] = data
+
+    add_time = set_clock
+
+    @property
+    def model(self):
+        """Model instance to use with this dataset."""
+        return self._model
+
+    @model.setter
+    def model(self, obj):
+        if not isinstance(obj, Model):
+            raise TypeError("%r is not a Model object" % obj)
+        self._model = obj
+
+    def add_inputs(self, process, **inputs):
+        """Add to the Dataset new variables from model input variables defined
+        in a given process, with given (or default) values.
+
+        The names of the new variables are like
+        '<process_name>__<variable_name>'.
+
+        Parameters
+        ----------
+        process : str or Process object
+            (Name of) the process.
+        **inputs
+            Inputs with variable names as keys and variable values as values.
+            Variables with default values will be added to the Dataset for
+            all other variables of the process that are inputs of the model
+            but that are not provided here.
+
+        """
+        if self._model is None:
+            raise ValueError("No model attached to this Dataset")
+
+        if isinstance(process, Process):
+            process = process.name
+        if process not in self._model:
+            raise ValueError("The model attached to this Dataset has no "
+                             "process named %r" % process)
+
+        process_inputs = self._model.input_vars[process]
+
+        invalid_inputs = set(inputs) - set(process_inputs)
+        if invalid_inputs:
+            raise ValueError("%s are not valid input variables of %r"
+                             % (', '.join([name for name in invalid_inputs]),
+                                process))
+
+        variables = {}
+        for name, var in self._model.input_vars[process].items():
+            vname = process + '__' + name
+            variables[vname] = var.to_xarray_variable(inputs.get(name))
+
+        for k, v in variables.items():
+            self._obj[k] = v
 
     def set_params(self, component, **kwargs):
         """Set one or several model parameters and their values.
@@ -257,6 +315,27 @@ class FastscapeAccessor(object):
             new_dataset[k].attrs[self._context_attr] = 'param'
 
         return new_dataset
+
+    def run(self, time_dim='time'):
+        """Run the model.
+
+        Parameters
+        ----------
+        time_dim : str, optional
+            Name of the dimension in the Dataset that is used to set
+            the time steps (default: 'time'). The dimension must have absolute
+            time coordinates.
+
+        Returns
+        -------
+        out_ds : Dataset
+            Another Dataset with model inputs and outputs.
+
+        """
+        if self._model is None:
+            raise ValueError("No model attached to this Dataset")
+
+        return self._model.run(self._obj, time_dim=time_dim)
 
     def run_model(self, model):
         model.run(self._obj)

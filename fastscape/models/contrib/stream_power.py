@@ -47,7 +47,8 @@ class StackedGridXY(Process):
                        'length': (xlength, ylength),
                        'spacing': (xspacing, yspacing)}
         provided_params = {k for k, v in grid_params.items()
-                           if v[0] is not None and v[1] is not None}
+                           if np.asscalar(v[0]) is not None
+                           and np.asscalar(v[1]) is not None}
 
         if provided_params == {'size', 'length'}:
             x = np.linspace(xo, xo + xlength, xsize)
