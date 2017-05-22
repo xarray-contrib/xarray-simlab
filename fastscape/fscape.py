@@ -142,7 +142,7 @@ class FastscapeAccessor(object):
         elif args == ('step', 'duration'):
             data = np.arange(start, start + duration, step)
         else:
-            raise ValueError("Invalid combination of number of time steeps, "
+            raise ValueError("Invalid combination of number of time steps, "
                              "time step duration and total duration "
                              "(%r, %r, %r)" % (nsteps, step, duration))
 

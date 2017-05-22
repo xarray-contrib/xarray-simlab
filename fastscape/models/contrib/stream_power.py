@@ -88,7 +88,7 @@ class BoundaryFacesXY(Process):
         time_dependent = False
 
     def initialize(self):
-        mask = np.ones((self.x_size.value, self.y_size.value), dtype=bool)
+        mask = np.ones((self.y_size.value, self.x_size.value), dtype=bool)
         bound_indexers = [0, -1, (slice(None), 0), (slice(None), -1)]
 
         for idx in bound_indexers:
@@ -230,11 +230,14 @@ class StreamPower(Process):
         self.erosion.change = np.zeros_like(self.elevation.state)
 
     def run_step(self, dt):
+        # note: numba significant speed-up when array -> scalar
         algos.compute_stream_power(
             self.erosion.change, self.elevation.state,
             self.stack.state, self.flow_receiver.state,
             self.distance_to_receiver.state, self.area.state,
-            self.k_coef.value, self.m_exp.value, self.n_exp.value,
+            np.asscalar(self.k_coef.value),
+            np.asscalar(self.m_exp.value),
+            np.asscalar(self.n_exp.value),
             dt, self.tolerance, self.nn)
 
 

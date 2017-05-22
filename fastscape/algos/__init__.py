@@ -5,7 +5,7 @@ from ..core.pycompat import range
 
 
 def set_active_nodes_mask(nx, ny):
-    mask = np.ones((nx, ny), dtype=bool)
+    mask = np.ones((ny, nx), dtype=bool)
     bound_indexers = [0, -1, (slice(None), 0), (slice(None), -1)]
     for idx in bound_indexers:
         mask[idx] = False
@@ -18,14 +18,14 @@ def compute_flow_receiver_d8(receiver, dist2receiver, elevation,
                              nx, ny, dx, dy):
     for i in range(1, ny - 1):
         for j in range(1, nx - 1):
-            ij = i * ny + j
+            ij = i * nx + j
             slope_max = 1e-20
 
-            for ii in range(-1, 2):
-                for jj in range(-1, 2):
+            for ii in (-1, 0, 1):
+                for jj in (-1, 0, 1):
                     ni = i + ii
                     nj = j + jj
-                    ijk = ni * ny + nj
+                    ijk = ni * nx + nj
                     if ijk == ij:
                         continue
                     length = np.sqrt((dx * ii)**2 + (dy * jj)**2)
@@ -87,17 +87,20 @@ def compute_stream_power(erosion, elevation, stack, receiver, dist2receiver,
 
         factor = k * dt * area[ijk]**m / dist2receiver[ijk]**n
         elevation_0 = elevation[ijk]
+        elevation_iter = elevation_0
         elevation_p = elevation_0
+
         while True:
-            slope = elevation[ijk] - elevation[ijr]
-            e_num = elevation[ijk] - elevation_0 + factor * (slope)**n
+            slope = elevation_iter - elevation[ijr]
+            e_num = elevation_iter - elevation_0 + factor * (slope)**n
             e_den = 1. + factor * n * slope**(n-1)
             ers = e_num / e_den
-            new_elevation = elevation[ijk] - ers
 
-            diff = new_elevation - elevation_p
-            elevation_p = new_elevation
+            elevation_iter -= ers
+
+            diff = elevation_iter - elevation_p
+            elevation_p = elevation_iter
             if np.abs(diff) <= tolerance:
                 break
 
-        erosion[ijk] = ers
+        erosion[ijk] = elevation_0 - elevation_iter
