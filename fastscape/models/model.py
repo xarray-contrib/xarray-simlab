@@ -300,14 +300,14 @@ class Model(AttrMapping):
         for proc in self._processes.values():
             proc.finalize()
 
-    def run(self, ds, time_dim='time'):
+    def run(self, ds, master_clock_dim='time'):
         """Run the model.
 
         Parameters
         ----------
         ds : xarray.Dataset object
             Dataset to use as model input.
-        time_dim : str, optional
+        master_clock_dim : str, optional
             Name of the dimension in the Dataset that is used to set
             the time steps (default: 'time'). The dimension must have absolute
             time coordinates.
@@ -318,19 +318,19 @@ class Model(AttrMapping):
             Another Dataset with model inputs and outputs.
 
         """
-        ds_no_time = ds.filter(lambda v: time_dim not in v.dims)
+        ds_no_time = ds.filter(lambda v: master_clock_dim not in v.dims)
         self._set_inputs_values(ds_no_time)
 
         self.initalize()
 
-        ds_time = ds.filter(lambda v: time_dim in v.dims)
+        ds_time = ds.filter(lambda v: master_clock_dim in v.dims)
         has_time_var = bool(ds_time.data_vars)
 
-        time_steps = ds[time_dim].diff(time_dim).values
+        time_steps = ds[master_clock_dim].diff(master_clock_dim).values
 
         for i, dt in enumerate(time_steps):
             if has_time_var:
-                ds_step = ds_time.isel(**{time_dim: i})
+                ds_step = ds_time.isel(**{master_clock_dim: i})
                 self._set_inputs_values(ds_step)
 
             self.run_step(dt)

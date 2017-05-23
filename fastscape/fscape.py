@@ -35,6 +35,7 @@ class FastscapeAccessor(object):
     def __init__(self, xarray_obj):
         self._obj = xarray_obj
         self._model = None
+        self._master_clock_dim = None
 
     def set_regular_grid(self, dims, nnodes=None, spacing=None, length=None,
                          origin=0.):
@@ -151,32 +152,179 @@ class FastscapeAccessor(object):
     add_time = set_clock
 
     @property
+    def master_clock_dim(self):
+        """Dimension used as master clock when running model simulations.
+
+        See Also
+        --------
+        Dataset.fscape.set_master_clock
+
+        """
+        return self._master_clock_dim
+
+    @master_clock_dim.setter
+    def master_clock_dim(self, dim):
+        if dim not in self._obj.dims and dim not in self._obj:
+            raise KeyError("Dataset has no %r dimension coordinate. "
+                           "To create a new master clock dimension, "
+                           "use Dataset.fscape.set_master_clock instead."
+                           % dim)
+
+        self._master_clock_dim = dim
+
+    def set_master_clock(self, dim, data=None, start=0., end=None, step=None,
+                         nsteps=None):
+        """Add or reset the dimension and/or coordinate used as master clock for
+        running model simulations.
+
+        Parameters
+        ----------
+        dim : str
+            Name of the dimension to reset or create as model master clock.
+        data : array-like, optional
+            Absolute time values for the master clock. If provided, all
+            other parameters below will be ignored.
+        start : float, optional
+            Start simulation time (default: 0).
+        end : float, optional
+            End simulation time.
+        step : float, optional
+            Time step duration.
+        nsteps : int, optional
+            Number of time steps.
+
+        Raises
+        ------
+        ValueError
+            In case of ambiguous combination of `nsteps`, `step` and
+            `end`.
+
+        """
+        if data is not None:
+            self._obj[dim] = data
+            self._master_clock_dim = dim
+            return
+
+        args = {'step': step, 'nsteps': nsteps, 'end': end}
+        provided_args = {k for k, v in args.items() if v is not None}
+
+        if provided_args == {'nsteps', 'end', 'step'}:
+            if end - start == nsteps * step:
+                provided_args = {'nsteps', 'end'}
+        if provided_args == {'nsteps', 'end'}:
+            data = np.linspace(start, end, nsteps)
+        elif provided_args == {'step', 'nsteps'}:
+            data = np.arange(start, start + (nsteps + 1) * step, step)
+        elif provided_args == {'step', 'end'}:
+            data = np.arange(start, end + step, step)
+        else:
+            raise ValueError("Invalid combination of nsteps (%s), step (%s) "
+                             "and end (%s)" % (nsteps, step, end))
+
+        self._obj[dim] = data
+        self._master_clock_dim = dim
+
+    def set_snapshot_clocks(self, **dim_indexers):
+        """Set or add one or more dimensions (with coordinates) used for model
+        snapshots.
+
+        The resulting coordinates are always aligned with the master clock
+        coordinate (internally, this function calls `DataArray.sel` on the
+        master clock dimension).
+
+        Parameters
+        ----------
+        **dim_indexers : {dim: indexer, ...}
+            Keyword arguments where keys are the name of the snapshots
+            clocks dimensions and values are indexers of the master clock
+            coordinate. Note that when indexers are arrays, nearest neighbor
+            lookup is activated.
+
+        Raises
+        ------
+        ValueError or KeyError
+            If no master clock dimension / coordinate is defined or found in
+            the Dataset.
+
+        See Also
+        --------
+        Dataset.fscape.set_master_clock
+
+        """
+        mclock_dim = self._master_clock_dim
+
+        if mclock_dim is None:
+            raise ValueError("no master clock dimension/coordinate is defined "
+                             "in Dataset. "
+                             "Use `Dataset.fscape.set_master_clock` first")
+        if mclock_dim not in self._obj:
+            raise KeyError("no master clock %r coordinate found. "
+                           "Use `Dataset.fscape.set_master_clock` first"
+                           % mclock_dim)
+
+        da_master_clock = self._obj[mclock_dim]
+
+        for dim, indexer in dim_indexers.items():
+            if isinstance(indexer, slice):
+                kwargs = {}
+            else:
+                kwargs = {'method': 'nearest'}
+            da_snapshot_clock = da_master_clock.sel(**{mclock_dim: indexer},
+                                                    **kwargs)
+            self._obj.coords[dim] = da_snapshot_clock.rename({mclock_dim: dim})
+
+    def use_model(self, obj):
+        """Set a Model to use with this Dataset.
+
+        Parameters
+        ----------
+        obj : object
+            The `Model` instance to use.
+
+        Raises
+        ------
+        TypeError
+            If `obj` is not a Model object.
+
+        """
+        if not isinstance(obj, Model):
+            raise TypeError("%r is not a Model object" % obj)
+        self._model = obj
+
+    @property
     def model(self):
         """Model instance to use with this dataset."""
         return self._model
 
     @model.setter
-    def model(self, obj):
-        if not isinstance(obj, Model):
-            raise TypeError("%r is not a Model object" % obj)
-        self._model = obj
+    def model(self, value):
+        raise AttributeError("can't set 'model' attribute, "
+                             "use `Dataset.fscape.use_model` instead")
 
-    def add_inputs(self, process, **inputs):
-        """Add to the Dataset new variables from model input variables defined
-        in a given process, with given (or default) values.
+    def set_input_vars(self, process, **inputs):
+        """Set or add Dataset variables that correspond to model
+        inputs variables (for a given process), with given (or default)
+        values.
 
-        The names of the new variables are like
-        '<process_name>__<variable_name>'.
+        The names of the Dataset variables also include the name of the process
+        (i.e., Dataset['<process_name>__<variable_name>']).
 
         Parameters
         ----------
         process : str or Process object
-            (Name of) the process.
-        **inputs
+            (Name of) the process in which the model input variables are
+            defined.
+        **inputs : {var_name: value, ...}
             Inputs with variable names as keys and variable values as values.
-            Variables with default values will be added to the Dataset for
-            all other variables of the process that are inputs of the model
-            but that are not provided here.
+            Values can be any object that can be easily converted to a
+            xarray.Variable.
+            Dataset variables with default values will be added for
+            all other model inputs defined in the process that are not
+            provided here.
+
+        See Also
+        --------
+        xarray.as_variable
 
         """
         if self._model is None:
@@ -316,15 +464,11 @@ class FastscapeAccessor(object):
 
         return new_dataset
 
-    def run(self, time_dim='time'):
+    def run(self):
         """Run the model.
 
         Parameters
         ----------
-        time_dim : str, optional
-            Name of the dimension in the Dataset that is used to set
-            the time steps (default: 'time'). The dimension must have absolute
-            time coordinates.
 
         Returns
         -------
@@ -335,7 +479,13 @@ class FastscapeAccessor(object):
         if self._model is None:
             raise ValueError("No model attached to this Dataset")
 
-        return self._model.run(self._obj, time_dim=time_dim)
+        return self._model.run(self._obj,
+                               master_clock_dim=self._master_clock_dim)
+
+    def run_multi(self):
+        """Run multiple models."""
+        # TODO:
+        raise NotImplementedError()
 
     def run_model(self, model):
         model.run(self._obj)
