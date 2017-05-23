@@ -161,7 +161,7 @@ class Process(AttrMapping, metaclass=ProcessBase):
         """Clone the process.
 
         This is equivalent to a deep copy, except that variable data
-        (i.e., `state`, `value`, `change` or `rate` properties) is not copied.
+        (i.e., `state`, `value`, `change` or `rate` properties) are not copied.
         """
         cls = type(self)
 

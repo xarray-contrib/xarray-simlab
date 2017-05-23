@@ -479,11 +479,15 @@ class FastscapeAccessor(object):
 
         return new_dataset
 
-    def run(self):
+    def run(self, safe_mode=True):
         """Run the model.
 
         Parameters
         ----------
+        safe_mode : bool, optional
+            If True (default), it is safe to run multiple simulations
+            simultaneously. Generally safe mode shouldn't be disabled, excepted
+            in a few cases (e.g., debugging).
 
         Returns
         -------
@@ -495,7 +499,8 @@ class FastscapeAccessor(object):
             raise ValueError("No model attached to this Dataset")
 
         return self._model.run(self._obj,
-                               master_clock_dim=self._master_clock_dim)
+                               master_clock_dim=self._master_clock_dim,
+                               safe_mode=safe_mode)
 
     def run_multi(self):
         """Run multiple models."""

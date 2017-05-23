@@ -10,7 +10,7 @@ Part of the code below is copied and modified from:
 from collections import OrderedDict
 
 from .variable import (AbstractVariable, Variable, ForeignVariable,
-                       UndefinedVariable, VariableList)
+                       VariableList)
 from .process import Process
 from ..core.utils import AttrMapping
 from ..core.formatting import (_calculate_col_width, pretty_print,
@@ -300,7 +300,7 @@ class Model(AttrMapping):
         for proc in self._processes.values():
             proc.finalize()
 
-    def run(self, ds, master_clock_dim='time'):
+    def run(self, ds, master_clock_dim='time', safe_mode=True):
         """Run the model.
 
         Parameters
@@ -309,8 +309,12 @@ class Model(AttrMapping):
             Dataset to use as model input.
         master_clock_dim : str, optional
             Name of the dimension in the Dataset that is used to set
-            the time steps (default: 'time'). The dimension must have absolute
-            time coordinates.
+            the model time steps (default: 'time'). The dimension must have
+            absolute time coordinates.
+        safe_mode : bool, optional
+            If True (default), it is safe to run multiple simulations
+            simultaneously. Generally safe mode shouldn't be disabled, excepted
+            in a few cases (e.g., debugging).
 
         Returns
         -------
@@ -318,10 +322,15 @@ class Model(AttrMapping):
             Another Dataset with model inputs and outputs.
 
         """
-        ds_no_time = ds.filter(lambda v: master_clock_dim not in v.dims)
-        self._set_inputs_values(ds_no_time)
+        if safe_mode:
+            obj = self.clone()
+        else:
+            obj = self
 
-        self.initalize()
+        ds_no_time = ds.filter(lambda v: master_clock_dim not in v.dims)
+        obj._set_inputs_values(ds_no_time)
+
+        obj.initalize()
 
         ds_time = ds.filter(lambda v: master_clock_dim in v.dims)
         has_time_var = bool(ds_time.data_vars)
@@ -331,29 +340,36 @@ class Model(AttrMapping):
         for i, dt in enumerate(time_steps):
             if has_time_var:
                 ds_step = ds_time.isel(**{master_clock_dim: i})
-                self._set_inputs_values(ds_step)
+                obj._set_inputs_values(ds_step)
 
-            self.run_step(dt)
-            self.finalize_step()
+            obj.run_step(dt)
+            obj.finalize_step()
 
-        self.finalize()
+        obj.finalize()
 
         out_ds = ds.copy()
 
         return out_ds
 
     def _create_new_model(self, processes):
-        """Create a new Model object with new process instances."""
+        """Create a new Model object and make sure that its process instances
+        have not been already created or used elsewhere.
+        """
         new_processes = {}
 
         for proc_name, proc in processes.items():
-            proc_cls = type(proc)
-            undef_var_names = [k for k, v in proc_cls.variables.items()
-                               if isinstance(v, UndefinedVariable)]
-            undef_vars = {k: proc.variables[k] for k in undef_var_names}
-            new_processes[proc_name] = type(proc)(**undef_vars)
+            new_processes[proc_name] = proc.clone()
 
         return type(self)(new_processes)
+
+    def clone(self):
+        """Clone the Model.
+
+        This is equivalent to a deep copy, except that variable data
+        (i.e., `state`, `value`, `change` or `rate` properties) in all
+        processes are not copied.
+        """
+        return self._create_new_model(self._processes)
 
     def update_processes(self, processes):
         """Add or replace processe(s) in this model.
