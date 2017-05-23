@@ -112,9 +112,9 @@ class Process(AttrMapping, metaclass=ProcessBase):
       `UndefinedVariable` or `VariableList` objects, all defined as class
       attributes.
 
-    - Some of the four `.initialize()`, `.run_step()`, `.finalize_step()` and
-      `.finalize()` methods, which use or compute values of the variables
-      defined in the interface during a model run.
+    - Some of the five `.validate()`, `.initialize()`, `.run_step()`,
+      `.finalize_step()` and `.finalize()` methods, which use or compute
+      values of the variables defined in the interface during a model run.
 
     - Additional methods decorated with `@diagnostic` that compute
       the values of diagnostic variables during a model run.
@@ -157,6 +157,23 @@ class Process(AttrMapping, metaclass=ProcessBase):
         self._name = None
         self._initialized = True
 
+    def clone(self):
+        """Clone the process.
+
+        This is equivalent to a deep copy, except that variable data
+        (i.e., `state`, `value`, `change` or `rate` properties) is not copied.
+        """
+        cls = type(self)
+
+        undefined_var_names = [k for k, v in cls._variables.items()
+                               if isinstance(v, UndefinedVariable)]
+        kwargs = {k: self.variables[k] for k in undefined_var_names}
+
+        obj = type(self)(**kwargs)
+        obj._name = self._name
+
+        return obj
+
     @property
     def variables(self):
         """Process variables."""
@@ -178,6 +195,25 @@ class Process(AttrMapping, metaclass=ProcessBase):
             return type(self).__name__
 
         return self._name
+
+    def validate(self):
+        """Validate and/or update the process variables values.
+
+        Implementation is optional (by default it does nothing).
+
+        An implementation of this method should be provided if the process
+        has variables that are optional and/or that depend on other
+        variables defined in this process.
+
+        To validate values of variables taken independently, it is
+        prefered to use Variable validators.
+
+        See Also
+        --------
+        Variable.validators
+
+        """
+        pass
 
     def initialize(self):
         """This method will be called once at the beginning of a model run.
@@ -201,7 +237,7 @@ class Process(AttrMapping, metaclass=ProcessBase):
 
     def finalize_step(self):
         """This method will be called at the end of every time step, i.e,
-        when `run_step` has been executed for all processes in a model.
+        after `run_step` has been executed for all processes in a model.
 
         Implementation is optional (by default it does nothing).
         """

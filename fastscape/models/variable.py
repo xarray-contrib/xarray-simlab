@@ -4,7 +4,7 @@ import itertools
 from xarray.core.variable import as_variable
 
 
-EMPTY_VALUES = (None, '', [], (), {})
+EMPTY_VALUES = ('', [], (), {})
 
 
 class AbstractVariable(object):
@@ -133,17 +133,13 @@ class Variable(AbstractVariable):
             If the value doesn't pass the validation tests.
 
         """
-        if value in EMPTY_VALUES:
+        if value is None or value in EMPTY_VALUES:
             value = self.default_value
 
-        try:
-            xarray_variable = as_variable(value)
-        except TypeError:
-            # handle allowed case of a coordinate
-            # dimension has to be further renamed by the name of the variable
-            # in a model.
-            dim = 'this_variable_name'
-            xarray_variable = as_variable((dim, value))
+        # in case where value is a 1-d array without dimension name,
+        # dimension name is set to 'this_variable_name' and has to be renamed
+        # later by the name of the variable in a process/model.
+        xarray_variable = as_variable(value, name='this_variable_name')
 
         self.run_validators(xarray_variable)
         self.validate(xarray_variable)

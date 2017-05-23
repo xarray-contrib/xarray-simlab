@@ -37,37 +37,37 @@ class StackedGridXY(Process):
     class Meta:
         time_dependent = False
 
-    def initialize(self):
-        xo, yo = (self.x_origin.value, self.y_origin.value)
-        xsize, ysize = (self.x_size.value, self.y_size.value)
-        xlength, ylength = (self.x_length.value, self.y_length.value)
-        xspacing, yspacing = (self.x_spacing.value, self.y_spacing.value)
+    def _validate_grid_params(self, size, length, spacing):
+        params = {'size': size, 'length': length, 'spacing': spacing}
+        provided_params = {k for k, v in params.items()
+                           if np.asscalar(v.value) is not None}
 
-        grid_params = {'size': (xsize, ysize),
-                       'length': (xlength, ylength),
-                       'spacing': (xspacing, yspacing)}
-        provided_params = {k for k, v in grid_params.items()
-                           if np.asscalar(v[0]) is not None
-                           and np.asscalar(v[1]) is not None}
+        if provided_params == {'size', 'spacing', 'length'}:
+            if (size.value - 1) * spacing.value == length.value:
+                provided_params = {'size', 'length'}
 
         if provided_params == {'size', 'length'}:
-            x = np.linspace(xo, xo + xlength, xsize)
-            self.x_spacing.value = xlength / (xsize - 1)
-            y = np.linspace(yo, yo + ylength, ysize)
-            self.y_spacing.value = ylength / (ysize - 1)
-
+            spacing.value = length.value / (size.value - 1)
         elif provided_params == {'spacing', 'length'}:
-            x = np.arange(xo, xo + xlength + xspacing, xspacing)
-            self.x_size.value = x.size
-            y = np.arange(yo, yo + ylength + yspacing, yspacing)
-            self.y_size.value = y.size
+            size.value = int(length.value / spacing.value)
+        elif provided_params == {'size', 'spacing'}:
+            length.value = spacing.value * (size.value - 1)
+        else:
+            raise ValueError("Invalid combination of size (%d), spacing (%s) "
+                             "and length (%s)"
+                             % (size.value, spacing.value, length.value))
 
-        elif (provided_params == {'size', 'spacing'}
-              or provided_params == {'size', 'spacing', 'length'}):
-            x = np.arange(xo, xo + (xsize * xspacing), xspacing)
-            self.x_length.value = xspacing * (xsize - 1)
-            y = np.arange(yo, yo + (ysize * yspacing), yspacing)
-            self.y_length.value = yspacing * (ysize - 1)
+    def validate(self):
+        self._validate_grid_params(self.x_size, self.x_length, self.x_spacing)
+        self._validate_grid_params(self.y_size, self.y_length, self.y_spacing)
+
+    def initialize(self):
+        x = np.linspace(self.x_origin.value,
+                        self.x_origin.value + self.x_length.value,
+                        self.x_size.value)
+        y = np.linspace(self.y_origin.value,
+                        self.y_origin.value + self.y_length.value,
+                        self.y_size.value)
 
         X, Y = np.meshgrid(x, y)
 

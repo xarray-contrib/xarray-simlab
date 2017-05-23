@@ -344,13 +344,28 @@ class FastscapeAccessor(object):
                              % (', '.join([name for name in invalid_inputs]),
                                 process))
 
+        # convert to xarray variables and validate at the variable level
         variables = {}
         for name, var in self._model.input_vars[process].items():
-            vname = process + '__' + name
-            variables[vname] = var.to_xarray_variable(inputs.get(name))
+            variables[name] = var.to_xarray_variable(inputs.get(name))
 
+        # validate at the process level
+        # assign values to a cloned process -> validate -> get updated values
+        process_obj = self._model._processes[process].clone()
+
+        for name, xr_var in variables.items():
+            process_obj[name].value = xr_var.values
+
+        process_obj.validate()
+
+        for name, xr_var in variables.items():
+            var = process_obj[name]
+            if var.value is not xr_var.values:
+                variables[name] = var.to_xarray_variable(var.value)
+
+        # add variables to dataset if all validation tests passed
         for k, v in variables.items():
-            self._obj[k] = v
+            self._obj[process + '__' + k] = v
 
     def set_params(self, component, **kwargs):
         """Set one or several model parameters and their values.
