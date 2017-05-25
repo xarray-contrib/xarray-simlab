@@ -300,20 +300,16 @@ class Model(AttrMapping):
         for proc in self._processes.values():
             proc.finalize()
 
-    def run(self, ds, master_clock_dim='time', safe_mode=True):
+    def run(self, ds, safe_mode=True):
         """Run the model.
 
         Parameters
         ----------
         ds : xarray.Dataset object
             Dataset to use as model input.
-        master_clock_dim : str, optional
-            Name of the dimension in the Dataset that is used to set
-            the model time steps (default: 'time'). The dimension must have
-            absolute time coordinates.
         safe_mode : bool, optional
             If True (default), it is safe to run multiple simulations
-            simultaneously. Generally safe mode shouldn't be disabled, excepted
+            simultaneously. Generally safe mode shouldn't be disabled, except
             in a few cases (e.g., debugging).
 
         Returns
@@ -322,24 +318,29 @@ class Model(AttrMapping):
             Another Dataset with model inputs and outputs.
 
         """
+        dim_master_clock = ds.fscape.dim_master_clock
+        if dim_master_clock is None:
+            raise ValueError("No master clock dimension / coordinate "
+                             "found in Dataset.")
+
         if safe_mode:
             obj = self.clone()
         else:
             obj = self
 
-        ds_no_time = ds.filter(lambda v: master_clock_dim not in v.dims)
+        ds_no_time = ds.filter(lambda v: dim_master_clock not in v.dims)
         obj._set_inputs_values(ds_no_time)
 
         obj.initalize()
 
-        ds_time = ds.filter(lambda v: master_clock_dim in v.dims)
+        ds_time = ds.filter(lambda v: dim_master_clock in v.dims)
         has_time_var = bool(ds_time.data_vars)
 
-        time_steps = ds[master_clock_dim].diff(master_clock_dim).values
+        time_steps = ds[dim_master_clock].diff(dim_master_clock).values
 
         for i, dt in enumerate(time_steps):
             if has_time_var:
-                ds_step = ds_time.isel(**{master_clock_dim: i})
+                ds_step = ds_time.isel(**{dim_master_clock: i})
                 obj._set_inputs_values(ds_step)
 
             obj.run_step(dt)

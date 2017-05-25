@@ -31,11 +31,14 @@ class FastscapeAccessor(object):
     """Fastscape extension to `xarray.Dataset`."""
 
     _context_attr = '__fscape_context__'
+    _master_clock_key = '_fscape_master_clock'
+    _snapshot_clock_key = '_fscape_snapshot_clock'
+    _snapshot_vars_key = '_fscape_snapshot_vars'
 
     def __init__(self, xarray_obj):
         self._obj = xarray_obj
         self._model = None
-        self._master_clock_dim = None
+        self._dim_master_clock = None
 
     def set_regular_grid(self, dims, nnodes=None, spacing=None, length=None,
                          origin=0.):
@@ -152,58 +155,42 @@ class FastscapeAccessor(object):
     add_time = set_clock
 
     @property
-    def master_clock_dim(self):
-        """Dimension used as master clock when running model simulations.
+    def dim_master_clock(self):
+        """Dimension used as master clock for model runs. Returns None
+        if no dimension is set as master clock.
 
         See Also
         --------
         Dataset.fscape.set_master_clock
 
         """
-        return self._master_clock_dim
+        if self._dim_master_clock is not None:
+            return self._dim_master_clock
+        else:
+            for c in self._obj.coords.values():
+                if c.attrs.get(self._master_clock_key, False):
+                    dim = c.dims[0]
+                    self._dim_master_clock = dim
+                    return dim
+            return None
 
-    @master_clock_dim.setter
-    def master_clock_dim(self, dim):
-        if dim not in self._obj.dims and dim not in self._obj:
+    @dim_master_clock.setter
+    def dim_master_clock(self, dim):
+        if dim not in self._obj.coords:
             raise KeyError("Dataset has no %r dimension coordinate. "
                            "To create a new master clock dimension, "
                            "use Dataset.fscape.set_master_clock instead."
                            % dim)
 
-        self._master_clock_dim = dim
+        if self.dim_master_clock is not None:
+            self[dim].attrs.pop(self._master_clock_key)
 
-    def set_master_clock(self, dim, data=None, start=0., end=None, step=None,
-                         nsteps=None):
-        """Add or reset the dimension and/or coordinate used as master clock for
-        running model simulations.
+        self._obj[dim].attrs[self._master_clock_key] = True
+        self._dim_master_clock = dim
 
-        Parameters
-        ----------
-        dim : str
-            Name of the dimension to reset or create as model master clock.
-        data : array-like, optional
-            Absolute time values for the master clock. If provided, all
-            other parameters below will be ignored.
-        start : float, optional
-            Start simulation time (default: 0).
-        end : float, optional
-            End simulation time.
-        step : float, optional
-            Time step duration.
-        nsteps : int, optional
-            Number of time steps.
-
-        Raises
-        ------
-        ValueError
-            In case of ambiguous combination of `nsteps`, `step` and
-            `end`.
-
-        """
+    def _set_clock_data(self, data, start, end, step, nsteps):
         if data is not None:
-            self._obj[dim] = data
-            self._master_clock_dim = dim
-            return
+            return data
 
         args = {'step': step, 'nsteps': nsteps, 'end': end}
         provided_args = {k for k, v in args.items() if v is not None}
@@ -221,57 +208,101 @@ class FastscapeAccessor(object):
             raise ValueError("Invalid combination of nsteps (%s), step (%s) "
                              "and end (%s)" % (nsteps, step, end))
 
-        self._obj[dim] = data
-        self._master_clock_dim = dim
+        return data
 
-    def set_snapshot_clocks(self, **dim_indexers):
-        """Set or add one or more dimensions (with coordinates) used for model
-        snapshots.
-
-        The resulting coordinates are always aligned with the master clock
-        coordinate (internally, this function calls `DataArray.sel` on the
-        master clock dimension).
+    def set_master_clock(self, dim, data=None, start=0., end=None,
+                         step=None, nsteps=None):
+        """Add a dimension coordinate as master clock for model runs.
 
         Parameters
         ----------
-        **dim_indexers : {dim: indexer, ...}
-            Keyword arguments where keys are the name of the snapshots
-            clocks dimensions and values are indexers of the master clock
-            coordinate. Note that when indexers are arrays, nearest neighbor
-            lookup is activated.
+        dim : str
+            Name of the dimension / coordinate to add.
+        data : array-like, optional
+            Absolute time values for the master clock (must be 1-dimensional).
+            If provided, all other parameters below will be ignored.
+        start : float, optional
+            Start simulation time (default: 0).
+        end : float, optional
+            End simulation time.
+        step : float, optional
+            Time step duration.
+        nsteps : int, optional
+            Number of time steps.
 
         Raises
         ------
-        ValueError or KeyError
-            If no master clock dimension / coordinate is defined or found in
-            the Dataset.
+        ValueError
+            - If Dataset has already a dimension named `dim`.
+            - In case of ambiguous combination of `nsteps`, `step` and `end`.
+
+        """
+        if dim in self._obj.dims:
+            raise ValueError("dimension %r already exists" % dim)
+
+        self._obj[dim] = self._set_clock_data(data, start, end, step, nsteps)
+        self.dim_master_clock = dim
+
+    def set_snapshot_clock(self, dim, data=None, start=0., end=None,
+                           step=None, nsteps=None, auto_align=True):
+        """Set or add a dimension coordinate used by model snapshots.
+
+        The resulting coordinate labels must be aligned with the master clock
+        coordinate labels. By default this is done automatically.
+
+        Parameters
+        ----------
+        dim : str
+            Name of the dimension / coordinate.
+        data : array-like, optional
+            Absolute time values for the master clock (must be 1-dimensional).
+            If provided, all other parameters below will be ignored.
+        start : float, optional
+            Start simulation time (default: 0).
+        end : float, optional
+            End simulation time.
+        step : float, optional
+            Time step duration.
+        nsteps : int, optional
+            Number of time steps.
+        auto_align : bool, optional
+            If True (default), the resulting coordinate labels are
+            automatically aligned with the labels of the master clock
+            coordinate. Otherwise raise a KeyError if not aligned
+            (DataArray.sel is used internally).
+
+        Raises
+        ------
+        ValueError
+            If no master clock dimension / coordinate is found in Dataset.
 
         See Also
         --------
         Dataset.fscape.set_master_clock
+        Dataset.fscape.dim_master_clock
 
         """
-        mclock_dim = self._master_clock_dim
-
-        if mclock_dim is None:
+        if self.dim_master_clock is None:
             raise ValueError("no master clock dimension/coordinate is defined "
                              "in Dataset. "
                              "Use `Dataset.fscape.set_master_clock` first")
-        if mclock_dim not in self._obj:
-            raise KeyError("no master clock %r coordinate found. "
-                           "Use `Dataset.fscape.set_master_clock` first"
-                           % mclock_dim)
 
-        da_master_clock = self._obj[mclock_dim]
+        clock_data = self._set_clock_data(data, start, end, step, nsteps)
 
-        for dim, indexer in dim_indexers.items():
-            if isinstance(indexer, slice):
-                kwargs = {}
-            else:
-                kwargs = {'method': 'nearest'}
-            da_snapshot_clock = da_master_clock.sel(**{mclock_dim: indexer},
-                                                    **kwargs)
-            self._obj.coords[dim] = da_snapshot_clock.rename({mclock_dim: dim})
+        da_master_clock = self._obj[self.dim_master_clock]
+
+        if auto_align:
+            kwargs = {'method': 'nearest'}
+        else:
+            kwargs = {}
+
+        indexer = {self.dim_master_clock: clock_data}
+        da_snapshot_clock = da_master_clock.sel(**indexer, **kwargs)
+
+        self._obj[dim] = da_snapshot_clock.rename({self.dim_master_clock: dim})
+        # _fscape_master_clock attribute has propagated with .sel
+        self._obj[dim].attrs.pop(self._master_clock_key)
+        self._obj[dim].attrs[self._snapshot_clock_key] = True
 
     def use_model(self, obj):
         """Set a Model to use with this Dataset.
@@ -328,12 +359,13 @@ class FastscapeAccessor(object):
 
         """
         if self._model is None:
-            raise ValueError("No model attached to this Dataset")
+            raise ValueError("no model attached to this Dataset. Use "
+                             "`Dataset.fscape.use_model` first.")
 
         if isinstance(process, Process):
             process = process.name
         if process not in self._model:
-            raise ValueError("The model attached to this Dataset has no "
+            raise ValueError("the model attached to this Dataset has no "
                              "process named %r" % process)
 
         process_inputs = self._model.input_vars[process]
@@ -366,6 +398,60 @@ class FastscapeAccessor(object):
         # add variables to dataset if all validation tests passed
         for k, v in variables.items():
             self._obj[process + '__' + k] = v
+
+    def set_snapshot_vars(self, clock_dim, **process_vars):
+        """Set model variables to save as snapshots during a model run.
+
+        Parameters
+        ----------
+        clock_dim : str or None
+            Name of dimension corresponding to the snapshot clock to use for
+            these variables. If None, only one snapshot is done at the end of
+            the simulation and the variables won't have a clock dimension
+            (also useful for getting variables in processes that are not time
+            dependent).
+        **process_vars : {process: variables, ...}
+            Keyword arguments where keys are names of processes and variables
+            (str or list of str) are one or more names of variables defined
+            in these processes.
+
+        Notes
+        -----
+        Specific attributes are added to the `clock_dim` coordinate or to the
+        Dataset if `clock_dim` is None.
+
+        """
+        if self._model is None:
+            raise ValueError("no model attached to this Dataset. Use "
+                             "`Dataset.fscape.use_model` first.")
+
+        xr_vars_list = []
+
+        for proc_name, vars in process_vars.items():
+            if proc_name not in self._model:
+                raise ValueError("the model attached to this Dataset has no "
+                                 "process named %r" % proc_name)
+            process = self._model[proc_name]
+            if isinstance(vars, str):
+                vars = [vars]
+            for var_name in vars:
+                if process.variables.get(var_name, None) is None:
+                    raise KeyError("process %r has no variable %r"
+                                   % (proc_name, var_name))
+                xr_vars_list.append(proc_name + '__' + var_name)
+
+        snapshot_vars = ':'.join(xr_vars_list)
+
+        if clock_dim is None:
+            self._obj.attrs[self._snapshot_vars_key] = snapshot_vars
+        else:
+            clock_var = self._obj[clock_dim]
+            if not clock_var.attrs.get(self._snapshot_clock_key, False):
+                raise ValueError("%r coordinate is not a snapshot clock "
+                                 "coordinate. "
+                                 "Use Dataset.fscape.set_snapshot_clock first"
+                                 % clock_dim)
+            clock_var.attrs[self._snapshot_vars_key] = snapshot_vars
 
     def set_params(self, component, **kwargs):
         """Set one or several model parameters and their values.
@@ -486,7 +572,7 @@ class FastscapeAccessor(object):
         ----------
         safe_mode : bool, optional
             If True (default), it is safe to run multiple simulations
-            simultaneously. Generally safe mode shouldn't be disabled, excepted
+            simultaneously. Generally safe mode shouldn't be disabled, except
             in a few cases (e.g., debugging).
 
         Returns
@@ -498,12 +584,19 @@ class FastscapeAccessor(object):
         if self._model is None:
             raise ValueError("No model attached to this Dataset")
 
-        return self._model.run(self._obj,
-                               master_clock_dim=self._master_clock_dim,
-                               safe_mode=safe_mode)
+        return self._model.run(self._obj, safe_mode=safe_mode)
 
     def run_multi(self):
-        """Run multiple models."""
+        """Run multiple models.
+
+        Parameters
+        ----------
+
+        See Also
+        --------
+        Dataset.fscape.run
+
+        """
         # TODO:
         raise NotImplementedError()
 
