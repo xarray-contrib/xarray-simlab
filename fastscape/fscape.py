@@ -440,7 +440,7 @@ class FastscapeAccessor(object):
                                    % (proc_name, var_name))
                 xr_vars_list.append(proc_name + '__' + var_name)
 
-        snapshot_vars = ':'.join(xr_vars_list)
+        snapshot_vars = ','.join(xr_vars_list)
 
         if clock_dim is None:
             self._obj.attrs[self._snapshot_vars_key] = snapshot_vars
@@ -452,6 +452,26 @@ class FastscapeAccessor(object):
                                  "Use Dataset.fscape.set_snapshot_clock first"
                                  % clock_dim)
             clock_var.attrs[self._snapshot_vars_key] = snapshot_vars
+
+    def _get_snapshot_vars(self, name, obj):
+        vars_str = obj.attrs.get(self._snapshot_vars_key, '')
+        if vars_str:
+            return {name: [tuple(s.split('__'))
+                           for s in vars_str.split(',')]}
+        else:
+            return {}
+
+    @property
+    def snapshot_vars(self):
+        """Returns a dictionary of snapshot clock dimension names as keys and
+        snapshot variable names - i.e. lists of (process name, variable name)
+        tuples - as values.
+        """
+        snapshot_vars = {}
+        for cname, coord in self._obj.coords.items():
+            snapshot_vars.update(self._get_snapshot_vars(cname, coord))
+        snapshot_vars.update(self._get_snapshot_vars(None, self._obj))
+        return snapshot_vars
 
     def set_params(self, component, **kwargs):
         """Set one or several model parameters and their values.

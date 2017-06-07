@@ -9,12 +9,100 @@ Part of the code below is copied and modified from:
 """
 from collections import OrderedDict
 
+import numpy as np
+import xarray as xr
+
 from .variable import (AbstractVariable, Variable, ForeignVariable,
                        VariableList, VariableGroup)
 from .process import Process
 from ..core.utils import AttrMapping
 from ..core.formatting import (_calculate_col_width, pretty_print,
                                maybe_truncate)
+
+
+class ModelRunSnapshots(object):
+    """Interface that allows taking snapshots for given `Variable` objects
+    during a model run.
+
+    Snaphots are only for values given by `Variable.state` (or equivalently
+    `Variable.value`).
+
+    """
+
+    def __init__(self, model, dataset):
+        self.model = model
+        self.ds = dataset
+
+        self.snapshot_clocks_vars = dataset.fscape.snapshot_vars
+
+        self.snapshot_arrays = {}
+        for vars in self.snapshot_clocks_vars.values():
+            self.snapshot_arrays.update({v: [] for v in vars})
+
+        master_clock_values = dataset[dataset.fscape.dim_master_clock].values
+        self.snapshot_clocks_steps = {
+            clock: np.in1d(master_clock_values, dataset[clock].values)
+            for clock in self.snapshot_clocks_vars if clock is not None
+        }
+
+    def _take_snapshot_var(self, key):
+        proc_name, var_name = key
+        model_var = self.model._processes[proc_name]._variables[var_name]
+        self.snapshot_arrays[key].append(np.asarray(model_var.state))
+
+    def take_snapshots(self, step):
+        for clock, vars in self.snapshot_clocks_vars.items():
+            if clock is None:
+                if step == -1:
+                    for key in vars:
+                        self._take_snapshot_var(key)
+            elif self.snapshot_clocks_steps[clock][step]:
+                for key in vars:
+                    self._take_snapshot_var(key)
+
+    def _get_dims(self, array, variable):
+        for dims in variable.allowed_dims:
+            if len(dims) == array.ndim:
+                return dims
+
+        return tuple()
+
+    def _to_xarray_variable(self, key, clock=None):
+        proc_name, var_name = key
+        variable = self.model._processes[proc_name]._variables[var_name]
+
+        array_list = self.snapshot_arrays[key]
+        first_array = array_list[0]
+
+        if len(array_list) == 1:
+            data = first_array
+        else:
+            data = np.stack(array_list)
+
+        dims = self._get_dims(first_array, variable)
+        if clock is not None:
+            dims = (clock,) + dims
+
+        attrs = variable.attrs.copy()
+        attrs['description'] = variable.description
+
+        return xr.Variable(dims, data, attrs=attrs)
+
+    def to_dataset(self):
+        xr_variables = {}
+
+        for clock, vars in self.snapshot_clocks_vars.items():
+            for key in vars:
+                var_name = '__'.join(key)
+                xr_variables[var_name] = self._to_xarray_variable(
+                    key, clock=clock
+                )
+
+        out_ds = self.ds.update(xr_variables)
+
+        # TODO: remove _fscape_snaphot_vars attributes from out dataset
+
+        return out_ds
 
 
 def _set_process_names(processes):
@@ -331,10 +419,6 @@ class Model(AttrMapping):
         if dim_master_clock is None:
             raise ValueError("missing master clock dimension / coordinate ")
 
-        # TODO: pop snapshot_vars with key None and also add variables
-        # if snapshot clock contains the last item of master clock.
-        # -> i.e., get all snapshot variables for the end of simulation.
-
         if safe_mode:
             obj = self.clone()
         else:
@@ -350,6 +434,8 @@ class Model(AttrMapping):
 
         time_steps = ds[dim_master_clock].diff(dim_master_clock).values
 
+        snapshots = ModelRunSnapshots(obj, ds)
+
         for i, dt in enumerate(time_steps):
             if has_time_var:
                 ds_step = ds_time.isel(**{dim_master_clock: i})
@@ -357,18 +443,15 @@ class Model(AttrMapping):
 
             obj.run_step(dt)
 
-            # TODO: save snapshots here (before state variables are updated
-            # for the next step - should be done in finalize_step)
+            snapshots.take_snapshots(i)
 
             obj.finalize_step()
 
-        # TODO: save final snapshots here (if snapshot clock includes
-        # the end of simulation and/or for time-independent snapshots)
+        snapshots.take_snapshots(-1)
+
         obj.finalize()
 
-        out_ds = ds.copy()
-
-        return out_ds
+        return snapshots.to_dataset()
 
     def _create_new_model(self, processes):
         """Create a new Model object and make sure that its process instances
