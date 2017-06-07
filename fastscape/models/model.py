@@ -15,6 +15,7 @@ import xarray as xr
 from .variable import (AbstractVariable, Variable, ForeignVariable,
                        VariableList, VariableGroup)
 from .process import Process
+from .. import fscape
 from ..core.utils import AttrMapping
 from ..core.formatting import (_calculate_col_width, pretty_print,
                                maybe_truncate)
@@ -100,7 +101,12 @@ class ModelRunSnapshots(object):
 
         out_ds = self.ds.update(xr_variables)
 
-        # TODO: remove _fscape_snaphot_vars attributes from out dataset
+        for clock in self.snapshot_clocks_vars:
+            if clock is None:
+                attrs = out_ds.attrs
+            else:
+                attrs = out_ds[clock].attrs
+            attrs.pop(fscape.FastscapeAccessor._snapshot_vars_key)
 
         return out_ds
 
