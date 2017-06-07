@@ -3,8 +3,8 @@ Model and processes related to block uplift and stream-power channel erosion.
 """
 import numpy as np
 
-from .. import (Model, Process, Variable, ForeignVariable, UndefinedVariable,
-                VariableList, diagnostic)
+from .. import (Model, Process, Variable, ForeignVariable,
+                VariableGroup, diagnostic)
 from ... import algos
 
 
@@ -101,28 +101,20 @@ class TotalErosion(Process):
     """Sum of all erosion processes."""
 
     erosion = Variable('node', provided=True)
-    erosion_vars = UndefinedVariable()
+    erosion_vars = VariableGroup('erosion')
 
     def run_step(self, *args):
-        var = self.erosion_vars[0]
-        self.erosion.change = var.change
-
-        for var in self.erosion_vars[1:]:
-            self.erosion.change += var.change
+        self.erosion.change = sum((v.change for v in self.erosion_vars))
 
 
 class TotalExhumation(Process):
     """Sum of all exhumation processes."""
 
     exhumation = Variable('node', provided=True)
-    exhumation_vars = UndefinedVariable()
+    exhumation_vars = VariableGroup('exhumation')
 
     def run_step(self, *args):
-        var = self.exhumation_vars[0]
-        self.exhumation.change = var.change
-
-        for var in self.exhumation_vars[1:]:
-            self.exhumation.change += var.change
+        self.exhumation.change = sum((v.change for v in self.exhumation_vars))
 
 
 class Topography(Process):
@@ -215,7 +207,7 @@ class StreamPower(Process):
     k_coef = Variable((), description='stream-power constant')
     m_exp = Variable((), description='stream-power drainage area exponent')
     n_exp = Variable((), description='stream-power slope exponent')
-    erosion = Variable('node', provided=True)
+    erosion = Variable('node', provided=True, group='erosion')
 
     flow_receiver = ForeignVariable(SingleFlowRouterD8, 'flow_receiver')
     distance_to_receiver = ForeignVariable(SingleFlowRouterD8,
@@ -246,17 +238,13 @@ class Uplift(Process):
 
     u_coef = Variable((), description='uplift rate')
     active_nodes = ForeignVariable(BoundaryFacesXY, 'active_nodes')
-    uplift = Variable((), provided=True)
+    uplift = Variable((), provided=True, group='exhumation')
 
     def initialize(self):
         self.uplift.change = np.zeros(self.active_nodes.value.size)
 
     def run_step(self, dt):
         self.uplift.change[self.active_nodes.value] = self.u_coef.value * dt
-
-
-ers_vars = VariableList([ForeignVariable(StreamPower, 'erosion')])
-exh_vars = VariableList([ForeignVariable(Uplift, 'uplift')])
 
 
 stream_power_model = Model(
@@ -266,7 +254,7 @@ stream_power_model = Model(
      'flow_routing': SingleFlowRouterD8(),
      'area': PropagateArea(),
      'spower': StreamPower(),
-     'erosion': TotalErosion(erosion_vars=ers_vars),
-     'exhumation': TotalExhumation(exhumation_vars=exh_vars),
+     'erosion': TotalErosion(),
+     'exhumation': TotalExhumation(),
      'topography': Topography()}
 )

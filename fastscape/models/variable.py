@@ -1,5 +1,6 @@
 # coding: utf-8
 import itertools
+from collections import Iterable
 
 from xarray.core.variable import as_variable
 
@@ -14,10 +15,12 @@ class AbstractVariable(object):
     for all regular, diagnostic, foreign and undefined variables.
 
     """
-    def __init__(self, provided=False, description='', attrs=None):
+    def __init__(self, provided=False, description='', attrs=None,
+                 group=None):
         self.provided = provided
         self.description = description
         self.attrs = attrs or {}
+        self.group = group
 
     def __repr__(self):
         return "<fastscape.models.%s>" % type(self).__name__
@@ -30,7 +33,7 @@ class Variable(AbstractVariable):
     a short description, a default value or other user-provided metadata.
 
     Variables allow to convert any given value to a `xarray.Variable` object
-    after having perfomed some sanity checks.
+    after having perfomed some checks.
 
     In processes, variables are instantiated as class attributes. They
     represent fundamental elements of a process interface (see
@@ -42,8 +45,8 @@ class Variable(AbstractVariable):
     default_validators = []  # Default set of validators
 
     def __init__(self, allowed_dims, provided=False, optional=False,
-                 default_value=None, validators=(), description='',
-                 attrs=None):
+                 default_value=None, validators=(), group=None,
+                 description='', attrs=None):
         """
         Parameters
         ----------
@@ -72,6 +75,8 @@ class Variable(AbstractVariable):
             raises a `ValidationError` if it doesn’t meet some criteria.
             It may be useful for custom, advanced validation that
             can be reused for different variables.
+        group : str, optional
+            Variable group.
         description : str, optional
             Short description of the variable (ideally one-line).
         attrs : dict, optional
@@ -79,9 +84,9 @@ class Variable(AbstractVariable):
             units, math_symbol...).
 
         """
-        super(Variable, self).__init__(
-            provided=provided, description=description, attrs=attrs
-        )
+        super(Variable, self).__init__(provided=provided, group=group,
+                                       description=description,
+                                       attrs=attrs)
 
         if not len(allowed_dims):
             allowed_dims = [tuple()]
@@ -256,7 +261,7 @@ class ForeignVariable(AbstractVariable):
 
     @change.setter
     def change(self, value):
-        self.ref_var._change = value
+        self.ref_var.change = value
 
     def __repr__(self):
         ref_str = "%s.%s" % (self.ref_process.name, self.var_name)
@@ -380,3 +385,50 @@ class VariableList(tuple):
                              "types in %s" % variables)
 
         return tuple.__new__(cls, var_list)
+
+
+class VariableGroup(Iterable):
+    """An Iterable of `ForeignVariable` objects for all variables in a Model
+    that belong to the same group.
+
+    Using `VariableGroup` is useful in cases when we want to reuse
+    the same process in different contexts, i.e., with processes that may be
+    different from one model to another. Good examples are processes that
+    aggregate (e.g., sum, product, mean) variables defined in other processes.
+
+    """
+    def __init__(self, group):
+        """
+        Parameters
+        ----------
+        group : str
+            Name of the group.
+
+        """
+        self._variables = None
+
+        # TODO: inherit also from AbstractVariable?
+        self.group = group
+        self.provided = False
+        self.description = ''
+        self.attrs = {}
+
+    def _set_variables(self, processes):
+        """Retrieve all variables in `processes` that belong to this group."""
+        self._variables = []
+        for proc in processes.values():
+            for var_name, var in proc._variables.items():
+                if isinstance(var, VariableGroup):
+                    continue
+                if var.group is not None and var.group == self.group:
+                    foreign_var = ForeignVariable(proc.__class__, var_name)
+                    self._variables.append(foreign_var)
+
+    def __iter__(self):
+        if self._variables is None:
+            raise ValueError("cannot retrieve variables of group %r, "
+                             "no model assigned yet." % self.group)
+        return (v for v in self._variables)
+
+    def __repr__(self):
+        return "<fastscape.models.%s %r>" % (type(self).__name__, self.group)

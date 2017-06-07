@@ -10,7 +10,7 @@ Part of the code below is copied and modified from:
 from collections import OrderedDict
 
 from .variable import (AbstractVariable, Variable, ForeignVariable,
-                       VariableList)
+                       VariableList, VariableGroup)
 from .process import Process
 from ..core.utils import AttrMapping
 from ..core.formatting import (_calculate_col_width, pretty_print,
@@ -24,6 +24,14 @@ def _set_process_names(processes):
         p._name = k
 
 
+def _set_group_vars(processes):
+    """Assign variables that belong to variable groups."""
+    for proc in processes.values():
+        for var in proc._variables.values():
+            if isinstance(var, VariableGroup):
+                var._set_variables(processes)
+
+
 def _get_foreign_vars(processes):
     # type: Dict[str, Process] -> Dict[str, List[ForeignVariable]]
 
@@ -33,7 +41,7 @@ def _get_foreign_vars(processes):
         foreign_vars[proc_name] = []
 
         for var in proc._variables.values():
-            if isinstance(var, (tuple, list)):
+            if isinstance(var, (tuple, list, VariableGroup)):
                 foreign_vars[proc_name] += [
                     v for v in var if isinstance(v, ForeignVariable)
                 ]
@@ -185,6 +193,7 @@ class Model(AttrMapping):
                 raise TypeError("%s is not a Process object" % p)
 
         _set_process_names(processes)
+        _set_group_vars(processes)
         _link_foreign_vars(processes)
 
         self._input_vars = _get_input_vars(processes)
@@ -320,8 +329,11 @@ class Model(AttrMapping):
         """
         dim_master_clock = ds.fscape.dim_master_clock
         if dim_master_clock is None:
-            raise ValueError("No master clock dimension / coordinate "
-                             "found in Dataset.")
+            raise ValueError("missing master clock dimension / coordinate ")
+
+        # TODO: pop snapshot_vars with key None and also add variables
+        # if snapshot clock contains the last item of master clock.
+        # -> i.e., get all snapshot variables for the end of simulation.
 
         if safe_mode:
             obj = self.clone()
@@ -344,8 +356,14 @@ class Model(AttrMapping):
                 obj._set_inputs_values(ds_step)
 
             obj.run_step(dt)
+
+            # TODO: save snapshots here (before state variables are updated
+            # for the next step - should be done in finalize_step)
+
             obj.finalize_step()
 
+        # TODO: save final snapshots here (if snapshot clock includes
+        # the end of simulation and/or for time-independent snapshots)
         obj.finalize()
 
         out_ds = ds.copy()

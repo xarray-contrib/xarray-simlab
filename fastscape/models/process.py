@@ -3,7 +3,7 @@ import inspect
 import copy
 
 from .variable import (AbstractVariable, DiagnosticVariable, UndefinedVariable,
-                       VariableList)
+                       VariableList, VariableGroup)
 from ..core.formatting import process_info
 from ..core.utils import AttrMapping, combomethod
 
@@ -15,13 +15,13 @@ _process_meta_default = {
 
 def _extract_variables(mapping):
     # type: Dict[str, Any] -> Tuple[
-    #     Dict[str, Union[AbstractVariable, Variablelist]],
+    #     Dict[str, Union[AbstractVariable, Variablelist, VariableGroup]],
     #     Dict[str, Any]]
 
     var_dict = {}
 
     for key, value in mapping.items():
-        if isinstance(value, (AbstractVariable, VariableList)):
+        if isinstance(value, (AbstractVariable, VariableList, VariableGroup)):
             var_dict[key] = value
 
         elif getattr(value, '_diagnostic', False):

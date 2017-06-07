@@ -13,7 +13,8 @@ import os
 from functools import partial
 
 from ..core.utils import import_required
-from .variable import AbstractVariable, ForeignVariable, DiagnosticVariable
+from .variable import (AbstractVariable, ForeignVariable, DiagnosticVariable,
+                       VariableGroup)
 
 
 graphviz = import_required("graphviz", "Drawing dask graphs requires the "
@@ -66,7 +67,7 @@ def _add_var(g, var, label, link_2_node, is_input=False):
     elif isinstance(var, ForeignVariable):
         node_attrs['style'] = 'dashed'
         edge_attrs['style'] = 'dashed'
-    elif isinstance(var, tuple):
+    elif isinstance(var, (tuple, VariableGroup)):
         node_attrs['shape'] = 'box3d'
 
     if not isinstance(var, tuple) and var.provided:
@@ -92,7 +93,7 @@ def _add_variables(g, model):
                 continue
             _add_var(g, var, var_name, proc_name)
 
-            if isinstance(var, tuple):
+            if isinstance(var, (tuple, VariableGroup)):
                 for v in var:
                     _add_var(g, v, '\<no_name\>', hash_variable(var))
 
@@ -112,15 +113,16 @@ def _add_var_and_foreign_vars(g, model, proc_name, var_name):
 
             if var is variable or getattr(var, 'ref_var', None) is variable:
                 _add_var(g, var, v_name, p_name, is_input=is_input)
-            elif isinstance(var, tuple):
+            elif isinstance(var, (tuple, VariableGroup)):
                 for v in var:
                     if v is variable or getattr(v, 'ref_var', None) is variable:
                         _add_var(g, var, v_name, p_name, is_input=is_input)
                         _add_var(g, v, '\<no_name\>', hash_variable(var))
 
 
-def to_graphviz(model, rankdir='LR', show_only_variable=None, show_inputs=False,
-                show_variables=False, graph_attr={}, **kwargs):
+def to_graphviz(model, rankdir='LR', show_only_variable=None,
+                show_inputs=False, show_variables=False, graph_attr={},
+                **kwargs):
     graph_attr = graph_attr or {}
     graph_attr['rankdir'] = rankdir
     graph_attr.update(kwargs)
