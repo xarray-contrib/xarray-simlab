@@ -4,7 +4,8 @@ Model and processes related to block uplift and stream-power channel erosion.
 import numpy as np
 
 from .. import (Model, Process, Variable, ForeignVariable,
-                VariableGroup, diagnostic)
+                VariableGroup, diagnostic, IntegerVariable, FloatVariable,
+                ValidationError)
 from ... import algos
 
 
@@ -15,22 +16,22 @@ class StackedGridXY(Process):
     The grid is stacked along the `y` dimension.
 
     """
-    x_size = Variable((), optional=True,
-                      description='nb. of nodes in x')
-    y_size = Variable((), optional=True,
-                      description='nb. of nodes in y')
-    x_length = Variable((), optional=True,
-                        description='total grid length in x')
-    y_length = Variable((), optional=True,
-                        description='total grid length in y')
-    x_spacing = Variable((), optional=True,
-                         description='node spacing in x')
-    y_spacing = Variable((), optional=True,
-                         description='node spacing in y')
-    x_origin = Variable((), optional=True, default_value=0.,
-                        description='grid x-origin')
-    y_origin = Variable((), optional=True, default_value=0.,
-                        description='grid y-origin')
+    x_size = IntegerVariable((), optional=True,
+                             description='nb. of nodes in x')
+    y_size = IntegerVariable((), optional=True,
+                             description='nb. of nodes in y')
+    x_length = FloatVariable((), optional=True,
+                             description='total grid length in x')
+    y_length = FloatVariable((), optional=True,
+                             description='total grid length in y')
+    x_spacing = FloatVariable((), optional=True,
+                              description='node spacing in x')
+    y_spacing = FloatVariable((), optional=True,
+                              description='node spacing in y')
+    x_origin = FloatVariable((), optional=True, default_value=0.,
+                             description='grid x-origin')
+    y_origin = FloatVariable((), optional=True, default_value=0.,
+                             description='grid y-origin')
     x = Variable('node', provided=True)
     y = Variable('node', provided=True)
 
@@ -53,9 +54,9 @@ class StackedGridXY(Process):
         elif provided_params == {'size', 'spacing'}:
             length.value = spacing.value * (size.value - 1)
         else:
-            raise ValueError("Invalid combination of size (%d), spacing (%s) "
-                             "and length (%s)"
-                             % (size.value, spacing.value, length.value))
+            raise ValidationError("Invalid combination of size (%d), "
+                                  "spacing (%s) and length (%s)"
+                                  % (size.value, spacing.value, length.value))
 
     def validate(self):
         self._validate_grid_params(self.x_size, self.x_length, self.x_spacing)
@@ -125,7 +126,7 @@ class Topography(Process):
     topographic slope and curvature.
 
     """
-    elevation = Variable('node', description='topographic elevation')
+    elevation = FloatVariable('node', description='topographic elevation')
     total_erosion = ForeignVariable(TotalErosion, 'erosion')
     total_exhumation = ForeignVariable(TotalExhumation, 'exhumation')
 
@@ -204,9 +205,10 @@ class PropagateArea(Process):
 class StreamPower(Process):
     """Compute channel erosion using the stream power law."""
 
-    k_coef = Variable((), description='stream-power constant')
-    m_exp = Variable((), description='stream-power drainage area exponent')
-    n_exp = Variable((), description='stream-power slope exponent')
+    k_coef = FloatVariable((), description='stream-power constant')
+    m_exp = FloatVariable((),
+                          description='stream-power drainage area exponent')
+    n_exp = FloatVariable((), description='stream-power slope exponent')
     erosion = Variable('node', provided=True, group='erosion')
 
     flow_receiver = ForeignVariable(SingleFlowRouterD8, 'flow_receiver')
@@ -236,7 +238,7 @@ class StreamPower(Process):
 class Uplift(Process):
     """Compute uplift."""
 
-    u_coef = Variable((), description='uplift rate')
+    u_coef = FloatVariable((), description='uplift rate')
     active_nodes = ForeignVariable(BoundaryFacesXY, 'active_nodes')
     uplift = Variable((), provided=True, group='exhumation')
 

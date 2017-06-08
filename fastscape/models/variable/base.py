@@ -1,11 +1,17 @@
 # coding: utf-8
+"""
+Base classes for Variable objects.
+
+"""
 import itertools
-from collections import Iterable
+from collections import Iterable, OrderedDict
 
 from xarray.core.variable import as_variable
 
 
-EMPTY_VALUES = ('', [], (), {})
+class ValidationError(ValueError):
+    """An error while validating data."""
+    pass
 
 
 class AbstractVariable(object):
@@ -108,16 +114,49 @@ class Variable(AbstractVariable):
     def validators(self):
         return list(itertools.chain(self.default_validators, self._validators))
 
-    def run_validators(self, xarray_variable):
+    def run_validators(self, xr_variable):
         for vfunc in self.validators:
-            vfunc(xarray_variable)
+            vfunc(xr_variable)
 
-    def validate(self, xarray_variable):
+    def validate(self, xr_variable):
         pass
 
+    def validate_dimensions(self, dims, ignore_dims=None):
+        """Validate given dimensions for this variable.
+
+        Parameters
+        ----------
+        dims : tuple
+            Dimensions given for the variable.
+        ignore_dims : tuple, optional
+            Dimensions that are ignored during the validation process.
+            Typically, it may correspond to a time dimension (time steps)
+            and/or a grid-search or parameter-space dimension for this
+            variable itself.
+
+        Raises
+        ------
+        ValidationError
+            If the given dimensions are not valid, i.e., if they doesn't
+            correspond to allowed dimensions for this variable.
+
+        """
+        dims_dict = OrderedDict([(d, None) for d in dims])
+
+        if ignore_dims is not None:
+            for d in ignore_dims:
+                dims_dict.pop(d, None)
+
+        clean_dims = tuple(dims_dict)
+        test_dims = [d for d in self.allowed_dims if d == clean_dims]
+
+        if not test_dims:
+            raise ValidationError("invalid dimensions %s\n"
+                                  "allowed dimensions are %s"
+                                  % (dims, self.allowed_dims))
+
     def to_xarray_variable(self, value):
-        """Convert the input value to an `xarray.Variable` object and
-        perform some validation.
+        """Convert the input value to an `xarray.Variable` object.
 
         Parameters
         ----------
@@ -125,34 +164,28 @@ class Variable(AbstractVariable):
             The input value can be in the form of a single value,
             an array-like, a ``(dims, data[, attrs])`` tuple, another
             `xarray.Variable` object or a `xarray.DataArray` object.
+            if None, the `default_value` attribute is used to set the value.
 
         Returns
         -------
         variable : `xarray.Variable`
-            The value converted to an xarray variable if it passed all
-            validation tests.
-
-        Raises
-        ------
-        ValueError
-            If the value doesn't pass the validation tests.
+            A xarray Variable object whith data corresponding to the input (or
+            default) value and with attributes ('description' and other
+            key:value pairs found in `Variable.attrs`).
 
         """
-        if value is None or value in EMPTY_VALUES:
+        if value is None:
             value = self.default_value
 
         # in case where value is a 1-d array without dimension name,
-        # dimension name is set to 'this_variable_name' and has to be renamed
+        # dimension name is set to 'this_variable' and has to be renamed
         # later by the name of the variable in a process/model.
-        xarray_variable = as_variable(value, name='this_variable_name')
+        xr_variable = as_variable(value, name='this_variable')
 
-        self.run_validators(xarray_variable)
-        self.validate(xarray_variable)
+        xr_variable.attrs.update(self.attrs)
+        xr_variable.attrs['description'] = self.description
 
-        xarray_variable.attrs.update(self.attrs)
-        xarray_variable.attrs['description'] = self.description
-
-        return xarray_variable
+        return xr_variable
 
     @property
     def state(self):

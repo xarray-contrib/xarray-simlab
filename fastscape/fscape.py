@@ -8,7 +8,7 @@ import numpy as np
 from xarray import Variable, register_dataset_accessor
 
 from .core.utils import Frozen, SortedKeysDict
-from .models import Model, Process
+from .models import Model, Process, ValidationError
 
 
 @register_dataset_accessor('filter')
@@ -262,28 +262,39 @@ class FastscapeAccessor(object):
                              % (', '.join([name for name in invalid_inputs]),
                                 process))
 
-        # convert to xarray variables and validate at the variable level
+        # convert to xarray variables and validate the given dimensions
         variables = {}
         for name, var in self._model.input_vars[process].items():
-            variables[name] = var.to_xarray_variable(inputs.get(name))
+            xr_var = var.to_xarray_variable(inputs.get(name))
+            var.validate_dimensions(xr_var.dims,
+                                    ignore_dims=(self.dim_master_clock,
+                                                 'this_variable'))
+            variables[name] = xr_var
 
         # validate at the process level
-        # assign values to a cloned process -> validate -> get updated values
+        # first assign values to a cloned process object to avoid conflicts
         process_obj = self._model._processes[process].clone()
-
         for name, xr_var in variables.items():
             process_obj[name].value = xr_var.values
-
         process_obj.validate()
 
+        # maybe set optional variables, and validate each variable
         for name, xr_var in variables.items():
             var = process_obj[name]
             if var.value is not xr_var.values:
-                variables[name] = var.to_xarray_variable(var.value)
+                xr_var = var.to_xarray_variable(var.value)
+                variables[name] = xr_var
+            var.run_validators(xr_var)
+            var.validate(xr_var)
 
         # add variables to dataset if all validation tests passed
-        for k, v in variables.items():
-            self._obj[process + '__' + k] = v
+        # also rename the 'this_variable' dimension if present
+        for name, xr_var in variables.items():
+            xr_var_name = process + '__' + name
+            rename_dict = {'this_variable': xr_var_name}
+            dims = tuple(rename_dict.get(dim, dim) for dim in xr_var.dims)
+            xr_var.dims = dims
+            self._obj[xr_var_name] = xr_var
 
     def set_snapshot_vars(self, clock_dim, **process_vars):
         """Set model variables to save as snapshots during a model run.
