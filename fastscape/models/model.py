@@ -49,7 +49,7 @@ class ModelRunSnapshots(object):
     def _take_snapshot_var(self, key):
         proc_name, var_name = key
         model_var = self.model._processes[proc_name]._variables[var_name]
-        self.snapshot_arrays[key].append(np.asarray(model_var.state))
+        self.snapshot_arrays[key].append(np.array(model_var.state))
 
     def take_snapshots(self, step):
         for clock, vars in self.snapshot_clocks_vars.items():
@@ -99,7 +99,7 @@ class ModelRunSnapshots(object):
                     key, clock=clock
                 )
 
-        out_ds = self.ds.update(xr_variables)
+        out_ds = self.ds.update(xr_variables, inplace=False)
 
         for clock in self.snapshot_clocks_vars:
             if clock is None:
@@ -378,7 +378,7 @@ class Model(AttrMapping):
             proc_name, var_name = name.split('__')
 
             if self.is_input((proc_name, var_name)):
-                self[proc_name][var_name].value = var.values
+                self[proc_name][var_name].value = var.values.copy()
 
     def initalize(self):
         """Run `.initalize()` for each processes in the model."""
