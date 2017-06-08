@@ -244,11 +244,11 @@ class FastscapeAccessor(object):
         self.dim_master_clock = dim
 
     def set_snapshot_clock(self, dim, data=None, start=0., end=None,
-                           step=None, nsteps=None, auto_align=True):
+                           step=None, nsteps=None, auto_adjust=True):
         """Set or add a dimension coordinate used by model snapshots.
 
-        The resulting coordinate labels must be aligned with the master clock
-        coordinate labels. By default this is done automatically.
+        The coordinate labels must be also labels of the master clock
+        coordinate. By default labels are adjusted automatically.
 
         Parameters
         ----------
@@ -265,10 +265,11 @@ class FastscapeAccessor(object):
             Time step duration.
         nsteps : int, optional
             Number of time steps.
-        auto_align : bool, optional
+        auto_adjust : bool, optional
             If True (default), the resulting coordinate labels are
-            automatically aligned with the labels of the master clock
-            coordinate. Otherwise raise a KeyError if not aligned
+            automatically adjusted so that they are consistent with the
+            labels of the master clock coordinate.
+            Otherwise raise a KeyError if labels are not valid.
             (DataArray.sel is used internally).
 
         Raises
@@ -291,7 +292,7 @@ class FastscapeAccessor(object):
 
         da_master_clock = self._obj[self.dim_master_clock]
 
-        if auto_align:
+        if auto_adjust:
             kwargs = {'method': 'nearest'}
         else:
             kwargs = {}
