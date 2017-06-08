@@ -2,8 +2,8 @@ import sys
 import inspect
 import copy
 
-from .variable import (AbstractVariable, DiagnosticVariable, UndefinedVariable,
-                       VariableList, VariableGroup)
+from .variable.base import (AbstractVariable, DiagnosticVariable,
+                            UndefinedVariable, VariableList, VariableGroup)
 from ..core.formatting import process_info
 from ..core.utils import AttrMapping, combomethod
 

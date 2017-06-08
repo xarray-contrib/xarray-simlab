@@ -13,8 +13,8 @@ import os
 from functools import partial
 
 from ..core.utils import import_required
-from .variable import (AbstractVariable, ForeignVariable, DiagnosticVariable,
-                       VariableGroup)
+from .variable.base import (AbstractVariable, ForeignVariable,
+                            DiagnosticVariable, VariableGroup)
 
 
 graphviz = import_required("graphviz", "Drawing dask graphs requires the "

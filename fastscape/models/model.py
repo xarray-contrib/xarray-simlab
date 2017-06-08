@@ -12,8 +12,8 @@ from collections import OrderedDict
 import numpy as np
 import xarray as xr
 
-from .variable import (AbstractVariable, Variable, ForeignVariable,
-                       VariableList, VariableGroup)
+from .variable.base import (AbstractVariable, Variable, ForeignVariable,
+                            VariableList, VariableGroup)
 from .process import Process
 from .. import fscape
 from ..core.utils import AttrMapping
