@@ -7,8 +7,7 @@ from collections import OrderedDict
 import numpy as np
 from xarray import Variable, register_dataset_accessor
 
-from .core.utils import Frozen, SortedKeysDict, _get_args_not_none
-from .core.nputils import _expand_value
+from .core.utils import Frozen, SortedKeysDict
 from .models import Model, Process
 
 
@@ -39,120 +38,6 @@ class FastscapeAccessor(object):
         self._obj = xarray_obj
         self._model = None
         self._dim_master_clock = None
-
-    def set_regular_grid(self, dims, nnodes=None, spacing=None, length=None,
-                         origin=0.):
-        """Create a n-dimensional regular grid and add its coordinates
-        to this `Dataset` object.
-
-        Parameters
-        ----------
-        dims : str or array-like
-            Name of the grid dimension(s) / coordinate(s).
-        nnodes : int or array-like or None, optional
-            Number of grid nodes in each dimension. If a single
-            value is given, it will be applied to every dimension.
-        spacing : float or array-like or None, optional
-            Distance between two grid points in each dimension.
-        length : float or array-like or None, optional
-            Total length of the grid in each dimension.
-        origin : float or array-like, optional
-            Coordinate(s) of the grid origin.
-
-        Raises
-        ------
-        ValueError
-            In case of ambiguous combination of `nnodes`, `spacing`
-            and `length`.
-
-        """
-        if isinstance(dims, str):
-            dims = [dims],
-        ndim = len(dims)
-
-        nnodes = _expand_value(nnodes, ndim)
-        spacing = _expand_value(spacing, ndim)
-        length = _expand_value(length, ndim)
-        origin = _expand_value(origin, ndim)
-
-        coords = OrderedDict()
-        args = _get_args_not_none(('nnodes', 'spacing', 'length'),
-                                  (nnodes, spacing, length))
-
-        if args == ('nnodes', 'spacing', 'length'):
-            eq_length = ((nnodes - 1) * spacing == length).astype(bool)
-            if np.all(eq_length):
-                args = ('nnodes', 'length')
-
-        if args == ('nnodes', 'length'):
-            for c, o, n, l in zip(dims, origin, nnodes, length):
-                coords[c] = np.linspace(o, o + l, n)
-        elif args == ('spacing', 'length'):
-            for c, o, s, l in zip(dims, origin, spacing, length):
-                coords[c] = np.arange(o, o + l + s, s)
-        elif args == ('nnodes', 'spacing'):
-            for c, o, n, s in zip(dims, origin, nnodes, spacing):
-                coords[c] = np.arange(o, o + (n * s), s)
-        else:
-            raise ValueError("Invalid combination of number of grid nodes, "
-                             "node spacing and grid length: (%r, %r, %r)"
-                             % (nnodes, spacing, length))
-
-        self._obj.coords.update(coords)
-
-    def set_clock(self, dim='time', data=None, nsteps=None, step=None,
-                  duration=None, start=0.):
-        """Set a clock (model or output time steps) and add the
-        corresponding dimension / coordinate to this Dataset.
-
-        Parameters
-        ----------
-        dim : str, optional
-            Name of the clock dimension (default: 'time').
-        data : array-like or None, optional
-            Clock values. If not None, the other parameters below will be
-            ignored.
-        nsteps : int or None, optional
-            Total number of time steps.
-        step : float or None, optional
-            Time step duration.
-        duration : float or None, optional
-            Total duration.
-        start : float, optional
-            Start time (default: 0.).
-
-        Raises
-        ------
-        ValueError
-            In case of ambiguous combination of `nsteps`, `step` and
-            `duration`.
-
-        """
-        if data is not None:
-            self._obj.coords[dim] = data
-            return
-
-        args = _get_args_not_none(('nsteps', 'step', 'duration'),
-                                  (nsteps, step, duration))
-
-        if args == ('nsteps', 'step', 'duration'):
-            if (nsteps - 1) * step == duration:
-                args = ('nsteps', 'duration')
-
-        if args == ('nsteps', 'duration'):
-            data = np.linspace(start, start + duration, nsteps)
-        elif args == ('nsteps', 'step'):
-            data = np.arange(start, start + nsteps * step, step)
-        elif args == ('step', 'duration'):
-            data = np.arange(start, start + duration, step)
-        else:
-            raise ValueError("Invalid combination of number of time steps, "
-                             "time step duration and total duration "
-                             "(%r, %r, %r)" % (nsteps, step, duration))
-
-        self._obj.coords[dim] = data
-
-    add_time = set_clock
 
     @property
     def dim_master_clock(self):
@@ -620,6 +505,3 @@ class FastscapeAccessor(object):
         """
         # TODO:
         raise NotImplementedError()
-
-    def run_model(self, model):
-        model.run(self._obj)
