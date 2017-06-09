@@ -392,21 +392,6 @@ def diagnostic(attrs_or_function=None, attrs=None):
         return _add_diagnostic_attrs
 
 
-class UndefinedVariable(AbstractVariable):
-    """Represent variable(s) that has to be defined later, i.e.,
-    when creating a new `Process` object.
-
-    Undefined variables are useful in cases when we want to reuse
-    the same process in different contexts without having to re-write
-    other `Process` subclasses. Good examples are processes that
-    aggregate (e.g., sum, product, mean) variables provided by
-    other processes.
-
-    """
-    def __init__(self):
-        super(UndefinedVariable, self).__init__(provided=False)
-
-
 class VariableList(tuple):
     """A tuple of only `Variable` or `ForeignVariable` objects."""
     def __new__(cls, variables):

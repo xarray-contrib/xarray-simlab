@@ -3,7 +3,7 @@ import inspect
 import copy
 
 from .variable.base import (AbstractVariable, DiagnosticVariable,
-                            UndefinedVariable, VariableList, VariableGroup)
+                            VariableList, VariableGroup)
 from .formatting import process_info
 from .utils import AttrMapping, combomethod
 
@@ -109,7 +109,7 @@ class Process(AttrMapping, metaclass=ProcessBase):
     A subclass of `Process` usually implements:
 
     - A process interface as a set of `Variable`, `ForeignVariable`,
-      `UndefinedVariable` or `VariableList` objects, all defined as class
+      `VariableGroup` or `VariableList` objects, all defined as class
       attributes.
 
     - Some of the five `.validate()`, `.initialize()`, `.run_step()`,
@@ -124,29 +124,10 @@ class Process(AttrMapping, metaclass=ProcessBase):
     variables if any.
 
     """
-    def __init__(self, **variables):
-        """
-        Parameters
-        ----------
-        **variables : key, `Variable` pairs
-            Variables that still need to be defined for this process
-            (i.e., undefined at the class level).
-
-        """
+    def __init__(self):
         # prevent modifying variables at the class level. also prevent
         # using the same variable objects in two distinct instances
         self._variables = copy.deepcopy(self._variables)
-
-        undefined_var_names = [k for k, v in self._variables.items()
-                               if isinstance(v, UndefinedVariable)]
-        if undefined_var_names and not variables:
-            raise ValueError("missing external variables ")
-            # TODO: more informative error msg (like var names)
-            # TODO: more logic, e.g., when required variables are missing
-        if variables:
-            # TODO: check for non valid variable names.
-            vars, _ = _extract_variables(variables)
-            self._variables.update(copy.deepcopy(vars))
 
         super(Process, self).__init__(self._variables)
 
@@ -163,15 +144,8 @@ class Process(AttrMapping, metaclass=ProcessBase):
         This is equivalent to a deep copy, except that variable data
         (i.e., `state`, `value`, `change` or `rate` properties) are not copied.
         """
-        cls = type(self)
-
-        undefined_var_names = [k for k, v in cls._variables.items()
-                               if isinstance(v, UndefinedVariable)]
-        kwargs = {k: self.variables[k] for k in undefined_var_names}
-
-        obj = type(self)(**kwargs)
+        obj = type(self)()
         obj._name = self._name
-
         return obj
 
     @property
