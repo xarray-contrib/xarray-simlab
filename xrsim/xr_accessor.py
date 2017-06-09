@@ -6,7 +6,8 @@ xarray extensions (accessors).
 import numpy as np
 from xarray import register_dataset_accessor
 
-from .models import Model, Process
+from .process import Process
+from .model import Model
 
 
 @register_dataset_accessor('filter')

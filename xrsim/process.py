@@ -4,8 +4,8 @@ import copy
 
 from .variable.base import (AbstractVariable, DiagnosticVariable,
                             UndefinedVariable, VariableList, VariableGroup)
-from ..core.formatting import process_info
-from ..core.utils import AttrMapping, combomethod
+from .formatting import process_info
+from .utils import AttrMapping, combomethod
 
 
 _process_meta_default = {

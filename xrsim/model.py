@@ -6,10 +6,9 @@ import xarray as xr
 from .variable.base import (AbstractVariable, Variable, ForeignVariable,
                             VariableList, VariableGroup)
 from .process import Process
-from .. import xr_accessor
-from ..core.utils import AttrMapping
-from ..core.formatting import (_calculate_col_width, pretty_print,
-                               maybe_truncate)
+from . import xr_accessor
+from .utils import AttrMapping
+from .formatting import _calculate_col_width, pretty_print, maybe_truncate
 
 
 class ModelRunSnapshots(object):

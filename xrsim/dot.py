@@ -14,7 +14,7 @@ from __future__ import absolute_import, division, print_function
 import os
 from functools import partial
 
-from ..core.utils import import_required
+from .utils import import_required
 from .variable.base import (AbstractVariable, ForeignVariable,
                             DiagnosticVariable, VariableGroup)
 
