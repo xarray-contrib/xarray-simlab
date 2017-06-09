@@ -1,12 +1,4 @@
-"""String formatting routines for __repr__.
-
-Part of the code below is copied and modified from:
-
-- xarray 0.9.3 (Copyright 2014-2017, xarray Developers)
-  Licensed under the Apache License, Version 2.0
-  https://github.com/pydata/xarray
-
-"""
+"""Formatting utils and functions."""
 
 
 def _calculate_col_width(col_items):

@@ -1,12 +1,3 @@
-"""
-Part of the code below is copied and modified from:
-
-- dask 0.14.3 (Copyright (c) 2014-2015, Continuum Analytics, Inc.
-  and contributors)
-  Licensed under the BSD 3 License
-  http://dask.pydata.org
-
-"""
 from collections import OrderedDict
 
 import numpy as np
@@ -200,8 +191,13 @@ def _sort_processes(dep_processes):
     """Stack-based depth-first search traversal.
 
     This is based on Tarjan's method for topological sorting.
-    Code taken and modified from Dask (New BSD License,
-    https://github.com/dask/dask).
+
+    Part of the code below is copied and modified from:
+
+    - dask 0.14.3 (Copyright (c) 2014-2015, Continuum Analytics, Inc.
+      and contributors)
+      Licensed under the BSD 3 License
+      http://dask.pydata.org
 
     """
     ordered = []

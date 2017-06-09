@@ -1,4 +1,6 @@
 """
+Model visualization using graphviz/dot.
+
 Part of the code below is copied and modified from:
 
 - dask 0.14.3 (Copyright (c) 2014-2015, Continuum Analytics, Inc.

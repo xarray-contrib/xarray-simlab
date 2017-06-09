@@ -1,17 +1,6 @@
 """
 Internal utilties; not for external use.
 
-Part of the code below is copied and modified from:
-
-- xarray 0.9.3 (Copyright 2014-2017, xarray Developers)
-  Licensed under the Apache License, Version 2.0
-  https://github.com/pydata/xarray
-
-- python standard library (abc.collections module)
-  Copyright 2001-2017 Python Software Foundation; All Rights Reserved
-  PSF License
-  https://www.python.org/
-
 """
 from collections import (Mapping, MutableMapping, OrderedDict,
                          KeysView, ItemsView, ValuesView)
@@ -54,6 +43,17 @@ class AttrMapping(object):
 
     This class doesn't use `abc.ABCMeta` so it can be
     inherited in classes that use other metaclasses.
+
+    Part of the code below is copied and modified from:
+
+    - xarray 0.9.3 (Copyright 2014-2017, xarray Developers)
+      Licensed under the Apache License, Version 2.0
+      https://github.com/pydata/xarray
+
+    - python standard library (abc.collections module)
+      Copyright 2001-2017 Python Software Foundation; All Rights Reserved
+      PSF License
+      https://www.python.org/
 
     """
     _initialized = False
