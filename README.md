@@ -1,28 +1,16 @@
-# Fastscape: Fast LEM in Python
+# xarray-sim: xarray extension for computer model simulations.
 
-**Warning: this package is currently under heavy development (no release yet).**
+xarray-sim is a Python library that provides both a framework for creating
+computational models from re-usable components and a xarray extension for
+setting and running simulations.
 
-Fastscape is an open-source Python package that provides, through a basic but
-powerful API / UI, a fast and well-tested implementation of a small set of
-efficient algorithms for Landscape Evolution Modeling (LEM).
-
-It also provides:
-
-- A lightweight framework for easy development, combinination and
-  run of new LEMs (a few built-in models are available in this package).
-
-- A small set of "topographic tools" useful for processing model outputs
-  or Digital Elevation Models (DEMs).
-
-- Extensions to the [xarray](http://xarray.pydata.org/en/stable/) package that
-  allow easy handling of space/time dimensions and exploration of model
-  parameter spaces.
+**Warning: this package is currently under heavy development (no stable release yet).**
 
 ## License
 
-Copyright 2017, fastscape Developers.
+Copyright 2017, Benoît Bovy.
 
-Fastscape is developped at the
+xarray-sim is developped at the
 [Earth Surface Process Modelling](http://www.gfz-potsdam.de/en/section/earth-surface-process-modelling/)
 group of the GFZ Helmholtz Centre Potsdam.
 
