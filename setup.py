@@ -1,11 +1,11 @@
 from setuptools import setup
 
-setup(name='fastscape',
+setup(name='xarray-sim',
       version='0.1.0dev',
-      description='efficient algorithms for landscape evolution modeling',
-      url='http://github.com/benbovy/fastscape',
+      description='xarray extension for computer model simulations',
+      url='http://github.com/benbovy/xarray-sim',
       author='Benoit Bovy',
       author_email='benbovy@gmail.com',
       license='BSD-Clause3',
-      packages=['fastscape'],
+      packages=['xrsim'],
       zip_safe=False)

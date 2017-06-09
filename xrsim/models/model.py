@@ -6,7 +6,7 @@ import xarray as xr
 from .variable.base import (AbstractVariable, Variable, ForeignVariable,
                             VariableList, VariableGroup)
 from .process import Process
-from .. import fscape
+from .. import xr_accessor
 from ..core.utils import AttrMapping
 from ..core.formatting import (_calculate_col_width, pretty_print,
                                maybe_truncate)
@@ -25,13 +25,13 @@ class ModelRunSnapshots(object):
         self.model = model
         self.ds = dataset
 
-        self.snapshot_clocks_vars = dataset.fscape.snapshot_vars
+        self.snapshot_clocks_vars = dataset.sim.snapshot_vars
 
         self.snapshot_arrays = {}
         for vars in self.snapshot_clocks_vars.values():
             self.snapshot_arrays.update({v: [] for v in vars})
 
-        master_clock_values = dataset[dataset.fscape.dim_master_clock].values
+        master_clock_values = dataset[dataset.sim.dim_master_clock].values
         self.snapshot_clocks_steps = {
             clock: np.in1d(master_clock_values, dataset[clock].values)
             for clock in self.snapshot_clocks_vars if clock is not None
@@ -97,7 +97,7 @@ class ModelRunSnapshots(object):
                 attrs = out_ds.attrs
             else:
                 attrs = out_ds[clock].attrs
-            attrs.pop(fscape.FastscapeAccessor._snapshot_vars_key)
+            attrs.pop(xr_accessor.SimAccessor._snapshot_vars_key)
 
         return out_ds
 
@@ -417,7 +417,7 @@ class Model(AttrMapping):
             Another Dataset with model inputs and outputs.
 
         """
-        dim_master_clock = ds.fscape.dim_master_clock
+        dim_master_clock = ds.sim.dim_master_clock
         if dim_master_clock is None:
             raise ValueError("missing master clock dimension / coordinate ")
 
@@ -519,7 +519,7 @@ class Model(AttrMapping):
     def __repr__(self):
         n_inputs = sum([len(v) for v in self._input_vars.values()])
 
-        hdr = ("<fastscape.models.Model (%d processes, %d inputs)>\n"
+        hdr = ("<xrsim.Model (%d processes, %d inputs)>\n"
                % (len(self._processes), n_inputs))
 
         max_line_length = 70

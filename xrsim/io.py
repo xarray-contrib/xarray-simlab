@@ -5,7 +5,7 @@ import yaml
 import numpy as np
 from xarray import Dataset, Variable
 
-from .fscape import FastscapeAccessor
+from .xr_accessor import SimAccessor
 
 
 # fix parsing scientific notation
@@ -57,14 +57,14 @@ def _extract_value_and_attrs(input_val_or_dict):
 
 
 def create_model_setup(filename_or_dict):
-    """Create a FastScape model setup.
+    """Create a model setup.
 
     Parameters
     ----------
     filename_or_dict: str or dict-like
         Either the name/path to an input file (YAML format) or a dict-like
         object containing all input values needed to setup one or multiple
-        FastScape models.
+        models.
 
     Returns
     -------
@@ -78,18 +78,6 @@ def create_model_setup(filename_or_dict):
         inputs = filename_or_dict
 
     ds = Dataset()
-
-    input_grid = inputs['grid'].copy()
-    grid_dims = input_grid.pop('dims')
-    ds.fscape.set_regular_grid(grid_dims, **input_grid)
-
-    clock_data, clock_attrs = _extract_value_and_attrs(inputs['clock'])
-    ds.coords['clock'] = Variable('clock', clock_data, attrs=clock_attrs)
-
-    for cname, cparams in inputs['param'].items():
-        for pname, pdata in cparams.items():
-            varname = '__'.join([cname, pname])
-            value, attrs = _extract_value_and_attrs(pdata)
-            ds[varname] = Variable((), value, attrs=attrs)
+    # TODO: feed Dataset
 
     return ds
