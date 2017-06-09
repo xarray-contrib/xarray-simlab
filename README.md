@@ -1,8 +1,9 @@
 # xarray-sim: xarray extension for computer model simulations.
 
 xarray-sim is a Python library that provides both a framework for creating
-computational models from re-usable components and a xarray extension for
-setting and running simulations.
+computational models from re-usable components and a
+[xarray](http://xarray.pydata.org) extension for setting and running
+simulations.
 
 **Warning: this package is currently under heavy development (no stable release yet).**
 
