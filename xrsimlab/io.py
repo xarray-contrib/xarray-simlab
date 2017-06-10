@@ -5,7 +5,7 @@ import yaml
 import numpy as np
 from xarray import Dataset, Variable
 
-from .xr_accessor import SimAccessor
+from .xr_accessor import SimLabAccessor
 
 
 # fix parsing scientific notation

@@ -1,4 +1,3 @@
-
 # This file helps to compute a version number in source trees obtained from
 # git-archive tarball (such as those provided by githubs download-from-tag
 # feature). Distribution tarballs (built by setup.py sdist) and build
@@ -42,8 +41,8 @@ def get_config():
     cfg.VCS = "git"
     cfg.style = "pep440"
     cfg.tag_prefix = ""
-    cfg.parentdir_prefix = "xarray-sim-"
-    cfg.versionfile_source = "xrsim/_version.py"
+    cfg.parentdir_prefix = "xarray-simlab-"
+    cfg.versionfile_source = "xrsimlab/_version.py"
     cfg.verbose = False
     return cfg
 

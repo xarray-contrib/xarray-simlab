@@ -1,2 +1,2 @@
 include versioneer.py
-include xrsim/_version.py
+include xrsimlab/_version.py

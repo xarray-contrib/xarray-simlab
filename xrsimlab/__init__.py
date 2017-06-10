@@ -1,9 +1,9 @@
 """
-xarray-sim.
+xarray-simlab.
 
 """
 
-from .xr_accessor import SimAccessor
+from .xr_accessor import SimLabAccessor
 from .variable.base import (Variable, ForeignVariable, VariableList,
                             VariableGroup, diagnostic, ValidationError)
 from .variable.custom import NumberVariable, FloatVariable, IntegerVariable

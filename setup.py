@@ -6,16 +6,16 @@ from os.path import exists
 import versioneer
 
 
-setup(name='xarray-sim',
+setup(name='xarray-simlab',
       version=versioneer.get_version(),
       cmdclass=versioneer.get_cmdclass(),
       description='xarray extension for computer model simulations',
-      url='http://github.com/benbovy/xarray-sim',
+      url='http://github.com/benbovy/xarray-simlab',
       maintainer='Benoit Bovy',
       maintainer_email='benbovy@gmail.com',
       license='BSD-Clause3',
       keywords='python xarray modelling simulation-framework',
-      packages=['xrsim'],
+      packages=['xrsimlab'],
       long_description=(open('README.md').read() if exists('README.md')
                         else ''),
       python_requires='>=3.4',

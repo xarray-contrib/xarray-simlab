@@ -24,13 +24,13 @@ def filter_accessor(dataset):
     return filter
 
 
-@register_dataset_accessor('sim')
-class SimAccessor(object):
-    """`sim` extension to `xarray.Dataset`."""
+@register_dataset_accessor('simlab')
+class SimLabAccessor(object):
+    """simlab extension to `xarray.Dataset`."""
 
-    _master_clock_key = '_sim_master_clock'
-    _snapshot_clock_key = '_sim_snapshot_clock'
-    _snapshot_vars_key = '_sim_snapshot_vars'
+    _master_clock_key = '_simlab_master_clock'
+    _snapshot_clock_key = '_simlab_snapshot_clock'
+    _snapshot_vars_key = '_simlab_snapshot_vars'
 
     def __init__(self, xarray_obj):
         self._obj = xarray_obj
@@ -44,7 +44,7 @@ class SimAccessor(object):
 
         See Also
         --------
-        Dataset.sim.set_master_clock
+        Dataset.simlab.set_master_clock
 
         """
         if self._dim_master_clock is not None:
@@ -62,7 +62,7 @@ class SimAccessor(object):
         if dim not in self._obj.coords:
             raise KeyError("Dataset has no %r dimension coordinate. "
                            "To create a new master clock dimension, "
-                           "use Dataset.sim.set_master_clock instead."
+                           "use Dataset.simlab.set_master_clock instead."
                            % dim)
 
         if self.dim_master_clock is not None:
@@ -162,14 +162,14 @@ class SimAccessor(object):
 
         See Also
         --------
-        Dataset.sim.set_master_clock
-        Dataset.sim.dim_master_clock
+        Dataset.simlab.set_master_clock
+        Dataset.simlab.dim_master_clock
 
         """
         if self.dim_master_clock is None:
             raise ValueError("no master clock dimension/coordinate is defined "
                              "in Dataset. "
-                             "Use `Dataset.sim.set_master_clock` first")
+                             "Use `Dataset.simlab.set_master_clock` first")
 
         clock_data = self._set_clock_data(data, start, end, step, nsteps)
 
@@ -184,7 +184,7 @@ class SimAccessor(object):
         da_snapshot_clock = da_master_clock.sel(**indexer, **kwargs)
 
         self._obj[dim] = da_snapshot_clock.rename({self.dim_master_clock: dim})
-        # _sim_master_clock attribute has propagated with .sel
+        # _simlab_master_clock attribute has propagated with .sel
         self._obj[dim].attrs.pop(self._master_clock_key)
         self._obj[dim].attrs[self._snapshot_clock_key] = True
 
@@ -214,7 +214,7 @@ class SimAccessor(object):
     @model.setter
     def model(self, value):
         raise AttributeError("can't set 'model' attribute, "
-                             "use `Dataset.sim.use_model` instead")
+                             "use `Dataset.simlab.use_model` instead")
 
     def set_input_vars(self, process, **inputs):
         """Set or add Dataset variables that correspond to model
@@ -244,7 +244,7 @@ class SimAccessor(object):
         """
         if self._model is None:
             raise ValueError("no model attached to this Dataset. Use "
-                             "`Dataset.sim.use_model` first.")
+                             "`Dataset.simlab.use_model` first.")
 
         if isinstance(process, Process):
             process = process.name
@@ -318,7 +318,7 @@ class SimAccessor(object):
         """
         if self._model is None:
             raise ValueError("no model attached to this Dataset. Use "
-                             "`Dataset.sim.use_model` first.")
+                             "`Dataset.simlab.use_model` first.")
 
         xr_vars_list = []
 
@@ -344,7 +344,7 @@ class SimAccessor(object):
             if not clock_var.attrs.get(self._snapshot_clock_key, False):
                 raise ValueError("%r coordinate is not a snapshot clock "
                                  "coordinate. "
-                                 "Use Dataset.sim.set_snapshot_clock first"
+                                 "Use Dataset.simlab.set_snapshot_clock first"
                                  % clock_dim)
             clock_var.attrs[self._snapshot_vars_key] = snapshot_vars
 
@@ -397,7 +397,7 @@ class SimAccessor(object):
 
         See Also
         --------
-        Dataset.sim.run
+        Dataset.simlab.run
 
         """
         # TODO:

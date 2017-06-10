@@ -38,7 +38,7 @@ def _summarize_var(name, var, col_width, marker=' '):
     if isinstance(var, tuple):
         var_repr = "VariableList"
     else:
-        var_repr = str(var).strip('<>').replace('xrsim.', '')
+        var_repr = str(var).strip('<>').replace('xrsimlab.', '')
         var_repr = maybe_truncate(var_repr, max_line_length - col_width)
 
     return first_col + var_repr
