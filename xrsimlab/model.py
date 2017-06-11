@@ -375,8 +375,8 @@ class Model(AttrMapping):
             if self.is_input((proc_name, var_name)):
                 self[proc_name][var_name].value = var.values.copy()
 
-    def initalize(self):
-        """Run `.initalize()` for each processes in the model."""
+    def initialize(self):
+        """Run `.initialize()` for each processes in the model."""
         for proc in self._processes.values():
             proc.initialize()
 
@@ -428,7 +428,7 @@ class Model(AttrMapping):
         ds_no_time = ds.filter(lambda v: dim_master_clock not in v.dims)
         obj._set_inputs_values(ds_no_time)
 
-        obj.initalize()
+        obj.initialize()
 
         ds_time = ds.filter(lambda v: dim_master_clock in v.dims)
         has_time_var = bool(ds_time.data_vars)
