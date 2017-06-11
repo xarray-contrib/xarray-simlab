@@ -42,7 +42,9 @@ class ProcessBase(type):
         if not parents:
             # Skip customization for the `Process` class
             # (only applied to its subclasses)
-            return super().__new__(cls, name, bases, attrs)
+            new_attrs = attrs.copy()
+            new_attrs.update({'_variables': {}, '_meta': {}})
+            return super().__new__(cls, name, bases, new_attrs)
         for p in parents:
             mro = [c for c in inspect.getmro(p)
                    if isinstance(c, ProcessBase)]
@@ -226,7 +228,8 @@ class Process(AttrMapping, metaclass=ProcessBase):
 
     @combomethod
     def info(cls_or_self, buf=None):
-        """
+        """info(buf=None)
+
         Concise summary of Process variables and metadata.
 
         Parameters
