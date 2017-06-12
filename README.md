@@ -7,6 +7,10 @@ simulations using the xarray's `Dataset` structure.
 
 **Warning: this package is currently under heavy development (no stable release yet).**
 
+## Documentation
+
+A draft of documentation is hosted on ReadTheDocs: http://xarray-simlab.readthedocs.io
+
 ## License
 
 3-clause ("Modified" or "New") BSD license (see [License file](LICENSE)).
