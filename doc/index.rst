@@ -13,6 +13,8 @@ Documentation Index
 
 **Getting Started**
 
+* :doc:`about`
+* :doc:`faq`
 * :doc:`installing`
 
 .. toctree::
@@ -20,18 +22,24 @@ Documentation Index
    :hidden:
    :caption: Getting Started
 
+   about
+   faq
    installing
 
 **Help & reference**
 
+* :doc:`whats_new`
 * :doc:`api`
+* :doc:`develop`
 
 .. toctree::
    :maxdepth: 1
    :hidden:
    :caption: Help & reference
 
+   whats_new
    api
+   develop
 
 Get in touch
 ------------

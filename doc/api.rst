@@ -2,7 +2,7 @@
 .. currentmodule:: xrsimlab
 
 #############
-API reference
+API Reference
 #############
 
 This page provides an auto-generated summary of xarray-simlab's API. For more
