@@ -89,21 +89,6 @@ class ProcessBase(type):
 
         return new_class
 
-    @property
-    def variables(cls):
-        """Process variables."""
-        return cls._variables
-
-    @property
-    def meta(cls):
-        """Process metadata."""
-        return cls._meta
-
-    @property
-    def name(cls):
-        """Process name."""
-        return cls.__name__
-
 
 class Process(AttrMapping, metaclass=ProcessBase):
     """Base class that represents a logical unit in a computational model.
@@ -152,12 +137,12 @@ class Process(AttrMapping, metaclass=ProcessBase):
 
     @property
     def variables(self):
-        """Process variables."""
+        """A dictionary of Process variables."""
         return self._variables
 
     @property
     def meta(self):
-        """Process metadata."""
+        """A dictionary of Process metadata (i.e., Meta attributes)."""
         return self._meta
 
     @property
@@ -166,6 +151,7 @@ class Process(AttrMapping, metaclass=ProcessBase):
 
         Returns the name of the Process subclass if it is not attached to
         any Model object.
+
         """
         if self._name is None:
             return type(self).__name__
@@ -234,7 +220,8 @@ class Process(AttrMapping, metaclass=ProcessBase):
 
         Parameters
         ----------
-        buf : writable buffer (default: sys.stdout).
+        buf : object, optional
+            Writable buffer (default: sys.stdout).
 
         """
         if buf is None:  # pragma: no cover
