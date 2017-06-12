@@ -34,3 +34,7 @@ bin/
 
 # misc
 .DS_Store
+
+# doc
+doc/_build
+doc/_api_generated
