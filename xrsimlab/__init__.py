@@ -2,6 +2,7 @@
 xarray-simlab.
 
 """
+from __future__ import absolute_import
 
 from .xr_accessor import SimLabAccessor
 from .variable.base import (Variable, ForeignVariable, VariableList,
