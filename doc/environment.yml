@@ -1,6 +1,6 @@
 name: xarray-simlab
 dependencies:
-  - python=3.6
+  - python=3.5
   - numpy=1.12
   - xarray=0.9.6
   - ipython=6.1.0
