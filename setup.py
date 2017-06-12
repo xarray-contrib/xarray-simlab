@@ -15,7 +15,7 @@ setup(name='xarray-simlab',
       maintainer_email='benbovy@gmail.com',
       license='BSD-Clause3',
       keywords='python xarray modelling simulation-framework',
-      packages=['xrsimlab'],
+      packages=['xrsimlab', 'xrsimlab.variable'],
       long_description=(open('README.md').read() if exists('README.md')
                         else ''),
       python_requires='>=3.4',
