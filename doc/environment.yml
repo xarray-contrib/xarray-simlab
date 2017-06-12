@@ -1,0 +1,7 @@
+name: xarray-simlab
+dependencies:
+  - python=3.6
+  - numpy=1.12
+  - xarray=0.9.6
+  - ipython=6.1.0
+  - sphinx=1.6.2
