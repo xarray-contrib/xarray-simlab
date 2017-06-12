@@ -14,40 +14,29 @@ Dataset.simlab (xarray accessor)
 
 Note: ``SimLabAccessor`` is a class that is decorated using
 :py:func:`xarray.register_dataset_accessor`. This allows extending
-:py:class:`xarray.Dataset` with all the methods and attributes listed below, that can be
-accessed from the ``Dataset.simlab`` property.
-Proper use of this accessor should look like:
+:py:class:`xarray.Dataset` with all the methods and properties listed below,
+which can then be accessed via the ``Dataset.simlab`` property.
+Proper use of this accessor should be like:
 
 .. code-block:: python
 
    >>> import xarray as xr   # first import xarray
-   >>> import xrsimlab       # then import xrsimlab
+   >>> import xrsimlab       # import xrsimlab (simlab accessor is registered)
    >>> ds = xr.Dataset()
    >>> ds.simlab.<meth_or_prop>   # access to the methods and properties listed below
-
-
-Methods
--------
-
-.. autosummary::
-   :toctree: _api_generated/
-
-   SimLabAccessor.use_model
-   SimLabAccessor.set_master_clock
-   SimLabAccessor.set_snapshot_clock
-   SimLabAccessor.set_input_vars
-   SimLabAccessor.set_snapshot_vars
-   SimLabAccessor.run
-
-Properties
-----------
 
 .. autosummary::
    :toctree: _api_generated/
 
    SimLabAccessor.model
+   SimLabAccessor.use_model
    SimLabAccessor.dim_master_clock
+   SimLabAccessor.set_master_clock
+   SimLabAccessor.set_snapshot_clock
+   SimLabAccessor.set_input_vars
+   SimLabAccessor.set_snapshot_vars
    SimLabAccessor.snapshot_vars
+   SimLabAccessor.run
 
 Model
 =====
@@ -75,7 +64,7 @@ Model introspection
 -------------------
 
 ``Model`` implements an immutable mapping interface where keys are
-process names and values are objects of ``Process`` subclasses. (attribute-style
+process names and values are objects of ``Process`` subclasses (attribute-style
 access is also supported).
 
 .. autosummary::
@@ -123,7 +112,7 @@ Process interface and introspection
 -----------------------------------
 
 ``Process`` implements an immutable mapping interface where keys are
-variable names and values are Variable-like objects. (attribute-style
+variable names and values are Variable objects (attribute-style
 access is also supported).
 
 .. autosummary::

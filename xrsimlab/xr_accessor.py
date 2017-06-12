@@ -116,8 +116,8 @@ class SimLabAccessor(object):
         Raises
         ------
         ValueError
-            - If Dataset has already a dimension named `dim`.
-            - In case of ambiguous combination of `nsteps`, `step` and `end`.
+            If Dataset has already a dimension named `dim`
+            or in case of ambiguous combination of `nsteps`, `step` and `end`.
 
         """
         if dim in self._obj.dims:
