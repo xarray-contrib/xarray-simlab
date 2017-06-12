@@ -273,22 +273,26 @@ class Model(AttrMapping):
         Parameters
         ----------
         processes : dict
-            Dictionnary with process names as keys and `Process`
-            objects as values. The order doesn't matter.
+            Dictionnary with process names as keys and subclasses of
+            `Process` as values.
 
         """
-        for k, p in processes.items():
-            if not isinstance(p, Process):
-                raise TypeError("%s is not a Process object" % p)
+        processes_obj = {}
 
-        _set_process_names(processes)
-        _set_group_vars(processes)
-        _link_foreign_vars(processes)
+        for k, cls in processes.items():
+            if not issubclass(cls, Process):
+                raise TypeError("%s is not a subclass of Process object" % cls)
+            processes_obj[k] = cls()
 
-        self._input_vars = _get_input_vars(processes)
-        self._dep_processes = _get_process_dependencies(processes)
+        _set_process_names(processes_obj)
+        _set_group_vars(processes_obj)
+        _link_foreign_vars(processes_obj)
+
+        self._input_vars = _get_input_vars(processes_obj)
+        self._dep_processes = _get_process_dependencies(processes_obj)
         self._processes = OrderedDict(
-            [(k, processes[k]) for k in _sort_processes(self._dep_processes)]
+            [(k, processes_obj[k])
+             for k in _sort_processes(self._dep_processes)]
         )
         self._time_processes = OrderedDict(
             [(k, proc) for k, proc in self._processes.items()
@@ -454,17 +458,6 @@ class Model(AttrMapping):
 
         return snapshots.to_dataset()
 
-    def _create_new_model(self, processes):
-        """Create a new Model object and make sure that its process instances
-        have not been already created or used elsewhere.
-        """
-        new_processes = {}
-
-        for proc_name, proc in processes.items():
-            new_processes[proc_name] = proc.clone()
-
-        return type(self)(new_processes)
-
     def clone(self):
         """Clone the Model.
 
@@ -472,7 +465,8 @@ class Model(AttrMapping):
         (i.e., `state`, `value`, `change` or `rate` properties) in all
         processes are not copied.
         """
-        return self._create_new_model(self._processes)
+        processes_cls = {k: type(obj) for k, obj in self._processes.items()}
+        return type(self)(processes_cls)
 
     def update_processes(self, processes):
         """Add or replace processe(s) in this model.
@@ -480,8 +474,8 @@ class Model(AttrMapping):
         Parameters
         ----------
         processes : dict
-            Dictionnary with process names as keys and
-            `Process` objects as values.
+            Dictionnary with process names as keys and subclasses of
+            `Process` as values.
 
         Returns
         -------
@@ -489,16 +483,16 @@ class Model(AttrMapping):
             New Model instance with updated processes.
 
         """
-        new_processes = self._processes.copy()
-        new_processes.update(processes)
-        return self._create_new_model(new_processes)
+        processes_cls = {k: type(obj) for k, obj in self._processes.items()}
+        processes_cls.update(processes)
+        return type(self)(processes_cls)
 
-    def drop_processes(self, names):
+    def drop_processes(self, keys):
         """Drop processe(s) from this model.
 
         Parameters
         ----------
-        names : str or list of str
+        keys : str or list of str
             Name(s) of the processes to drop.
 
         Returns
@@ -507,13 +501,12 @@ class Model(AttrMapping):
             New Model instance with dropped processes.
 
         """
-        if isinstance(names, str):
-            names = [names]
+        if isinstance(keys, str):
+            keys = [keys]
 
-        new_processes = self._processes.copy()
-        for n in names:
-            del new_processes[n]
-        return self._create_new_model(new_processes)
+        processes_cls = {k: type(obj) for k, obj in self._processes.items()
+                         if k not in keys}
+        return type(self)(processes_cls)
 
     def __repr__(self):
         n_inputs = sum([len(v) for v in self._input_vars.values()])
