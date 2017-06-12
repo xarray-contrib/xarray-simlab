@@ -72,7 +72,7 @@ class Variable(AbstractVariable):
         optional : bool, optional
             If True, a value may not be required for the variable
             (default: False). Ignored when `provided` is True.
-        default_value : any, optional
+        default_value : object, optional
             Single default value for the variable (default: None). It
             will be automatically broadcasted to all of its dimensions.
             Ignored when `provided` is True.
@@ -160,7 +160,7 @@ class Variable(AbstractVariable):
 
         Parameters
         ----------
-        value : any
+        value : object
             The input value can be in the form of a single value,
             an array-like, a ``(dims, data[, attrs])`` tuple, another
             `xarray.Variable` object or a `xarray.DataArray` object.
@@ -364,15 +364,17 @@ def diagnostic(attrs_or_function=None, attrs=None):
 
     Examples
     --------
-    @diagnostic
-    def slope(self):
-        '''topographic slope'''
-        return self._compute_slope()
+    .. code-block:: python
 
-    @diagnostic({'units': '1/m'})
-    def curvature(self):
-        '''terrain curvature'''
-        return self._compute_curvature()
+        @diagnostic
+        def slope(self):
+            '''topographic slope'''
+            return self._compute_slope()
+
+        @diagnostic({'units': '1/m'})
+        def curvature(self):
+            '''terrain curvature'''
+            return self._compute_curvature()
 
     """
     func = None
