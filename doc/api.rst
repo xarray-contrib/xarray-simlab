@@ -1,5 +1,4 @@
 .. _api:
-.. currentmodule:: xrsimlab
 
 #############
 API Reference
@@ -12,31 +11,40 @@ documentation.
 Dataset.simlab (xarray accessor)
 ================================
 
-Note: ``SimLabAccessor`` is a class that is decorated using
-:py:func:`xarray.register_dataset_accessor`. This allows extending
-:py:class:`xarray.Dataset` with all the methods and properties listed below,
-which can then be accessed via the ``Dataset.simlab`` property.
-Proper use of this accessor should be like:
+This accessor extends :py:class:`xarray.Dataset` with all the methods and
+properties listed below. Proper use of this accessor should be like:
 
 .. code-block:: python
 
    >>> import xarray as xr   # first import xarray
-   >>> import xrsimlab       # import xrsimlab (simlab accessor is registered)
+   >>> import xrsimlab       # import xrsimlab (the simlab xarray accessor is registered)
    >>> ds = xr.Dataset()
    >>> ds.simlab.<meth_or_prop>   # access to the methods and properties listed below
 
+.. currentmodule:: xarray
+
+**Properties**
+
 .. autosummary::
    :toctree: _api_generated/
+   :template: autosummary/accessor_attribute.rst
 
-   SimLabAccessor.model
-   SimLabAccessor.use_model
-   SimLabAccessor.dim_master_clock
-   SimLabAccessor.set_master_clock
-   SimLabAccessor.set_snapshot_clock
-   SimLabAccessor.set_input_vars
-   SimLabAccessor.set_snapshot_vars
-   SimLabAccessor.snapshot_vars
-   SimLabAccessor.run
+   Dataset.simlab.model
+   Dataset.simlab.dim_master_clock
+   Dataset.simlab.snapshot_vars
+
+**Methods**
+
+.. autosummary::
+   :toctree: _api_generated/
+   :template: autosummary/accessor_method.rst
+
+   Dataset.simlab.use_model
+   Dataset.simlab.set_master_clock
+   Dataset.simlab.set_snapshot_clock
+   Dataset.simlab.set_input_vars
+   Dataset.simlab.set_snapshot_vars
+   Dataset.simlab.run
 
 Model
 =====
@@ -143,15 +151,30 @@ Variable
 Base variable class
 -------------------
 
+Although it has the same name, this class is different from
+:py:class:`xarray.Variable`.
+
 .. autosummary::
    :toctree: _api_generated/
 
    Variable
-   Variable.to_xarray_variable
+
+**Attributes**
+
+.. autosummary::
+   :toctree: _api_generated/
+
    Variable.value
    Variable.state
    Variable.rate
    Variable.change
+
+**Methods**
+
+.. autosummary::
+   :toctree: _api_generated/
+
+   Variable.to_xarray_variable
 
 Derived variable classes
 ------------------------
@@ -172,6 +195,12 @@ Foreign variable
    :toctree: _api_generated/
 
    ForeignVariable
+
+**Attributes**
+
+.. autosummary::
+   :toctree: _api_generated/
+
    ForeignVariable.ref_process
    ForeignVariable.ref_var
    ForeignVariable.value

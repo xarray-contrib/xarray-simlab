@@ -19,6 +19,6 @@ xarray-simlab is developped at the
 [Earth Surface Process Modelling](http://www.gfz-potsdam.de/en/section/earth-surface-process-modelling/)
 group of the GFZ Helmholtz Centre Potsdam.
 
-xarray-simlab uses short parts of the code of the [xarray](http://xarray.pydata.org)
-and [dask](http://dask.pydata.org) libraries. Their licenses are reproduced in
-the "licenses" directory.
+xarray-simlab uses short parts of the code of the [xarray](http://xarray.pydata.org),
+[pandas](http://pandas.pydata.org/) and [dask](http://dask.pydata.org) libraries.
+Their licenses are reproduced in the "licenses" directory.

@@ -44,7 +44,7 @@ class SimLabAccessor(object):
 
         See Also
         --------
-        Dataset.simlab.set_master_clock
+        :meth:`Dataset.simlab.set_master_clock`
 
         """
         if self._dim_master_clock is not None:
@@ -162,8 +162,8 @@ class SimLabAccessor(object):
 
         See Also
         --------
-        Dataset.simlab.set_master_clock
-        Dataset.simlab.dim_master_clock
+        :meth:`Dataset.simlab.set_master_clock`
+        :meth:`Dataset.simlab.dim_master_clock`
 
         """
         if self.dim_master_clock is None:
@@ -208,7 +208,13 @@ class SimLabAccessor(object):
 
     @property
     def model(self):
-        """Model instance to use with this dataset."""
+        """Model instance to use with this dataset (read-only).
+
+        See Also
+        --------
+        :meth:`xarray.Dataset.simlab.use_model`
+
+        """
         return self._model
 
     @model.setter
@@ -239,7 +245,7 @@ class SimLabAccessor(object):
 
         See Also
         --------
-        xarray.as_variable
+        :py:meth:`xarray.as_variable`
 
         """
         if self._model is None:
@@ -397,7 +403,7 @@ class SimLabAccessor(object):
 
         See Also
         --------
-        Dataset.simlab.run
+        :meth:`xarray.Dataset.simlab.run`
 
         """
         # TODO:
