@@ -3,7 +3,7 @@
 Contributor Guide
 =================
 
-xarray-sim is an open-source project. Contributions are welcome, and they are
+xarray-simlab is an open-source project. Contributions are welcome, and they are
 greatly appreciated!
 
 You can contribute in many ways, e.g., by reporting bugs, submitting feedbacks,
@@ -33,7 +33,7 @@ Fork the repository and download the code
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To further be able to submit modifications, it is preferable to start by
-forking the xarray-sim repository on GitHub_ (you need to have an account).
+forking the xarray-simlab repository on GitHub_ (you need to have an account).
 
 Then clone your fork locally::
 
@@ -124,7 +124,7 @@ should follow the numpydoc_ standard when possible.
 Coding style
 ~~~~~~~~~~~~
 
-The xarray-sim code mostly follows the style conventions defined in PEP8_.
+The xarray-simlab code mostly follows the style conventions defined in PEP8_.
 
 .. _PEP8: https://www.python.org/dev/peps/pep-0008/
 
