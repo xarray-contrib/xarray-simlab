@@ -332,8 +332,8 @@ class Model(AttrMapping):
         """
         if isinstance(variable, AbstractVariable):
             proc_name, var_name = self._get_proc_var_name(variable)
-        elif isinstance(variable, VariableList):
-            # VariableList objects are never model inputs
+        elif isinstance(variable, (VariableList, VariableGroup)):
+            # VariableList and VariableGroup objects are never model inputs
             return False
         else:
             proc_name, var_name = variable
