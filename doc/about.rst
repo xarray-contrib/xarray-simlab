@@ -3,6 +3,8 @@
 About xarray-simlab
 ===================
 
+
+
 Motivation
 ----------
 
@@ -17,7 +19,7 @@ luigi: use classes as primary, re-usable units for chaining many tasks
 django: especially The Django's ORM part (i.e., django.db.models) for the
 design of Process and Variable classes
 param: another source of inspiration for Process interface and Variable objects.
-clinlab: another python package for process-oriented modeling, applied to
+climlab: another python package for process-oriented modeling, applied to
 climate
 
 
