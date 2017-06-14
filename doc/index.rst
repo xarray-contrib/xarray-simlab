@@ -16,6 +16,7 @@ Documentation Index
 * :doc:`about`
 * :doc:`faq`
 * :doc:`installing`
+* :doc:`examples`
 
 .. toctree::
    :maxdepth: 1
@@ -25,6 +26,7 @@ Documentation Index
    about
    faq
    installing
+   examples
 
 **Help & reference**
 

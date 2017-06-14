@@ -1,4 +1,4 @@
-name: xarray-simlab
+name: xarray-simlab-doc
 channels:
   - conda-forge
   - defaults
@@ -7,4 +7,8 @@ dependencies:
   - numpy=1.12
   - xarray=0.9.6
   - ipython=6.1.0
+  - ipykernel=4.6.1
+  - nbconvert=5.2.1
   - sphinx=1.6.2
+  - nbsphinx=0.2.13
+  - pandoc=1.19.2
