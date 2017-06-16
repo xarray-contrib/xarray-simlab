@@ -8,7 +8,7 @@ extension for setting and running simulations using the
 
 .. _xarray: http://xarray.pydata.org
 
-Documentation Index
+Documentation index
 -------------------
 
 **Getting Started**
@@ -17,6 +17,8 @@ Documentation Index
 * :doc:`faq`
 * :doc:`installing`
 * :doc:`examples`
+* :doc:`create_model`
+* :doc:`run_model`
 
 .. toctree::
    :maxdepth: 1
@@ -27,6 +29,8 @@ Documentation Index
    faq
    installing
    examples
+   create_model
+   run_model
 
 **Help & reference**
 
