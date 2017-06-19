@@ -56,4 +56,4 @@ Import xarray-simlab
 To make sure that ``xarray-simlab`` is correctly installed, try import it in a
 Python console::
 
-    >>> import xrsimlab
+    >>> import xsimlab

@@ -24,13 +24,13 @@ class ModelRunSnapshots(object):
         self.model = model
         self.ds = dataset
 
-        self.snapshot_clocks_vars = dataset.simlab.snapshot_vars
+        self.snapshot_clocks_vars = dataset.xsimlab.snapshot_vars
 
         self.snapshot_arrays = {}
         for vars in self.snapshot_clocks_vars.values():
             self.snapshot_arrays.update({v: [] for v in vars})
 
-        master_clock_values = dataset[dataset.simlab.dim_master_clock].values
+        master_clock_values = dataset[dataset.xsimlab.dim_master_clock].values
         self.snapshot_clocks_steps = {
             clock: np.in1d(master_clock_values, dataset[clock].values)
             for clock in self.snapshot_clocks_vars if clock is not None
@@ -96,7 +96,7 @@ class ModelRunSnapshots(object):
                 attrs = out_ds.attrs
             else:
                 attrs = out_ds[clock].attrs
-            attrs.pop(xr_accessor.SimLabAccessor._snapshot_vars_key)
+            attrs.pop(xr_accessor.SimlabAccessor._snapshot_vars_key)
 
         return out_ds
 
@@ -420,7 +420,7 @@ class Model(AttrMapping):
             Another Dataset with model inputs and outputs.
 
         """
-        dim_master_clock = ds.simlab.dim_master_clock
+        dim_master_clock = ds.xsimlab.dim_master_clock
         if dim_master_clock is None:
             raise ValueError("missing master clock dimension / coordinate ")
 
@@ -511,7 +511,7 @@ class Model(AttrMapping):
     def __repr__(self):
         n_inputs = sum([len(v) for v in self._input_vars.values()])
 
-        hdr = ("<xrsimlab.Model (%d processes, %d inputs)>\n"
+        hdr = ("<xsimlab.Model (%d processes, %d inputs)>\n"
                % (len(self._processes), n_inputs))
 
         max_line_length = 70

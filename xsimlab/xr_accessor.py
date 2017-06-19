@@ -24,13 +24,13 @@ def filter_accessor(dataset):
     return filter
 
 
-@register_dataset_accessor('simlab')
-class SimLabAccessor(object):
+@register_dataset_accessor('xsimlab')
+class SimlabAccessor(object):
     """simlab extension to `xarray.Dataset`."""
 
-    _master_clock_key = '_simlab_master_clock'
-    _snapshot_clock_key = '_simlab_snapshot_clock'
-    _snapshot_vars_key = '_simlab_snapshot_vars'
+    _master_clock_key = '_xsimlab_master_clock'
+    _snapshot_clock_key = '_xsimlab_snapshot_clock'
+    _snapshot_vars_key = '_xsimlab_snapshot_vars'
 
     def __init__(self, xarray_obj):
         self._obj = xarray_obj
@@ -44,7 +44,7 @@ class SimLabAccessor(object):
 
         See Also
         --------
-        :meth:`Dataset.simlab.set_master_clock`
+        :meth:`Dataset.xsimlab.set_master_clock`
 
         """
         if self._dim_master_clock is not None:
@@ -62,7 +62,7 @@ class SimLabAccessor(object):
         if dim not in self._obj.coords:
             raise KeyError("Dataset has no %r dimension coordinate. "
                            "To create a new master clock dimension, "
-                           "use Dataset.simlab.set_master_clock instead."
+                           "use Dataset.xsimlab.set_master_clock instead."
                            % dim)
 
         if self.dim_master_clock is not None:
@@ -162,14 +162,14 @@ class SimLabAccessor(object):
 
         See Also
         --------
-        :meth:`Dataset.simlab.set_master_clock`
-        :meth:`Dataset.simlab.dim_master_clock`
+        :meth:`Dataset.xsimlab.set_master_clock`
+        :meth:`Dataset.xsimlab.dim_master_clock`
 
         """
         if self.dim_master_clock is None:
             raise ValueError("no master clock dimension/coordinate is defined "
                              "in Dataset. "
-                             "Use `Dataset.simlab.set_master_clock` first")
+                             "Use `Dataset.xsimlab.set_master_clock` first")
 
         clock_data = self._set_clock_data(data, start, end, step, nsteps)
 
@@ -184,7 +184,7 @@ class SimLabAccessor(object):
         da_snapshot_clock = da_master_clock.sel(**indexer, **kwargs)
 
         self._obj[dim] = da_snapshot_clock.rename({self.dim_master_clock: dim})
-        # _simlab_master_clock attribute has propagated with .sel
+        # _xsimlab_master_clock attribute has propagated with .sel
         self._obj[dim].attrs.pop(self._master_clock_key)
         self._obj[dim].attrs[self._snapshot_clock_key] = True
 
@@ -212,7 +212,7 @@ class SimLabAccessor(object):
 
         See Also
         --------
-        :meth:`xarray.Dataset.simlab.use_model`
+        :meth:`xarray.Dataset.xsimlab.use_model`
 
         """
         return self._model
@@ -220,7 +220,7 @@ class SimLabAccessor(object):
     @model.setter
     def model(self, value):
         raise AttributeError("can't set 'model' attribute, "
-                             "use `Dataset.simlab.use_model` instead")
+                             "use `Dataset.xsimlab.use_model` instead")
 
     def set_input_vars(self, process, **inputs):
         """Set or add Dataset variables that correspond to model
@@ -250,7 +250,7 @@ class SimLabAccessor(object):
         """
         if self._model is None:
             raise ValueError("no model attached to this Dataset. Use "
-                             "`Dataset.simlab.use_model` first.")
+                             "`Dataset.xsimlab.use_model` first.")
 
         if isinstance(process, Process):
             process = process.name
@@ -324,7 +324,7 @@ class SimLabAccessor(object):
         """
         if self._model is None:
             raise ValueError("no model attached to this Dataset. Use "
-                             "`Dataset.simlab.use_model` first.")
+                             "`Dataset.xsimlab.use_model` first.")
 
         xr_vars_list = []
 
@@ -350,7 +350,7 @@ class SimLabAccessor(object):
             if not clock_var.attrs.get(self._snapshot_clock_key, False):
                 raise ValueError("%r coordinate is not a snapshot clock "
                                  "coordinate. "
-                                 "Use Dataset.simlab.set_snapshot_clock first"
+                                 "Use Dataset.xsimlab.set_snapshot_clock first"
                                  % clock_dim)
             clock_var.attrs[self._snapshot_vars_key] = snapshot_vars
 
@@ -403,7 +403,7 @@ class SimLabAccessor(object):
 
         See Also
         --------
-        :meth:`xarray.Dataset.simlab.run`
+        :meth:`xarray.Dataset.xsimlab.run`
 
         """
         # TODO:

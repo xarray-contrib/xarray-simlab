@@ -231,6 +231,6 @@ class Process(AttrMapping, metaclass=ProcessBase):
 
     def __repr__(self):
         cls = "'%s.%s'" % (self.__module__, type(self).__name__)
-        header = "<xrsimlab.Process %s>\n" % cls
+        header = "<xsimlab.Process %s>\n" % cls
 
         return header + process_info(self)

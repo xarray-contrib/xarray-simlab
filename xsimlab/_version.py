@@ -42,7 +42,7 @@ def get_config():
     cfg.style = "pep440"
     cfg.tag_prefix = ""
     cfg.parentdir_prefix = "xarray-simlab-"
-    cfg.versionfile_source = "xrsimlab/_version.py"
+    cfg.versionfile_source = "xsimlab/_version.py"
     cfg.verbose = False
     return cfg
 

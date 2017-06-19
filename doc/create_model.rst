@@ -4,8 +4,8 @@ Creating models
 ===============
 
 xarray-simlab's framework provides a few Python base classes, e.g.,
-:class:`~xrsimlab.Variable`, :class:`~xrsimlab.Process` and
-:class:`~xrsimlab.Model` that can used togheter to create fully operational
+:class:`~xsimlab.Variable`, :class:`~xsimlab.Process` and
+:class:`~xsimlab.Model` that can used togheter to create fully operational
 models.
 
 A ``Model`` is a collection of processes that each define an interface with the

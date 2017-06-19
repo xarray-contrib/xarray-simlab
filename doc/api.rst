@@ -8,8 +8,8 @@ This page provides an auto-generated summary of xarray-simlab's API. For more
 details and examples, refer to the relevant sections in the main part of the
 documentation.
 
-Dataset.simlab (xarray accessor)
-================================
+Dataset.xsimlab (xarray accessor)
+=================================
 
 This accessor extends :py:class:`xarray.Dataset` with all the methods and
 properties listed below. Proper use of this accessor should be like:
@@ -17,9 +17,9 @@ properties listed below. Proper use of this accessor should be like:
 .. code-block:: python
 
    >>> import xarray as xr   # first import xarray
-   >>> import xrsimlab       # import xrsimlab (the simlab xarray accessor is registered)
+   >>> import xsimlab       # import xsimlab (the simlab xarray accessor is registered)
    >>> ds = xr.Dataset()
-   >>> ds.simlab.<meth_or_prop>   # access to the methods and properties listed below
+   >>> ds.xsimlab.<meth_or_prop>   # access to the methods and properties listed below
 
 .. currentmodule:: xarray
 
@@ -29,9 +29,9 @@ properties listed below. Proper use of this accessor should be like:
    :toctree: _api_generated/
    :template: autosummary/accessor_attribute.rst
 
-   Dataset.simlab.model
-   Dataset.simlab.dim_master_clock
-   Dataset.simlab.snapshot_vars
+   Dataset.xsimlab.model
+   Dataset.xsimlab.dim_master_clock
+   Dataset.xsimlab.snapshot_vars
 
 **Methods**
 
@@ -39,12 +39,12 @@ properties listed below. Proper use of this accessor should be like:
    :toctree: _api_generated/
    :template: autosummary/accessor_method.rst
 
-   Dataset.simlab.use_model
-   Dataset.simlab.set_master_clock
-   Dataset.simlab.set_snapshot_clock
-   Dataset.simlab.set_input_vars
-   Dataset.simlab.set_snapshot_vars
-   Dataset.simlab.run
+   Dataset.xsimlab.use_model
+   Dataset.xsimlab.set_master_clock
+   Dataset.xsimlab.set_snapshot_clock
+   Dataset.xsimlab.set_input_vars
+   Dataset.xsimlab.set_snapshot_vars
+   Dataset.xsimlab.run
 
 Model
 =====
@@ -52,7 +52,7 @@ Model
 Creating a model
 ----------------
 
-.. currentmodule:: xrsimlab
+.. currentmodule:: xsimlab
 .. autosummary::
    :toctree: _api_generated/
 
@@ -86,7 +86,7 @@ Running a model
 ---------------
 
 In most cases, the methods listed below should not be used directly.
-For running simulations, it is preferable to use the ``Dataset.simlab`` accessor
+For running simulations, it is preferable to use the ``Dataset.xsimlab`` accessor
 instead. These methods might be useful for debugging, though.
 
 .. autosummary::

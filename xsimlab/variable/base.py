@@ -29,7 +29,7 @@ class AbstractVariable(object):
         self.group = group
 
     def __repr__(self):
-        return "<xrsimlab.%s>" % type(self).__name__
+        return "<xsimlab.%s>" % type(self).__name__
 
 
 class Variable(AbstractVariable):
@@ -225,7 +225,7 @@ class Variable(AbstractVariable):
     def __repr__(self):
         dims_str = ', '.join(['(%s)' % ', '.join(['%r' % d for d in dims])
                               for dims in self.allowed_dims])
-        return ("<xrsimlab.%s %s>" % (type(self).__name__, dims_str))
+        return ("<xsimlab.%s %s>" % (type(self).__name__, dims_str))
 
 
 class ForeignVariable(AbstractVariable):
@@ -299,7 +299,7 @@ class ForeignVariable(AbstractVariable):
     def __repr__(self):
         ref_str = "%s.%s" % (self.ref_process.name, self.var_name)
 
-        return "<xrsimlab.%s (%s)>" % (type(self).__name__, ref_str)
+        return "<xsimlab.%s (%s)>" % (type(self).__name__, ref_str)
 
 
 ForeignVariable.state.__doc__ = Variable.state.__doc__
@@ -451,4 +451,4 @@ class VariableGroup(Iterable):
         return (v for v in self._variables)
 
     def __repr__(self):
-        return "<xrsimlab.%s %r>" % (type(self).__name__, self.group)
+        return "<xsimlab.%s %r>" % (type(self).__name__, self.group)
