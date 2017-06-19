@@ -14,6 +14,29 @@ landscape evolution.
 
 .. _`xarray-topo`: https://gitext.gfz-potsdam.de/sec55-public/xarray-topo
 
+Does xarray-simlab allow fast model execution?
+----------------------------------------------
+
+Yes, although it depends on how the model is implemented.
+
+xarray-simlab is written in pure-Python and so is the outer (time) loop of
+xarray-simlab models. The execution of Python code is slow compared to other
+languages, but for the outer loop only it wouldn't represent the main bottleneck
+of the overall model execution, especially when using an implicit time scheme.
+For inner (e.g., spatial) loops in each model processes - implemented within
+their ``.run_step`` method -, it might be better to have a numpy vectorized
+implementation, use an accelerator like Cython_ or Numba_ or call wrapped code
+that is written in, e.g., C or Fortran (see for example f2py_ for wrapping
+Fortran code).
+
+As with any other framework, xarray-simlab introduces an overhead compared to
+a simple, straightforward (but non-flexible) implementation of a model. However,
+the preliminary benchmarks that we have run show only a very small overhead.
+
+.. _Cython: http://cython.org/
+.. _Numba: http://numba.pydata.org/
+.. _f2py: https://docs.scipy.org/doc/numpy-dev/f2py/
+
 Will xarray-simlab support Python 2.7.x?
 ----------------------------------------
 
@@ -29,8 +52,8 @@ it still makes the code harder to maintain.
 Which features are likely to be implemented in next xarray-simlab releases?
 ---------------------------------------------------------------------------
 
-Some ideas for future development can be found in the roadmap_ on the
-xarray-simlab's Github wiki_.
+xarray-simlab is a very young project. Some ideas for future development can be
+found in the roadmap_ on the xarray-simlab's Github wiki_.
 
 .. _roadmap: https://github.com/benbovy/xarray-simlab/wiki/Roadmap
 .. _wiki: https://github.com/benbovy/xarray-simlab/wiki

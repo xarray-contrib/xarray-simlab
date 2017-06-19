@@ -3,9 +3,7 @@
 Creating models
 ===============
 
-(WIP)
-
-The framework provides a few Python base classes, e.g.,
+xarray-simlab's framework provides a few Python base classes, e.g.,
 :class:`~xrsimlab.Variable`, :class:`~xrsimlab.Process` and
 :class:`~xrsimlab.Model` that can used togheter to create fully operational
 models.
@@ -16,6 +14,7 @@ computation.
 
 Process
 -------
+
 
 
 

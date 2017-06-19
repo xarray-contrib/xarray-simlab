@@ -24,10 +24,11 @@ environments used for building and running computational models and the ones
 used for processing and analysing simulation results. It also encourages
 building new models from re-usable components and avoid reinventing the wheel.
 
-The design of this tool is mainly focused on fast development and simulation
-setting(s), which would ultimately optimize the iterative, back-and-forth
-process between ideas on how to model a particular phenomenon and insights
-from the exploration of model behavior.
+The design of this tool is mainly focused on fast model development and easy
+creation of various simulation settings. Ultimately, this would optimize the
+iterative back-and-forth process between ideas that we have on how to model a
+particular phenomenon and insights that we get from the exploration of model
+behavior.
 
 Sources of inspiration
 ----------------------
