@@ -16,7 +16,7 @@ setup(name='xarray-simlab',
       license='BSD-Clause3',
       keywords='python xarray modelling simulation-framework',
       packages=['xsimlab', 'xsimlab.variable'],
-      long_description=(open('README.md').read() if exists('README.md')
+      long_description=(open('README.rst').read() if exists('README.rst')
                         else ''),
       python_requires='>=3.4',
       install_requires=['numpy', 'xarray >= 0.8.0'],
