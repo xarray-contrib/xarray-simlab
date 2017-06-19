@@ -148,7 +148,7 @@ Every significative code contribution should be listed in the
 Contributing to documentation
 -----------------------------
 
-xarray uses Sphinx_ for documentation, hosted on http://readthedocs.org .
+xarray-simlab uses Sphinx_ for documentation, hosted on http://readthedocs.org .
 Documentation is maintained in the RestructuredText markup language (``.rst``
 files) in ``xarray-simlab/doc``.
 
