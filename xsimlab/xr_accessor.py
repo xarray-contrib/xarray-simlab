@@ -181,7 +181,8 @@ class SimlabAccessor(object):
             kwargs = {}
 
         indexer = {self.dim_master_clock: clock_data}
-        da_snapshot_clock = da_master_clock.sel(**indexer, **kwargs)
+        kwargs.update(indexer)
+        da_snapshot_clock = da_master_clock.sel(**kwargs)
 
         self._obj[dim] = da_snapshot_clock.rename({self.dim_master_clock: dim})
         # _xsimlab_master_clock attribute has propagated with .sel
