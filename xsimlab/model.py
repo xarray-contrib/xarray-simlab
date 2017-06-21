@@ -6,7 +6,6 @@ import xarray as xr
 from .variable.base import (AbstractVariable, Variable, ForeignVariable,
                             VariableList, VariableGroup)
 from .process import Process
-from . import xr_accessor
 from .utils import AttrMapping
 from .formatting import _calculate_col_width, pretty_print, maybe_truncate
 
@@ -80,6 +79,8 @@ class ModelRunSnapshots(object):
         return xr.Variable(dims, data, attrs=attrs)
 
     def to_dataset(self):
+        from .xr_accessor import SimlabAccessor
+
         xr_variables = {}
 
         for clock, vars in self.snapshot_clocks_vars.items():
@@ -96,7 +97,7 @@ class ModelRunSnapshots(object):
                 attrs = out_ds.attrs
             else:
                 attrs = out_ds[clock].attrs
-            attrs.pop(xr_accessor.SimlabAccessor._snapshot_vars_key)
+            attrs.pop(SimlabAccessor._snapshot_vars_key)
 
         return out_ds
 
