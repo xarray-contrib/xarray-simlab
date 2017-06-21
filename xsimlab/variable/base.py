@@ -185,7 +185,8 @@ class Variable(AbstractVariable):
         xr_variable = as_variable(value, name='this_variable')
 
         xr_variable.attrs.update(self.attrs)
-        xr_variable.attrs['description'] = self.description
+        if self.description:
+            xr_variable.attrs['description'] = self.description
 
         return xr_variable
 
