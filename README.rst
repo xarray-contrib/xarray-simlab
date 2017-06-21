@@ -1,7 +1,7 @@
 xarray-simlab: xarray extension for computer model simulations
 ==============================================================
 
-|Doc Status|
+|Build Status| |Coverage| |Doc Status|
 
 xarray-simlab is a Python library that provides both a framework for creating
 computational models from re-usable components and a xarray_ extension for
@@ -10,6 +10,12 @@ setting and running simulations using the xarray's ``Dataset`` structure.
 **Warning: this package is currently under heavy development (no stable release yet).**
 
 .. _xarray: http://xarray.pydata.org
+.. |Build Status| image:: https://travis-ci.org/benbovy/xarray-simlab.svg?branch=master
+   :target: https://travis-ci.org/benbovy/xarray-simlab
+   :alt: Build Status
+.. |Coverage| image:: https://coveralls.io/repos/github/benbovy/xarray-simlab/badge.svg?branch=master
+   :target: https://coveralls.io/github/benbovy/xarray-simlab?branch=master
+   :alt: Coverage Status
 .. |Doc Status| image:: http://readthedocs.org/projects/xarray-simlab/badge/?version=latest
    :target: http://xarray-simlab.readthedocs.io/en/latest/?badge=latest
    :alt: Documentation Status
