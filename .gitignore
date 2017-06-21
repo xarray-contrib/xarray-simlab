@@ -25,6 +25,18 @@ wheels/
 .installed.cfg
 *.egg
 
+# Installer logs
+pip-log.txt
+
+# Unit test / coverage reports
+.coverage
+.tox
+nosetests.xml
+.cache
+
+# Translations
+*.mo
+
 # Compiled files
 bin/
 *.dSYM
