@@ -1,0 +1,9 @@
+name: test_env
+dependencies:
+  - python=3.4
+  - pytest
+  - numpy
+  - xarray
+  - pip:
+    - coveralls
+    - pytest-cov
