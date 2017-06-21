@@ -270,11 +270,12 @@ class ForeignVariable(AbstractVariable):
 
     @property
     def ref_var(self):
-        """The original variable object."""
+        """Returns the original Variable object."""
         return self.ref_process.variables[self.var_name]
 
     @property
     def state(self):
+        """State value of the original Variable object."""
         return self.ref_var._state
 
     @state.setter
@@ -285,6 +286,7 @@ class ForeignVariable(AbstractVariable):
 
     @property
     def rate(self):
+        """Rate value of the original Variable object."""
         return self.ref_var._rate
 
     @rate.setter
@@ -293,6 +295,7 @@ class ForeignVariable(AbstractVariable):
 
     @property
     def change(self):
+        """Change value of the original Variable object."""
         return self.ref_var._change
 
     @change.setter
@@ -303,11 +306,6 @@ class ForeignVariable(AbstractVariable):
         ref_str = "%s.%s" % (self.ref_process.name, self.var_name)
 
         return "<xsimlab.%s (%s)>" % (type(self).__name__, ref_str)
-
-
-ForeignVariable.state.__doc__ = Variable.state.__doc__
-ForeignVariable.rate.__doc__ = Variable.rate.__doc__
-ForeignVariable.change.__doc__ = Variable.change.__doc__
 
 
 class DiagnosticVariable(AbstractVariable):
