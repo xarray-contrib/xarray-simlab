@@ -34,7 +34,7 @@ install:
   - python setup.py install
 
 script:
-  - py.test xsimlab --cov=spyfit --cov-report term-missing
+  - py.test xsimlab --cov=xsimlab --cov-report term-missing
 
 after_success:
-- coveralls
+  - coveralls
