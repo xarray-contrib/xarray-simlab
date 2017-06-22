@@ -2,7 +2,23 @@ import unittest
 
 import xarray as xr
 
-from xsimlab import Variable, ValidationError
+from xsimlab.variable.base import (Variable, ForeignVariable, diagnostic,
+                                   DiagnosticVariable, ValidationError)
+from xsimlab.process import Process
+
+
+class MyProcess(Process):
+    var = Variable(())
+
+    @diagnostic
+    def diag(self):
+        """diagnostic."""
+        return 1
+
+    @diagnostic({'units': 'm'})
+    def diag2(self):
+        """diagnostic 2."""
+        return 2
 
 
 class TestVariable(unittest.TestCase):
@@ -70,3 +86,65 @@ class TestVariable(unittest.TestCase):
         var = Variable(((), 'x', ('x', 'y')))
         expected_repr = "<xsimlab.Variable (), ('x'), ('x', 'y')>"
         self.assertEqual(repr(var), expected_repr)
+
+
+class TestForeignVariable(unittest.TestCase):
+
+    def setUp(self):
+        self.fvar = ForeignVariable(MyProcess, 'var')
+        self.other_process = MyProcess()
+        self.fvar._other_process_obj = self.other_process
+
+    def test_ref_process(self):
+        fvar = ForeignVariable(MyProcess, 'var')
+        self.assertIs(fvar.ref_process, MyProcess)
+
+        self.assertIs(self.fvar.ref_process, self.other_process)
+
+    def test_ref_var(self):
+        self.assertIs(self.fvar.ref_var, self.other_process.var)
+
+    def test_properties(self):
+        for prop in ('state', 'value', 'rate', 'change'):
+            # test foreign getter
+            setattr(self.other_process.var, prop, 1)
+            self.assertEqual(getattr(self.fvar, prop), 1)
+
+            # test foreign setter
+            setattr(self.fvar, prop, 2)
+            self.assertEqual(getattr(self.other_process.var, prop), 2)
+
+    def test_repr(self):
+        expected_repr = "<xsimlab.ForeignVariable (MyProcess.var)>"
+        self.assertEqual(repr(self.fvar), expected_repr)
+
+        fvar = ForeignVariable(MyProcess, 'var')
+        self.assertEqual(repr(fvar), expected_repr)
+
+
+class TestDiagnosticVariable(unittest.TestCase):
+
+    def setUp(self):
+        self.process = MyProcess()
+        self.process.diag.assign_process_obj(self.process)
+        self.process.diag2.assign_process_obj(self.process)
+
+    def test_decorator(self):
+        self.assertIsInstance(self.process.diag, DiagnosticVariable)
+        self.assertIsInstance(self.process.diag2, DiagnosticVariable)
+
+        self.assertEqual(self.process.diag.description, "diagnostic.")
+        self.assertEqual(self.process.diag2.attrs, {'units': 'm'})
+
+    def test_state(self):
+        self.assertEqual(self.process.diag.state, 1)
+        self.assertEqual(self.process.diag2.state, 2)
+
+    def test_call(self):
+        self.assertEqual(self.process.diag(), 1)
+        self.assertEqual(self.process.diag2(), 2)
+
+    def test_repr(self):
+        expected_repr = "<xsimlab.DiagnosticVariable>"
+        self.assertEqual(repr(self.process.diag), expected_repr)
+        self.assertEqual(repr(self.process.diag2), expected_repr)
