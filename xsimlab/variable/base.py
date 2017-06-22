@@ -303,7 +303,12 @@ class ForeignVariable(AbstractVariable):
         self.ref_var.change = value
 
     def __repr__(self):
-        ref_str = "%s.%s" % (self.ref_process.name, self.var_name)
+        if self._other_process_obj is None:
+            ref_process_name = self._other_process_cls.__name__
+        else:
+            ref_process_name = self.ref_process.name
+
+        ref_str = "%s.%s" % (ref_process_name, self.var_name)
 
         return "<xsimlab.%s (%s)>" % (type(self).__name__, ref_str)
 
