@@ -1,0 +1,4 @@
+[run]
+omit =
+    xsimlab/tests/*
+    xsimlab/_version.py
