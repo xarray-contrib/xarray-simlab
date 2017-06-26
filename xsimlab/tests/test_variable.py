@@ -165,6 +165,9 @@ class TestDiagnosticVariable(unittest.TestCase):
 class TestVariableList(unittest.TestCase):
 
     def test_constructor(self):
+        var_list = VariableList([Variable(()), Variable(('x'))])
+        self.assertIsInstance(var_list, tuple)
+
         with self.assertRaisesRegex(ValueError, "found variables mixed"):
             _ = VariableList([2, Variable(())])
 
@@ -179,7 +182,9 @@ class TestVariableGroup(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "cannot retrieve variables"):
             _ = list(myprocess3.var)
 
-        processes_dict = OrderedDict((('p1', myprocess), ('p2', myprocess2)))
+        processes_dict = OrderedDict([('p1', myprocess),
+                                      ('p2', myprocess2),
+                                      ('p3', myprocess3)])
         myprocess3.var._set_variables(processes_dict)
 
         expected = [myprocess.var, myprocess2.var]

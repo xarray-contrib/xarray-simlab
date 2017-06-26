@@ -78,7 +78,7 @@ class NumberVariable(Variable):
 
     def validate(self, xr_variable):
         self._check_bounds(xr_variable)
-        super(NumberVariable, self).validate(xr_variable)
+        super(NumberVariable, self).validate(xr_variable)  # pragma: no cover
 
 
 class FloatVariable(NumberVariable):

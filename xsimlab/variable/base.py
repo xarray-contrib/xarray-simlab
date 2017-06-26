@@ -121,7 +121,7 @@ class Variable(AbstractVariable):
             vfunc(xr_variable)
 
     def validate(self, xr_variable):
-        pass
+        pass  # pragma: no cover
 
     def validate_dimensions(self, dims, ignore_dims=None):
         """Validate given dimensions for this variable.

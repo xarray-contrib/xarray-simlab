@@ -175,14 +175,14 @@ class Process(AttrMapping, metaclass=ProcessBase):
         Variable.validators
 
         """
-        pass
+        pass  # pragma: no cover
 
     def initialize(self):
         """This method will be called once at the beginning of a model run.
 
         Implementation is optional (by default it does nothing).
         """
-        pass
+        pass  # pragma: no cover
 
     def run_step(self, *args):
         """This method will be called at every time step of a model run.
@@ -203,14 +203,14 @@ class Process(AttrMapping, metaclass=ProcessBase):
 
         Implementation is optional (by default it does nothing).
         """
-        pass
+        pass  # pragma: no cover
 
     def finalize(self):
         """This method will be called once at the end of a model run.
 
         Implementation is optional (by default does nothing).
         """
-        pass
+        pass  # pragma: no cover
 
     @combomethod
     def info(cls_or_self, buf=None):
