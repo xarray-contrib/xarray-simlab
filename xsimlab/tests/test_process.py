@@ -71,12 +71,12 @@ class TestProcess(unittest.TestCase):
     def test_meta(self):
         self.assertDictEqual(self.my_process.meta, {'time_dependent': False})
 
-    def name(self):
+    def test_name(self):
         self.assertEqual(self.my_process.name, "MyProcess")
 
         self.my_process._name = "my_process"
         self.assertEqual(self.my_process.name, "my_process")
 
-    def run_step(self):
+    def test_run_step(self):
         with self.assertRaisesRegex(NotImplementedError, "no method"):
             self.my_process.run_step(1)
