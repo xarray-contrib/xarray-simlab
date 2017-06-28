@@ -1,4 +1,6 @@
 import unittest
+from textwrap import dedent
+from io import StringIO
 
 from xsimlab.variable.base import (Variable, VariableList, VariableGroup,
                                    diagnostic)
@@ -6,8 +8,8 @@ from xsimlab.process import Process
 
 
 class MyProcess(Process):
-    var = Variable(())
-    var_list = VariableList([Variable(()), Variable(())])
+    var = Variable((), provided=True)
+    var_list = VariableList([Variable('x'), Variable(((), 'x'))])
     var_group = VariableGroup('group')
     no_var = 'this is not a variable object'
 
@@ -46,6 +48,16 @@ class TestProcess(unittest.TestCase):
 
     def setUp(self):
         self.my_process = MyProcess()
+        self.my_process_str = dedent("""\
+        Variables:
+          * var        Variable ()
+            var_list   VariableList
+            -          Variable ('x')
+            -          Variable (), ('x')
+            var_group  VariableGroup 'group'
+          * diag       DiagnosticVariable
+        Meta:
+            time_dependent: False""")
 
     def test_constructor(self):
         # test dict-like vs. attribute access
@@ -80,3 +92,19 @@ class TestProcess(unittest.TestCase):
     def test_run_step(self):
         with self.assertRaisesRegex(NotImplementedError, "no method"):
             self.my_process.run_step(1)
+
+    def test_info(self):
+        expected = self.my_process_str
+
+        for cls_or_obj in [MyProcess, self.my_process]:
+            buf = StringIO()
+            cls_or_obj.info(buf=buf)
+            actual = buf.getvalue()
+            self.assertEqual(actual, expected)
+
+    def test_repr(self):
+        expected = '\n'.join(
+            ["<xsimlab.Process 'xsimlab.tests.test_process.MyProcess'>",
+             self.my_process_str]
+        )
+        self.assertEqual(repr(self.my_process), expected)
