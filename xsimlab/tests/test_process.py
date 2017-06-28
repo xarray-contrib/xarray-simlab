@@ -50,12 +50,12 @@ class TestProcess(unittest.TestCase):
         self.my_process = MyProcess()
         self.my_process_str = dedent("""\
         Variables:
+          * diag       DiagnosticVariable
           * var        Variable ()
+            var_group  VariableGroup 'group'
             var_list   VariableList
             -          Variable ('x')
             -          Variable (), ('x')
-            var_group  VariableGroup 'group'
-          * diag       DiagnosticVariable
         Meta:
             time_dependent: False""")
 

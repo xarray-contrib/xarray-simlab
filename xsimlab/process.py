@@ -1,6 +1,7 @@
 import sys
 import inspect
 import copy
+from collections import OrderedDict
 
 from .variable.base import (AbstractVariable, DiagnosticVariable,
                             VariableList, VariableGroup)
@@ -76,12 +77,12 @@ class ProcessBase(type):
                 )
             meta_dict.update(meta_attrs)
 
-        new_attrs['_meta'] = meta_dict
+        new_attrs['_meta'] = OrderedDict(sorted(meta_dict.items()))
 
         # add variables and diagnostics separately from the rest of
         # the attributes and methods defined in the class
         vars, novars = _extract_variables(attrs)
-        new_attrs['_variables'] = vars
+        new_attrs['_variables'] = OrderedDict(sorted(vars.items()))
         for k, v in novars.items():
             new_attrs[k] = v
 
