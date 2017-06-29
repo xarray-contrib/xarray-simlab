@@ -102,6 +102,20 @@ class TestProcess(unittest.TestCase):
             actual = buf.getvalue()
             self.assertEqual(actual, expected)
 
+        class OtherProcess(Process):
+            pass
+
+        expected = dedent("""\
+        Variables:
+            *empty*
+        Meta:
+            time_dependent: True""")
+
+        buf = StringIO()
+        OtherProcess.info(buf=buf)
+        actual = buf.getvalue()
+        self.assertEqual(actual, expected)
+
     def test_repr(self):
         expected = '\n'.join(
             ["<xsimlab.Process 'xsimlab.tests.test_process.MyProcess'>",

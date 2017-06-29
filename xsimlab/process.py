@@ -59,7 +59,7 @@ class ProcessBase(type):
         new_attrs = {'__module__': attrs.pop('__module__')}
         classcell = attrs.pop('__classcell__', None)
         if classcell is not None:
-            new_attrs['__classcell__'] = classcell
+            new_attrs['__classcell__'] = classcell  # pragma: no cover
 
         # check and add metadata
         meta_cls = attrs.pop('Meta', None)
