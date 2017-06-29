@@ -10,7 +10,7 @@ from .utils import AttrMapping
 from .formatting import _calculate_col_width, pretty_print, maybe_truncate
 
 
-class ModelRunSnapshots(object):
+class SimulationSnapshots(object):
     """Interface that allows taking snapshots for given `Variable` objects
     during a model run.
 
@@ -281,8 +281,8 @@ class Model(AttrMapping):
         processes_obj = {}
 
         for k, cls in processes.items():
-            if not issubclass(cls, Process):
-                raise TypeError("%s is not a subclass of Process object" % cls)
+            if not issubclass(cls, Process) or cls is Process:
+                raise TypeError("%s is not a subclass of Process" % cls)
             processes_obj[k] = cls()
 
         _set_process_names(processes_obj)
@@ -440,7 +440,7 @@ class Model(AttrMapping):
 
         time_steps = ds[dim_master_clock].diff(dim_master_clock).values
 
-        snapshots = ModelRunSnapshots(obj, ds)
+        snapshots = SimulationSnapshots(obj, ds)
 
         for i, dt in enumerate(time_steps):
             if has_time_var:
