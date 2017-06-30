@@ -38,7 +38,7 @@ class SomeProcess(Process):
     some_param = Variable(())
     x = ForeignVariable(Grid, 'x')
     quantity = ForeignVariable(Quantity, 'quantity')
-    some_effect = Variable('x', provided=True)
+    some_effect = Variable('x', group='effect', provided=True)
 
     def run_step(self, dt):
         self.some_effect.value = self.x * self.some_param.value + dt
@@ -48,7 +48,7 @@ class OtherProcess(Process):
     other_param = Variable(())
     x = ForeignVariable(Grid, 'x')
     quantity = ForeignVariable(Quantity, 'quantity')
-    other_effect = Variable('x', provided=True)
+    other_effect = Variable('x', group='effect', provided=True)
 
     def run_step(self, dt):
         self.other_effect.value = self.x * self.other_param.value - dt
