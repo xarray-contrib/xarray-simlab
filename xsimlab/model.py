@@ -309,7 +309,7 @@ class Model(AttrMapping):
             for var_name, var in variables.items():
                 if var is variable:
                     return proc_name, var_name
-        return None
+        return None, None
 
     @property
     def input_vars(self):
