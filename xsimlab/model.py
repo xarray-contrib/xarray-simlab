@@ -368,10 +368,6 @@ class Model(AttrMapping):
                          show_inputs=show_inputs,
                          show_variables=show_variables)
 
-    def _get_dsk(self, func='run_step'):
-        return {k: (getattr(self._processes[k], func), v)
-                for k, v in self._dep_processes.items()}
-
     def _set_inputs_values(self, ds):
         """Set model inputs values from xarray.Dataset."""
         for name, var in ds.data_vars.items():
