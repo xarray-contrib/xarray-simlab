@@ -11,7 +11,7 @@ Main concepts
 -------------
 
 The xarray-simlab's framework is built on only a few concepts that are layered
-onto three levels, here listed from top to bottom:
+onto three levels here listed from top to bottom:
 
 - **models**, i.e., instances of :class:`~xsimlab.Model`
 - **processes**, i.e., subclasses of :class:`~xsimlab.Process`
@@ -23,95 +23,111 @@ twofold: declare a given subset of the **variables** used in a model and
 define a specific set of instructions that uses, sets or modifies the values of
 these variables.
 
-Conceptually, a process is a logical component of a model. It may for example
-represent a particular physical mechanism that is described in terms of one or
-more state variables (e.g., scalar or vector fields) and one or more processes
--- with or without parameters -- that modify those state variables through time.
-Some processes may be time-independent.
+Conceptually, a process is a logical component of a computational model. It may
+for example represent a particular physical mechanism that is described in terms
+of one or more state variables (e.g., scalar or vector fields) and one or more
+processes -- with or without parameters -- that modify those state variables
+through time. Some processes may be time-independent.
 
 .. note::
 
    xarray-simlab does not explicitly distinguish between model parameters and
-   state variables, both are declared as variables inside their own process.
+   state variables, both are declared as variables within their own process.
 
 .. note::
 
    xarray-simlab does not provide any built-in logic for tasks like generating
-   computational meshes or setting boundary conditions. This should be
+   computational meshes or setting boundary conditions. It should rather be
    implemented in 3rd-party libraries as time-independent processes. The reason
-   is that theses tasks may vary from one model / domain to another while
-   xarray-simlab aims to be a general purpose framework.
+   is that even such tasks may vary from one model / domain to another, while
+   xarray-simlab aims to provide a general purpose framework.
 
-Processes are usually inter-dependent, i.e., a process often declares
-references to variables that are declared in other processes (i.e., "foreign
-variables") and sometimes even computes values for those variables. As a
-consequence, processes may not be re-usable without their dependencies.
-However, it allows declaring variables -- including useful metadata such as
-description, default values, units, etc. -- at a unique place.
+Process dependencies
+--------------------
+
+Processes are components that are generally not totally independent. To compute
+its own variables, a process often needs variables that are declared externally
+in other processes.
+
+In order to properly use those external variables, a process has to declare them
+as "foreign variables". A :class:`~xsimlab.ForeignVariable` object is a
+reference to an external variable. It can be used to get or compute values
+as if it was the original variable.
+
+A downside of this approach is that one cannot re-use a process without
+its dependencies. But it presents the great advantage of declaring variables
+-- including useful metadata such as description, default values, units, etc. --
+at a single place.
 
 Simulation workflow
 -------------------
 
-A model run is divided into four stages:
+A model run is divided into four successive stages:
 
 1. initialization
 2. run step
 3. finalize step
 4. finalization
 
-During a simulation, stages 1 and 4 are only run once while steps 2 and 3 are
+During a simulation, stages 1 and 4 are run only once while steps 2 and 3 are
 repeated for a given number of (time) steps.
 
-Each process in a model usually implements some computation for at least one of
-these stages. It is not always required for a process to perform computation at
-every stage. For example, time-independent processes don't do nothing during
-stages 2 and 3. Processes that depend on time, however, must supply an
-implementation for at least stage 2 (run step).
+Each process provides its own computation instructions for those stages. This
+is optional, except for time-dependent processes that must provide some
+instructions at least for stage 2 (run step). For time-independent processes
+stages 2 and 3 are ignored.
 
-Computation order and process dependencies
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Process ordering
+----------------
 
-The order in which computations are executed during a simulation is important.
-For example, a process that sets or updates a variable must be executed before
-the execution of all other processes that need to access this variable for their
+The order in which processes are executed during a simulation is important.
+For example, a process that sets or updates a variable value must be executed
+before the execution of all other processes that need this variable in their
 own computation.
 
-The same order is used at every stage of a model run. It is automatically
+The same ordering is used at every stage of a model run. It is automatically
 inferred -- as well as process dependencies -- when creating a new
-``Model`` object, using the information contained in the variables and/or
-foreign variables that are declared in each process.
+``Model`` object, using the information contained in variables and/or foreign
+variables that are declared in each process.
 
 Process dependencies together form a Directed Acyclic Graph (DAG), which will
 eventually allow us running some processes in parallel at each stage of a model
 run (this is not yet implemented).
 
-Variable values
----------------
+Variable values and dimensions
+------------------------------
 
 A single variable may accept up to 3 different values:
 
-- ``state``, i.e., the value of the variable at a given time
-- ``rate``, i.e., the value of the time-derivative at a given time
-- ``change``, i.e., the value of the time-derivative integrated for a given
+- a state, i.e., the value of the variable at a given time
+- a rate, i.e., the value of the time-derivative at a given time
+- a change, i.e., the value of the time-derivative integrated for a given
   time step.
 
-These correspond to separate properties of ``Variable`` objects.
+These are accessible as properties of ``Variable`` objects, respectively named
+``state``, ``rate`` and ``change``. An additional property ``value`` is defined
+as an alias of ``state``.
 
 .. note::
 
-   We allow multiple values mainly to avoid creating different Variable
-   objects for the same state variable. The names and meanings given here above
-   are just conventions, though.
+   These properties are for convenience only, it avoids duplicating
+   Variable objects (including their metadata) representing state variables.
 
-   Model developers are free to get/set any of these properties at any stage of
-   a model run. However, it is common practice to compute the ``rate`` or
-   ``change`` values in the "run step" stage and to update the ``state`` value
-   in the "finalize step" stage.
+   The names and meanings given here above are just conventions. Model
+   developers are free to get/set values for any of these properties at any
+   stage of a model run.
 
-An additional property, ``value``, is also defined as an alias of ``state``.
-It should be used primarily for variables that are time-invariant. Here again it
-is just a convention as using the term "value" is a bit more accurate in this
-case.
+   However, it is recommended to follow these conventions. Another common
+   practice is to compute ``rate`` or ``change`` values during the "run step"
+   stage and update ``state`` values during the "finalize step" stage.
+
+   For time-invariant variables, ``rate`` or ``change`` values should not be
+   used. Instead, it is preferable to use the property ``value`` ("state" is
+   quite meaningless in this case).
+
+.. todo_
+
+   variable dimensions paragraph
 
 .. todo_
 
