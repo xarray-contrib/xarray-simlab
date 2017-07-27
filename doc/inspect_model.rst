@@ -1,7 +1,7 @@
-.. _run_model:
+.. _inspect_model:
 
-Run models using the xarray interface
-=====================================
+Model introspection
+===================
 
 .. todo::
 

@@ -52,6 +52,7 @@ extensions = [
     'sphinx.ext.extlinks',
     'sphinx.ext.napoleon',
     # 'numpydoc',
+    'sphinx.ext.todo',
     'IPython.sphinxext.ipython_directive',
     'IPython.sphinxext.ipython_console_highlighting',
     'nbsphinx',
@@ -110,7 +111,8 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', '**.ipynb_checkpoints']
 pygments_style = 'sphinx'
 
 # If true, `todo` and `todoList` produce output, else they produce nothing.
-todo_include_todos = False
+todo_include_todos = True
+todo_emit_warnings = True
 
 
 # -- Options for HTML output ----------------------------------------------

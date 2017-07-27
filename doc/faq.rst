@@ -37,6 +37,10 @@ the preliminary benchmarks that we have run show only a very small overhead.
 .. _Numba: http://numba.pydata.org/
 .. _f2py: https://docs.scipy.org/doc/numpy-dev/f2py/
 
+.. question_to_add : Does xarray-simlab allow model execution in parallel?
+
+.. question_to_add: Can xarray-simlab be used without xarray?
+
 Will xarray-simlab support Python 2.7.x?
 ----------------------------------------
 

@@ -53,7 +53,7 @@ For development purpose, use the following command::
 Import xarray-simlab
 --------------------
 
-To make sure that ``xarray-simlab`` is correctly installed, try import it in a
-Python console::
+To make sure that ``xarray-simlab`` is correctly installed, try import it by
+running this line::
 
-    >>> import xsimlab
+    $ python -c "import xsimlab"

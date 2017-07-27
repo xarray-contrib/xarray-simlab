@@ -13,19 +13,31 @@ used - and the overall workflow management. Both are automatically determined
 from the succint, declarative-like interfaces of the model processes.
 
 Next versions of xarray-simlab will hopefully handle other technical issues
-like logging simulation progress, command line integration and running (many)
-simulations in parallel.
+like logging simulation progress, a plug-in system for custom co-processors
+(e.g., for interactive visualization), command line integration and/or running
+many simulations in parallel (for example in the context of sensitivity analyses
+or inversion procedures).
 
 Motivation
 ----------
 
 xarray-simlab is being developped with the idea of reducing the gap between the
 environments used for building and running computational models and the ones
-used for processing and analysing simulation results. It also encourages
-building new models from re-usable components and avoid reinventing the wheel.
+used for processing and analyzing simulation results. If the latter environments
+become more powerful and interactive, progress has still to be done for the
+former ones.
 
-The design of this tool is mainly focused on fast model development and easy
-creation of various simulation settings. Ultimately, this would optimize the
+xarray-simlab also encourages building new models from re-usable sets of
+components in order to avoid reinventing the wheel. In many cases we want to
+customize existing models (e.g., adding a new feature or slightly modifying
+the behavior) instead of building new models from scratch. This modular
+framework allows to do that with minimal effort. By implementing models using
+a large number of small components that can be easily plugged in/out, we
+eliminate the need of hard-coding changes that we want to apply to a model,
+which often leads to over-complicated code and interface.
+
+The design of this tool is thus mainly focused on both fast model development
+and easy, interactive model exploration. Ultimately, this would optimize the
 iterative back-and-forth process between ideas that we have on how to model a
 particular phenomenon and insights that we get from the exploration of model
 behavior.

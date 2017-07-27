@@ -17,8 +17,6 @@ Documentation index
 * :doc:`faq`
 * :doc:`installing`
 * :doc:`examples`
-* :doc:`create_model`
-* :doc:`run_model`
 
 .. toctree::
    :maxdepth: 1
@@ -29,23 +27,38 @@ Documentation index
    faq
    installing
    examples
-   create_model
+
+**User Guide**
+
+* :doc:`framework`
+* :doc:`inspect_model`
+* :doc:`run_model`
+* :doc:`create_model`
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+   :caption: User Guide
+
+   framework
+   inspect_model
    run_model
+   create_model
 
 **Help & reference**
 
-* :doc:`whats_new`
 * :doc:`api`
 * :doc:`develop`
+* :doc:`whats_new`
 
 .. toctree::
    :maxdepth: 1
    :hidden:
    :caption: Help & reference
 
-   whats_new
    api
    develop
+   whats_new
 
 Get in touch
 ------------
@@ -59,7 +72,7 @@ License
 
 3-clause ("Modified" or "New") BSD license.
 
-xarray-simlab is developped at the `Earth Surface Process Modelling`__ group of
-the GFZ Helmholtz Centre Potsdam.
+xarray-simlab is developed with support from the
+`Earth Surface Process Modelling`__ group of the GFZ Helmholtz Centre Potsdam.
 
 __ http://www.gfz-potsdam.de/en/section/earth-surface-process-modelling/

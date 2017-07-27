@@ -16,9 +16,9 @@ properties listed below. Proper use of this accessor should be like:
 
 .. code-block:: python
 
-   >>> import xarray as xr   # first import xarray
-   >>> import xsimlab       # import xsimlab (the 'xsimlab' accessor is registered)
-   >>> ds = xr.Dataset()
+   >>> import xarray as xr         # first import xarray
+   >>> import xsimlab              # import xsimlab (the 'xsimlab' accessor is registered)
+   >>> ds = xr.Dataset()           # create or load an xarray Dataset
    >>> ds.xsimlab.<meth_or_prop>   # access to the methods and properties listed below
 
 .. currentmodule:: xarray
