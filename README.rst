@@ -31,12 +31,16 @@ License
 3-clause ("Modified" or "New") BSD license,
 see `License file <https://github.com/benbovy/xarray-simlab/blob/master/LICENSE>`__.
 
-xarray-simlab is developed with support from the
-`Earth Surface Process Modelling`_ group of the GFZ Helmholtz Centre Potsdam.
-
 xarray-simlab uses short parts of the code of the xarray_, pandas_ and dask_
 libraries. Their licenses are reproduced in the "licenses" directory.
 
-.. _`Earth Surface Process Modelling`: http://www.gfz-potsdam.de/en/section/earth-surface-process-modelling/
 .. _pandas: http://pandas.pydata.org/
 .. _dask: http://dask.pydata.org
+
+Acknowledgment
+--------------
+
+This project is supported by the `Earth Surface Process Modelling`_
+group of the GFZ Helmholtz Centre Potsdam.
+
+.. _`Earth Surface Process Modelling`: http://www.gfz-potsdam.de/en/section/earth-surface-process-modelling/
