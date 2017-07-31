@@ -1,6 +1,7 @@
 import unittest
 from collections import OrderedDict
 
+import pytest
 import xarray as xr
 
 from xsimlab.variable.base import (Variable, ForeignVariable, diagnostic,
@@ -39,14 +40,14 @@ class TestVariable(unittest.TestCase):
         # verify allowed_dims
         for allowed_dims in (tuple(), list(), ''):
             var = Variable(allowed_dims)
-            self.assertEqual(var.allowed_dims, ((),))
+            assert var.allowed_dims == ((),)
 
         for allowed_dims in ('x', ['x'], tuple(['x'])):
             var = Variable(allowed_dims)
-            self.assertEqual(var.allowed_dims, (('x',),))
+            assert var.allowed_dims == (('x',),)
 
         var = Variable([(), 'x', ('x', 'y')])
-        self.assertEqual(var.allowed_dims, ((), ('x',), ('x', 'y')))
+        assert var.allowed_dims, ((), ('x',), ('x', 'y'))
 
     def test_validators(self):
         # verify default validators + user supplied validators
@@ -56,13 +57,14 @@ class TestVariable(unittest.TestCase):
             default_validators = [validator_func]
 
         var = MyVariable((), validators=[validator_func])
-        self.assertEqual(var.validators, [validator_func, validator_func])
+        assert var.validators == [validator_func, validator_func]
 
     def test_validate_dimensions(self):
         var = Variable([(), 'x', ('x', 'y')])
 
-        with self.assertRaisesRegex(ValidationError, 'invalid dimensions'):
+        with pytest.raises(ValidationError) as excinfo:
             var.validate_dimensions(('x', 'z'))
+        assert 'invalid dimensions' in str(excinfo.value)
 
         var.validate_dimensions(('time', 'x'), ignore_dims=['time'])
 
@@ -97,7 +99,7 @@ class TestVariable(unittest.TestCase):
     def test_repr(self):
         var = Variable(((), 'x', ('x', 'y')))
         expected_repr = "<xsimlab.Variable (), ('x'), ('x', 'y')>"
-        self.assertEqual(repr(var), expected_repr)
+        assert repr(var) == expected_repr
 
 
 class TestForeignVariable(unittest.TestCase):
@@ -109,29 +111,28 @@ class TestForeignVariable(unittest.TestCase):
 
     def test_ref_process(self):
         fvar = ForeignVariable(MyProcess, 'var')
-        self.assertIs(fvar.ref_process, MyProcess)
-
-        self.assertIs(self.fvar.ref_process, self.other_process)
+        assert fvar.ref_process is MyProcess
+        assert self.fvar.ref_process is self.other_process
 
     def test_ref_var(self):
-        self.assertIs(self.fvar.ref_var, self.other_process.var)
+        assert self.fvar.ref_var is self.other_process.var
 
     def test_properties(self):
         for prop in ('state', 'value', 'rate', 'change'):
             # test foreign getter
             setattr(self.other_process.var, prop, 1)
-            self.assertEqual(getattr(self.fvar, prop), 1)
+            assert getattr(self.fvar, prop) == 1
 
             # test foreign setter
             setattr(self.fvar, prop, 2)
-            self.assertEqual(getattr(self.other_process.var, prop), 2)
+            assert getattr(self.other_process.var, prop) == 2
 
     def test_repr(self):
         expected_repr = "<xsimlab.ForeignVariable (MyProcess.var)>"
-        self.assertEqual(repr(self.fvar), expected_repr)
+        assert repr(self.fvar) == expected_repr
 
         fvar = ForeignVariable(MyProcess, 'var')
-        self.assertEqual(repr(fvar), expected_repr)
+        assert repr(fvar) == expected_repr
 
 
 class TestDiagnosticVariable(unittest.TestCase):
@@ -142,34 +143,35 @@ class TestDiagnosticVariable(unittest.TestCase):
         self.process.diag2.assign_process_obj(self.process)
 
     def test_decorator(self):
-        self.assertIsInstance(self.process.diag, DiagnosticVariable)
-        self.assertIsInstance(self.process.diag2, DiagnosticVariable)
+        assert isinstance(self.process.diag, DiagnosticVariable)
+        assert isinstance(self.process.diag2, DiagnosticVariable)
 
-        self.assertEqual(self.process.diag.description, "diagnostic.")
-        self.assertEqual(self.process.diag2.attrs, {'units': 'm'})
+        assert self.process.diag.description == "diagnostic."
+        assert self.process.diag2.attrs == {'units': 'm'}
 
     def test_state(self):
-        self.assertEqual(self.process.diag.state, 1)
-        self.assertEqual(self.process.diag2.state, 2)
+        assert self.process.diag.state == 1
+        assert self.process.diag2.state == 2
 
     def test_call(self):
-        self.assertEqual(self.process.diag(), 1)
-        self.assertEqual(self.process.diag2(), 2)
+        assert self.process.diag() == 1
+        assert self.process.diag2() == 2
 
     def test_repr(self):
         expected_repr = "<xsimlab.DiagnosticVariable>"
-        self.assertEqual(repr(self.process.diag), expected_repr)
-        self.assertEqual(repr(self.process.diag2), expected_repr)
+        assert repr(self.process.diag) == expected_repr
+        assert repr(self.process.diag2) == expected_repr
 
 
 class TestVariableList(unittest.TestCase):
 
     def test_constructor(self):
         var_list = VariableList([Variable(()), Variable(('x'))])
-        self.assertIsInstance(var_list, tuple)
+        assert isinstance(var_list, tuple)
 
-        with self.assertRaisesRegex(ValueError, "found variables mixed"):
+        with pytest.raises(ValueError) as excinfo:
             _ = VariableList([2, Variable(())])
+        assert "found variables mixed" in str(excinfo.value)
 
 
 class TestVariableGroup(unittest.TestCase):
@@ -179,8 +181,9 @@ class TestVariableGroup(unittest.TestCase):
         myprocess2 = MyProcess2()
         myprocess3 = MyProcess3()
 
-        with self.assertRaisesRegex(ValueError, "cannot retrieve variables"):
+        with pytest.raises(ValueError) as excinfo:
             _ = list(myprocess3.var)
+        assert "cannot retrieve variables" in str(excinfo.value)
 
         processes_dict = OrderedDict([('p1', myprocess),
                                       ('p2', myprocess2),
@@ -192,13 +195,13 @@ class TestVariableGroup(unittest.TestCase):
             var._other_process_obj = proc
 
         fvar_list = [var.ref_var for var in myprocess3.var]
-        self.assertEqual(fvar_list, expected)
+        assert fvar_list == expected
 
     def test_repr(self):
         myprocess3 = MyProcess3()
 
         expected_repr = "<xsimlab.VariableGroup 'mygroup'>"
-        self.assertEqual(repr(myprocess3.var), expected_repr)
+        assert repr(myprocess3.var) == expected_repr
 
 
 class TestNumberVariable(unittest.TestCase):
@@ -207,14 +210,16 @@ class TestNumberVariable(unittest.TestCase):
         var = NumberVariable((), bounds=(0, 1))
         for data in (-1, [-1, 0], [-1, 1], [0, 2], 2):
             xr_var = var.to_xarray_variable(data)
-            with self.assertRaisesRegex(ValidationError, "out of bounds"):
+            with pytest.raises(ValidationError) as excinfo:
                 var.validate(xr_var)
+            assert "out of bounds" in str(excinfo.value)
 
         for ib in [(True, False), (False, True), (False, False)]:
             var = NumberVariable((), bounds=(0, 1), inclusive_bounds=ib)
             xr_var = var.to_xarray_variable([0, 1])
-            with self.assertRaisesRegex(ValidationError, "out of bounds"):
+            with pytest.raises(ValidationError) as excinfo:
                 var.validate(xr_var)
+            assert "out of bounds" in str(excinfo.value)
 
 
 class TestFloatVariable(unittest.TestCase):
@@ -227,8 +232,9 @@ class TestFloatVariable(unittest.TestCase):
             var.run_validators(xr_var)
 
         xr_var = xr.Variable((), '1')
-        with self.assertRaisesRegex(ValidationError, "invalid dtype"):
+        with pytest.raises(ValidationError) as excinfo:
             var.run_validators(xr_var)
+        assert "invalid dtype" in str(excinfo.value)
 
 
 class TestIntegerVariable(unittest.TestCase):
@@ -241,5 +247,6 @@ class TestIntegerVariable(unittest.TestCase):
 
         for val in [1., '1']:
             xr_var = xr.Variable((), val)
-            with self.assertRaisesRegex(ValidationError, "invalid dtype"):
+            with pytest.raises(ValidationError) as excinfo:
                 var.run_validators(xr_var)
+            assert "invalid dtype" in str(excinfo.value)

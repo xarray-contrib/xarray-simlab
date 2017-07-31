@@ -1,6 +1,7 @@
 import unittest
 from textwrap import dedent
 
+import pytest
 import numpy as np
 from numpy.testing import assert_array_equal
 
@@ -92,25 +93,27 @@ class TestModel(unittest.TestCase):
 
     def test_constructor(self):
         # test invalid processes
-        with self.assertRaises(TypeError):
+        with pytest.raises(TypeError):
             Model({'not_a_class': Grid()})
 
         class OtherClass(object):
             pass
 
-        with self.assertRaisesRegex(TypeError, "is not a subclass"):
+        with pytest.raises(TypeError) as excinfo:
             Model({'invalid_class': Process})
+        assert "is not a subclass" in str(excinfo.value)
 
-        with self.assertRaisesRegex(TypeError, "is not a subclass"):
+        with pytest.raises(TypeError) as excinfo:
             Model({'invalid_class': OtherClass})
+        assert "is not a subclass" in str(excinfo.value)
 
         # test process ordering
         model = get_test_model()
         expected = ['grid', 'some_process', 'other_process', 'quantity']
-        self.assertEqual(list(model), expected)
+        assert list(model) == expected
 
         # test dict-like vs. attribute access
-        self.assertIs(model['grid'], model.grid)
+        assert model['grid'] is model.grid
 
     def test_input_vars(self):
         model = get_test_model()
@@ -118,16 +121,17 @@ class TestModel(unittest.TestCase):
                     'some_process': ['some_param'],
                     'quantity': ['quantity']}
         actual = {k: list(v.keys()) for k, v in model.input_vars.items()}
-        self.assertDictEqual(expected, actual)
+        assert expected == actual
 
     def test_is_input(self):
         model = get_test_model()
-        self.assertTrue(model.is_input(model.grid.x_size))
-        self.assertTrue(model.is_input(('grid', 'x_size')))
-        self.assertFalse(model.is_input(('quantity', 'all_effects')))
+        assert model.is_input(model.grid.x_size) is True
+        assert model.is_input(('grid', 'x_size')) is True
+        assert model.is_input(('quantity', 'all_effects')) is False
+        assert model.is_input(('other_process', 'copy_param')) is False
 
         external_variable = Variable(())
-        self.assertFalse(model.is_input(external_variable))
+        assert model.is_input(external_variable) is False
 
     def test_initialize(self):
         model = get_test_model()
@@ -155,15 +159,15 @@ class TestModel(unittest.TestCase):
     def test_finalize(self):
         model = get_test_model()
         model.finalize()
-        self.assertEqual(model.some_process.some_effect.rate, 0)
+        assert model.some_process.some_effect.rate == 0
 
     def test_clone(self):
         model = get_test_model()
         cloned = model.clone()
 
         for (ck, cp), (k, p) in zip(cloned.items(), model.items()):
-            self.assertEqual(ck, k)
-            self.assertIsNot(cp, p)
+            assert ck == k
+            assert cp is not p
 
     def test_update_processes(self):
         model = get_test_model()
@@ -175,7 +179,7 @@ class TestModel(unittest.TestCase):
         actual = model.update_processes({'plug_process': PlugProcess})
 
         # TODO: more advanced (public?) test function to compare two models?
-        self.assertEqual(list(actual), list(expected))
+        assert list(actual) == list(expected)
 
     def test_drop_processes(self):
         model = get_test_model()
@@ -184,12 +188,12 @@ class TestModel(unittest.TestCase):
                           'some_process': SomeProcess,
                           'quantity': Quantity})
         actual = model.drop_processes('other_process')
-        self.assertEqual(list(actual), list(expected))
+        assert list(actual) == list(expected)
 
         expected = Model({'grid': Grid,
                           'quantity': Quantity})
         actual = model.drop_processes(['some_process', 'other_process'])
-        self.assertEqual(list(actual), list(expected))
+        assert list(actual) == list(expected)
 
     def test_repr(self):
         model = get_test_model()
@@ -203,4 +207,4 @@ class TestModel(unittest.TestCase):
         quantity
             quantity    (in) a quantity""")
 
-        self.assertEqual(repr(model), expected)
+        assert repr(model) == expected

@@ -1,5 +1,7 @@
 import unittest
 
+import pytest
+
 from xsimlab import utils
 
 
@@ -7,5 +9,6 @@ class TestImportRequired(unittest.TestCase):
 
     def test(self):
         err_msg = "no module"
-        with self.assertRaisesRegex(RuntimeError, err_msg):
+        with pytest.raises(RuntimeError) as excinfo:
             utils.import_required('this_module_doesnt_exits', err_msg)
+        assert err_msg in str(excinfo.value)

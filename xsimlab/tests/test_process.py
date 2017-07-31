@@ -2,6 +2,8 @@ import unittest
 from textwrap import dedent
 from io import StringIO
 
+import pytest
+
 from xsimlab.variable.base import (Variable, VariableList, VariableGroup,
                                    diagnostic)
 from xsimlab.process import Process
@@ -24,24 +26,26 @@ class MyProcess(Process):
 class TestProcessBase(unittest.TestCase):
 
     def test_new(self):
-        with self.assertRaisesRegex(TypeError, "subclassing a subclass"):
+        with pytest.raises(TypeError) as excinfo:
             class InvalidProcess(MyProcess):
                 var = Variable(())
+        assert "subclassing a subclass" in str(excinfo.value)
 
-        with self.assertRaisesRegex(AttributeError, "invalid attribute"):
+        with pytest.raises(AttributeError) as excinfo:
             class InvalidProcess2(Process):
                 class Meta:
                     time_dependent = True
                     invalid_meta_attr = 'invalid'
+        assert "invalid attribute" in str(excinfo.value)
 
         # test extract variable objects vs. other attributes
-        self.assertTrue(getattr(MyProcess, 'no_var', False))
-        self.assertFalse(getattr(MyProcess, 'var', False))
-        self.assertEqual(set(['var', 'var_list', 'var_group', 'diag']),
-                         set(MyProcess._variables.keys()))
+        assert getattr(MyProcess, 'no_var', False)
+        assert not getattr(MyProcess, 'var', False)
+        assert set(['var', 'var_list', 'var_group', 'diag']) == (
+            set(MyProcess._variables.keys()))
 
         # test Meta attributes
-        self.assertDictEqual(MyProcess._meta, {'time_dependent': False})
+        assert MyProcess._meta == {'time_dependent': False}
 
 
 class TestProcess(unittest.TestCase):
@@ -61,37 +65,38 @@ class TestProcess(unittest.TestCase):
 
     def test_constructor(self):
         # test dict-like vs. attribute access
-        self.assertIs(self.my_process['var'], self.my_process._variables['var'])
-        self.assertIs(self.my_process.var, self.my_process._variables['var'])
+        assert self.my_process['var'] is self.my_process._variables['var']
+        assert self.my_process.var is self.my_process._variables['var']
 
         # test deep copy variable objects
         MyProcess._variables['var'].state = 2
-        self.assertNotEqual(self.my_process._variables['var'].state,
-                            MyProcess._variables['var'].state)
+        assert self.my_process._variables['var'].state != (
+            MyProcess._variables['var'].state)
 
         # test assign process to diagnostics
-        self.assertIs(self.my_process['diag']._process_obj, self.my_process)
+        assert self.my_process['diag']._process_obj is self.my_process
 
     def test_clone(self):
         cloned_process = self.my_process.clone()
-        self.assertIsNot(self.my_process['var'], cloned_process['var'])
+        assert self.my_process['var'] is not cloned_process['var']
 
     def test_variables(self):
-        self.assertEqual(set(['var', 'var_list', 'var_group', 'diag']),
-                         set(self.my_process.variables.keys()))
+        assert set(['var', 'var_list', 'var_group', 'diag']) == (
+            set(self.my_process.variables.keys()))
 
     def test_meta(self):
-        self.assertDictEqual(self.my_process.meta, {'time_dependent': False})
+        assert self.my_process.meta == {'time_dependent': False}
 
     def test_name(self):
-        self.assertEqual(self.my_process.name, "MyProcess")
+        assert self.my_process.name == "MyProcess"
 
         self.my_process._name = "my_process"
-        self.assertEqual(self.my_process.name, "my_process")
+        assert self.my_process.name == "my_process"
 
     def test_run_step(self):
-        with self.assertRaisesRegex(NotImplementedError, "no method"):
+        with pytest.raises(NotImplementedError) as excinfo:
             self.my_process.run_step(1)
+        assert "no method" in str(excinfo.value)
 
     def test_info(self):
         expected = self.my_process_str
@@ -100,7 +105,7 @@ class TestProcess(unittest.TestCase):
             buf = StringIO()
             cls_or_obj.info(buf=buf)
             actual = buf.getvalue()
-            self.assertEqual(actual, expected)
+            assert actual == expected
 
         class OtherProcess(Process):
             pass
@@ -114,11 +119,11 @@ class TestProcess(unittest.TestCase):
         buf = StringIO()
         OtherProcess.info(buf=buf)
         actual = buf.getvalue()
-        self.assertEqual(actual, expected)
+        assert actual == expected
 
     def test_repr(self):
         expected = '\n'.join(
             ["<xsimlab.Process 'xsimlab.tests.test_process.MyProcess'>",
              self.my_process_str]
         )
-        self.assertEqual(repr(self.my_process), expected)
+        assert repr(self.my_process) == expected
