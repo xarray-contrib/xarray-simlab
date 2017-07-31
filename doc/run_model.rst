@@ -1,7 +1,7 @@
 .. _run_model:
 
-Run models using the xarray interface
-=====================================
+Setup and run models
+====================
 
 .. todo::
 

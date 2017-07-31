@@ -1,6 +1,6 @@
 .. _framework:
 
-Modeling Framework
+Modeling framework
 ==================
 
 This section explains the design of the xarray-simlab modeling
@@ -61,7 +61,7 @@ that some processes may be time-independent.
    which should rather be implemented in 3rd-party libraries as
    time-independent processes. Even those tasks may be too specialized
    to justify including them in this framework, which aims to be as
-   generic as possible.
+   general as possible.
 
 Variables
 ---------
@@ -73,8 +73,8 @@ attributes. They have the following properties:
 - data values (state, rate or change -- see below),
 - validators, i.e., callables for checking supplied data values,
 - labeled dimensions (or no dimension for scalars),
-- predefined metadata attributes like description or default value,
-- user-defined metadata attributes (e.g., units, math symbol).
+- predefined meta-data attributes like description or default value,
+- user-defined meta-data attributes (e.g., units, math symbol).
 
 .. note::
 
@@ -101,7 +101,7 @@ setting values just as if these references were the original
 variables.
 
 The great advantage of declaring variables at unique places is that
-all their metadata are defined once. However, a downside of this
+all their meta-data are defined once. However, a downside of this
 approach is that foreign variables may potentially add many hard-coded
 links between processes, which makes harder reusing these processes
 independently of each other.
@@ -129,8 +129,8 @@ broken links between processes.
 Variable state, rate and change
 -------------------------------
 
-A single variable may accept up to 3 concurrent values that have
-each a particular meaning:
+A single variable may accept up to 3 concurrent values that each
+have a particular meaning:
 
 - a state, i.e., the value of the variable at a given time,
 - a rate, i.e., the value of the time-derivative at a given time,
@@ -185,7 +185,7 @@ Process dependencies and ordering
 ---------------------------------
 
 The order in which processes are executed during a simulation is
-critical.  For example, if the role of a process is to provide a value
+critical. For example, if the role of a process is to provide a value
 for a given variable, then the execution of this process must happen
 before the execution of all other processes that use the same variable
 in their computation.
@@ -200,7 +200,7 @@ nodes and the edges of a Directed Acyclic Graph (DAG). The graph
 topology is fully determined by the role set for each variable or
 foreign variable declared in each process. An ordering that is
 computationally consistent can then be obtained using topological
-sorting. This is done at Model object creation.  The same ordering
+sorting. This is done at Model object creation. The same ordering
 is used at every stage of a model run.
 
 In principle, the DAG structure would also allow running the processes
@@ -210,9 +210,21 @@ implemented, though.
 Model inputs
 ------------
 
-.. todo::
+In a model, inputs are variables that need a value to be set by the
+user before running a simulation.
 
-   Fill this section.
+Like process ordering, inputs are automatically retrieved at Model
+object creation, using the ``provided`` attribute of Variable and
+ForeignVariable objects. Inputs are Variable objects for which
+``provided`` is set to False and which don't have any linked
+ForeignVariable object with ``provided`` set to True.
+
+.. note::
+
+   Any value required as model input relates to the ``state`` property
+   (or its alias ``value``) of a Variable object. The ``rate`` and
+   ``change`` properties should never be set by model users, like any
+   property of ForeignVariable objects.
 
 .. move_this_foreign_variable
 
