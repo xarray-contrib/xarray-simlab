@@ -322,7 +322,7 @@ class Model(AttrMapping):
         return self._input_vars
 
     def is_input(self, variable):
-        """Returns True if the variable is a model input.
+        """Test if a variable is an input of Model.
 
         Parameters
         ----------
@@ -330,16 +330,20 @@ class Model(AttrMapping):
             Either a Variable object or a (str, str) tuple
             corresponding to process name and variable name.
 
+        Returns
+        -------
+        is_input : bool
+            True if the variable is a input of Model (otherwise False).
+
         """
         if isinstance(variable, AbstractVariable):
             proc_name, var_name = self._get_proc_var_name(variable)
-        elif isinstance(variable, (VariableList, VariableGroup)):
-            # VariableList and VariableGroup objects are never model inputs
-            return False
         else:
             proc_name, var_name = variable
 
-        return self._input_vars.get(proc_name, {}).get(var_name, False)
+        if self._input_vars.get(proc_name, {}).get(var_name, False):
+            return True
+        return False
 
     def visualize(self, show_only_variable=None, show_inputs=False,
                   show_variables=False):
