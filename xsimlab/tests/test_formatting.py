@@ -1,9 +1,7 @@
-import unittest
-
 from xsimlab.formatting import pretty_print, maybe_truncate, wrap_indent
 
 
-class TestFormatting(unittest.TestCase):
+class TestFormatting(object):
 
     def test_maybe_truncate(self):
         assert maybe_truncate('test', 10) == 'test'
