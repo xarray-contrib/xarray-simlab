@@ -88,8 +88,6 @@ class TestModel(object):
                           'other_process': OtherProcess,
                           'quantity': Quantity})
         actual = model.update_processes({'plug_process': PlugProcess})
-
-        # TODO: more advanced (public?) test function to compare two models?
         assert list(actual) == list(expected)
 
     def test_drop_processes(self, model):

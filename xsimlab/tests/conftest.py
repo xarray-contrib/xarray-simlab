@@ -86,10 +86,12 @@ class Quantity(Process):
 
 class SomeProcess(Process):
     some_param = Variable((), description='some parameter')
-    copy_param = Variable((), provided=True)
     x = ForeignVariable(Grid, 'x')
     quantity = ForeignVariable(Quantity, 'quantity')
     some_effect = Variable('x', group='effect', provided=True)
+
+    # SomeProcess always appears before OtherProcess in a model
+    copy_param = Variable((), provided=True)
 
     def initialize(self):
         self.copy_param.value = self.some_param.value
@@ -103,9 +105,11 @@ class SomeProcess(Process):
 
 class OtherProcess(Process):
     x = ForeignVariable(Grid, 'x')
-    copy_param = ForeignVariable(SomeProcess, 'copy_param')
     quantity = ForeignVariable(Quantity, 'quantity')
     other_effect = Variable('x', group='effect', provided=True)
+
+    # OtherProcess should always appear after SomeProcess in a model
+    copy_param = ForeignVariable(SomeProcess, 'copy_param')
 
     def run_step(self, dt):
         self.other_effect.value = self.x.value * self.copy_param.value - dt
@@ -118,6 +122,7 @@ class OtherProcess(Process):
 class PlugProcess(Process):
     meta_param = Variable(())
     some_param = ForeignVariable(SomeProcess, 'some_param', provided=True)
+    x = ForeignVariable(Grid, 'x')
 
     def run_step(self, *args):
         self.some_param.value = self.meta_param.value
