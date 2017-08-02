@@ -77,7 +77,7 @@ class TestProcess(object):
             actual = buf.getvalue()
             assert actual == process_repr
 
-        class OtherProcess(Process):
+        class EmptyProcess(Process):
             pass
 
         expected = dedent("""\
@@ -87,7 +87,7 @@ class TestProcess(object):
             time_dependent: True""")
 
         buf = StringIO()
-        OtherProcess.info(buf=buf)
+        EmptyProcess.info(buf=buf)
         actual = buf.getvalue()
         assert actual == expected
 
