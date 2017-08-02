@@ -1,3 +1,5 @@
+import os
+
 import pytest
 import numpy as np
 from numpy.testing import assert_array_equal
@@ -49,6 +51,13 @@ class TestModel(object):
 
         external_variable = Variable(())
         assert model.is_input(external_variable) is False
+
+    def test_visualize(self, model, tmpdir):
+        pytest.importorskip('graphviz')
+        from IPython.display import Image
+
+        result = model.visualize()
+        assert isinstance(result, Image)
 
     def test_initialize(self, model):
         model.initialize()
