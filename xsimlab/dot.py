@@ -49,10 +49,11 @@ def _add_processes(g, model):
             g.node(proc_name, label=label, **PROC_NODE_ATTRS)
 
         for dep_proc_name in model._dep_processes[proc_name]:
-            if dep_proc_name not in seen:
-                seen.add(dep_proc_name)
-                dep_label = dep_proc_name
-                g.node(dep_proc_name, label=dep_label, **PROC_NODE_ATTRS)
+            # check and add node shouldn't be needed here, but not sure
+            #if dep_proc_name not in seen:
+            #    seen.add(dep_proc_name)
+            #    dep_label = dep_proc_name
+            #    g.node(dep_proc_name, label=dep_label, **PROC_NODE_ATTRS)
             g.edge(dep_proc_name, proc_name, **PROC_EDGE_ATTRS)
 
 
@@ -246,7 +247,7 @@ def dot_graph(model, filename=None, format=None, show_only_variable=None,
         format = 'png'
 
     data = g.pipe(format=format)
-    if not data:
+    if not data:    # pragma: no cover
         raise RuntimeError("Graphviz failed to properly produce an image. "
                            "This probably means your installation of graphviz "
                            "is missing png support. See: "

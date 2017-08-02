@@ -11,7 +11,7 @@ from xsimlab.dot import to_graphviz, dot_graph, hash_variable
 
 
 # need to parse elements of graphivz's Graph object
-g_node_label_re = re.compile(r'.*\[label=([\w<>\"]*?)\s+.*\]')
+g_node_label_re = re.compile(r'.*\[label=([\w<>\\"]*?)\s+.*\]')
 g_edge_labels_re = re.compile(r'\s*([-\w]*?)\s+->\s+([-\w]*?)\s+.*]')
 
 
@@ -85,14 +85,22 @@ def test_to_graphviz(model):
                       'x', 'copy_param', 'quantity', 'some_effect', 'x',
                       'copy_param', 'other_effect', 'quantity', 'x', 'x2',
                       'all_effects', 'other_derived_quantity',
-                      'some_derived_quantity']
+                      'some_derived_quantity', '"\\<no_name\\>"',
+                      '"\\<no_name\\>"']
     assert sorted(actual_nodes) == sorted(expected_nodes)
 
     g = to_graphviz(model, show_only_variable=('quantity', 'quantity'))
     assert _get_graph_nodes(g).count('quantity') == 4
 
-    g = to_graphviz(model, show_only_variable=('some_process', 'quantity'))
+    g = to_graphviz(model, show_only_variable=model.some_process.quantity)
     assert _get_graph_nodes(g).count('quantity') == 4
+
+    g = to_graphviz(model, show_only_variable=('some_process', 'some_effect'))
+    actual_nodes = _get_graph_nodes(g)
+    expected_nodes = ['grid', 'some_process', 'other_process',
+                      'quantity', 'some_effect', 'all_effects',
+                      '"\\<no_name\\>"']
+    assert sorted(actual_nodes) == sorted(expected_nodes)
 
 
 def test_to_graphviz_attributes(model):
@@ -124,6 +132,11 @@ def test_dot_graph(model, tmpdir):
             assert isinstance(result, result_types[format])
         finally:
             _ensure_not_exists(target)
+
+    # format supported by graphviz but not by IPython
+    with pytest.raises(ValueError) as excinfo:
+        dot_graph(model, filename=filename, format='gif')
+    assert "Unknown format" in str(excinfo.value)
 
 
 def test_dot_graph_no_filename(tmpdir, model):

@@ -63,21 +63,31 @@ class TestModel(object):
         external_variable = Variable(())
         assert model.is_input(external_variable) is False
 
-    def test_visualize(self, model, tmpdir):
+    def test_visualize(self, model):
         pytest.importorskip('graphviz')
-        from IPython.display import Image
 
-        result = model.visualize()
-        assert isinstance(result, Image)
+        try:
+            from IPython.display import Image
+            ipython = True
+        except ImportError:
+            ipython = False
 
-        result = model.visualize(show_inputs=True)
-        assert isinstance(result, Image)
+        if ipython:
+            result = model.visualize()
+            assert isinstance(result, Image)
 
-        result = model.visualize(show_variables=True)
-        assert isinstance(result, Image)
+            result = model.visualize(show_inputs=True)
+            assert isinstance(result, Image)
 
-        result = model.visualize(show_only_variable=('quantity', 'quantity'))
-        assert isinstance(result, Image)
+            result = model.visualize(show_variables=True)
+            assert isinstance(result, Image)
+
+            result = model.visualize(
+                show_only_variable=('quantity', 'quantity'))
+            assert isinstance(result, Image)
+
+        else:
+            assert model.visualize() is None
 
     def test_initialize(self, model):
         model.initialize()
