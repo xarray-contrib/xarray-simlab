@@ -3,9 +3,11 @@ xarray-simlab: xarray extension for computer model simulations
 
 |Build Status| |Coverage| |Doc Status|
 
-xarray-simlab is a Python library that provides both a framework for creating
-computational models from re-usable components and a xarray_ extension for
-setting and running simulations using the xarray's ``Dataset`` structure.
+xarray-simlab is a Python library that provides both a generic
+framework for building computational models in a modular fashion and a
+xarray_ extension for setting and running simulations using the
+xarray's ``Dataset`` structure. It is designed for interactive and
+exploratory modeling.
 
 **Warning: this package is currently under heavy development (no stable release yet).**
 
@@ -23,7 +25,8 @@ setting and running simulations using the xarray's ``Dataset`` structure.
 Documentation
 -------------
 
-A draft of documentation is hosted on ReadTheDocs: http://xarray-simlab.readthedocs.io
+A draft of documentation is hosted on ReadTheDocs:
+http://xarray-simlab.readthedocs.io
 
 License
 -------
@@ -31,8 +34,9 @@ License
 3-clause ("Modified" or "New") BSD license,
 see `License file <https://github.com/benbovy/xarray-simlab/blob/master/LICENSE>`__.
 
-xarray-simlab uses short parts of the code of the xarray_, pandas_ and dask_
-libraries. Their licenses are reproduced in the "licenses" directory.
+xarray-simlab uses short parts of the code of the xarray_, pandas_ and
+dask_ libraries. Their licenses are reproduced in the "licenses"
+directory.
 
 .. _pandas: http://pandas.pydata.org/
 .. _dask: http://dask.pydata.org

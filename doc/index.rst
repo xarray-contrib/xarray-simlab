@@ -1,10 +1,11 @@
 xarray-simlab: xarray extension for computer model simulations
 ==============================================================
 
-**xarray-simlab** is a Python library that provides both a framework for
-creating computational models from re-usable components and a `xarray`_
-extension for setting and running simulations using the
-:py:class:`xarray.Dataset` structure.
+**xarray-simlab** is a Python library that provides both a generic
+framework for building computational models in a modular fashion and a
+`xarray`_ extension for setting and running simulations using the
+:py:class:`xarray.Dataset` structure. It is designed for interactive
+and exploratory modeling.
 
 .. _xarray: http://xarray.pydata.org
 
@@ -63,7 +64,8 @@ Documentation index
 Get in touch
 ------------
 
-- You can report bugs, suggest features or view the source code `on GitHub`_.
+- You can report bugs, suggest features or view the source code
+  `on GitHub`_.
 
 .. _on GitHub: http://github.com/benbovy/xarray-simlab
 
@@ -72,7 +74,10 @@ License
 
 3-clause ("Modified" or "New") BSD license.
 
-xarray-simlab is developed with support from the
-`Earth Surface Process Modelling`__ group of the GFZ Helmholtz Centre Potsdam.
+Acknowledgment
+--------------
 
-__ http://www.gfz-potsdam.de/en/section/earth-surface-process-modelling/
+This project is supported by the `Earth Surface Process Modelling`_
+group of the GFZ Helmholtz Centre Potsdam.
+
+.. _`Earth Surface Process Modelling`: http://www.gfz-potsdam.de/en/section/earth-surface-process-modelling/

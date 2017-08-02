@@ -9,7 +9,8 @@ import versioneer
 setup(name='xarray-simlab',
       version=versioneer.get_version(),
       cmdclass=versioneer.get_cmdclass(),
-      description='xarray extension for computer model simulations',
+      description=('generic framework and xarray extension '
+                   'for computer model simulations'),
       url='http://github.com/benbovy/xarray-simlab',
       maintainer='Benoit Bovy',
       maintainer_email='benbovy@gmail.com',
