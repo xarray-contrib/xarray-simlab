@@ -65,29 +65,20 @@ class TestModel(object):
 
     def test_visualize(self, model):
         pytest.importorskip('graphviz')
+        ipydisp = pytest.importorskip('IPython.display')
 
-        try:
-            from IPython.display import Image
-            ipython = True
-        except ImportError:
-            ipython = False
+        result = model.visualize()
+        assert isinstance(result, ipydisp.Image)
 
-        if ipython:
-            result = model.visualize()
-            assert isinstance(result, Image)
+        result = model.visualize(show_inputs=True)
+        assert isinstance(result, ipydisp.Image)
 
-            result = model.visualize(show_inputs=True)
-            assert isinstance(result, Image)
+        result = model.visualize(show_variables=True)
+        assert isinstance(result, ipydisp.Image)
 
-            result = model.visualize(show_variables=True)
-            assert isinstance(result, Image)
-
-            result = model.visualize(
-                show_only_variable=('quantity', 'quantity'))
-            assert isinstance(result, Image)
-
-        else:
-            assert model.visualize() is None
+        result = model.visualize(
+            show_only_variable=('quantity', 'quantity'))
+        assert isinstance(result, ipydisp.Image)
 
     def test_initialize(self, model):
         model.initialize()

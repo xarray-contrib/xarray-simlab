@@ -5,8 +5,6 @@ from errno import ENOENT
 import pytest
 pytest.importorskip("graphviz")
 
-from IPython.display import Image, SVG
-
 from xsimlab.dot import to_graphviz, dot_graph, hash_variable
 
 
@@ -109,17 +107,19 @@ def test_to_graphviz_attributes(model):
 
 
 def test_dot_graph(model, tmpdir):
+    ipydisp = pytest.importorskip('IPython.display')
+
     # Use a name that the shell would interpret specially to ensure that we're
     # not vulnerable to shell injection when interacting with `dot`.
     filename = str(tmpdir.join('$(touch should_not_get_created.txt)'))
 
     # Map from format extension to expected return type.
     result_types = {
-        'png': Image,
-        'jpeg': Image,
+        'png': ipydisp.Image,
+        'jpeg': ipydisp.Image,
         'dot': type(None),
         'pdf': type(None),
-        'svg': SVG,
+        'svg': ipydisp.SVG,
     }
     for format in result_types:
         target = '.'.join([filename, format])
@@ -135,18 +135,28 @@ def test_dot_graph(model, tmpdir):
 
     # format supported by graphviz but not by IPython
     with pytest.raises(ValueError) as excinfo:
-        dot_graph(model, filename=filename, format='gif')
+        dot_graph(model, filename=filename, format='ps')
     assert "Unknown format" in str(excinfo.value)
 
 
+def test_dot_graph_no_ipython(model):
+    try:
+        import IPython.display
+    except ImportError:
+        result = dot_graph(model)
+        assert result is None
+
+
 def test_dot_graph_no_filename(tmpdir, model):
+    ipydisp = pytest.importorskip('IPython.display')
+
     # Map from format extension to expected return type.
     result_types = {
-        'png': Image,
-        'jpeg': Image,
+        'png': ipydisp.Image,
+        'jpeg': ipydisp.Image,
         'dot': type(None),
         'pdf': type(None),
-        'svg': SVG,
+        'svg': ipydisp.SVG,
     }
     for format in result_types:
         before = tmpdir.listdir()
@@ -158,6 +168,8 @@ def test_dot_graph_no_filename(tmpdir, model):
 
 
 def test_filenames_and_formats(model):
+    ipydisp = pytest.importorskip('IPython.display')
+
     # Test with a variety of user provided args
     filenames = ['modelpdf', 'model.pdf', 'model.pdf', 'modelpdf',
                  'model.pdf.svg']
@@ -166,11 +178,11 @@ def test_filenames_and_formats(model):
                'model.pdf.svg']
 
     result_types = {
-        'png': Image,
-        'jpeg': Image,
+        'png': ipydisp.Image,
+        'jpeg': ipydisp.Image,
         'dot': type(None),
         'pdf': type(None),
-        'svg': SVG,
+        'svg': ipydisp.SVG,
     }
 
     for filename, format, target in zip(filenames, formats, targets):
