@@ -1,10 +1,8 @@
-import os
-
 import pytest
 import numpy as np
 from numpy.testing import assert_array_equal
 
-from xsimlab.variable.base import Variable
+from xsimlab.variable.base import Variable, ForeignVariable
 from xsimlab.process import Process
 from xsimlab.model import Model
 from xsimlab.tests.conftest import (Grid, SomeProcess, OtherProcess, Quantity,
@@ -36,6 +34,19 @@ class TestModel(object):
         # test dict-like vs. attribute access
         assert model['grid'] is model.grid
 
+        # test cyclic process dependencies
+        class CyclicProcess(Process):
+            some_param = ForeignVariable(SomeProcess, 'some_param',
+                                         provided=True)
+            some_effect = ForeignVariable(SomeProcess, 'some_effect')
+
+        processes = {k: type(v) for k, v in model.items()}
+        processes.update({'cyclic': CyclicProcess})
+
+        with pytest.raises(ValueError) as excinfo:
+            Model(processes)
+        assert "cycle detected" in str(excinfo.value)
+
     def test_input_vars(self, model):
         expected = {'grid': ['x_size'],
                     'some_process': ['some_param'],
@@ -57,6 +68,15 @@ class TestModel(object):
         from IPython.display import Image
 
         result = model.visualize()
+        assert isinstance(result, Image)
+
+        result = model.visualize(show_inputs=True)
+        assert isinstance(result, Image)
+
+        result = model.visualize(show_variables=True)
+        assert isinstance(result, Image)
+
+        result = model.visualize(show_only_variable=('quantity', 'quantity'))
         assert isinstance(result, Image)
 
     def test_initialize(self, model):

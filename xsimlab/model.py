@@ -238,8 +238,8 @@ def _sort_processes(dep_processes):
                         cycle.append(nodes.pop())
                         cycle.reverse()
                         cycle = '->'.join(cycle)
-                        raise RuntimeError(
-                            "Cycle detected in process graph: %s" % cycle
+                        raise ValueError(
+                            "cycle detected in process graph: %s" % cycle
                         )
                     next_nodes.append(nxt)
 
