@@ -100,7 +100,7 @@ class AttrMapping(object):
     __reversed__ = None
 
     def __hash__(self):
-        return hash(tuple(self._mapping.items()))
+        return hash(frozenset(self._mapping.items()))
 
     def __getattr__(self, name):
         if name != '__setstate__':
