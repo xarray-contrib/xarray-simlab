@@ -30,9 +30,8 @@ class TestAttrMapping(object):
         assert attr_mapping['a'] == 1
 
     def test_get(self, attr_mapping):
-        assert attr_mapping['b'] == 2
-        with pytest.raises(KeyError):
-            attr_mapping['c']
+        assert attr_mapping.get('b') == 2
+        assert attr_mapping.get('c', None) is None
 
     def test_contains(self, attr_mapping):
         assert 'a' in attr_mapping

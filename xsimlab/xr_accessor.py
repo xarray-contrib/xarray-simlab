@@ -66,7 +66,7 @@ class SimlabAccessor(object):
                            % dim)
 
         if self.dim_master_clock is not None:
-            self[dim].attrs.pop(self._master_clock_key)
+            self._obj[self.dim_master_clock].attrs.pop(self._master_clock_key)
 
         self._obj[dim].attrs[self._master_clock_key] = True
         self._dim_master_clock = dim
@@ -82,7 +82,7 @@ class SimlabAccessor(object):
             if end - start == nsteps * step:
                 provided_args = {'nsteps', 'end'}
         if provided_args == {'nsteps', 'end'}:
-            data = np.linspace(start, end, nsteps)
+            data = np.linspace(start, end, nsteps + 1)
         elif provided_args == {'step', 'nsteps'}:
             data = np.arange(start, start + (nsteps + 1) * step, step)
         elif provided_args == {'step', 'end'}:
