@@ -56,7 +56,7 @@ class Grid(Process):
         time_dependent = False
 
     def validate(self):
-        if self.x_size.value is None:
+        if np.asscalar(self.x_size.value) is None:
             self.x_size.value = 5
 
     def initialize(self):
@@ -106,6 +106,7 @@ class SomeProcess(Process):
 class OtherProcess(Process):
     x = ForeignVariable(Grid, 'x')
     quantity = ForeignVariable(Quantity, 'quantity')
+    other_param = Variable((), default_value=1, description='other parameter')
     other_effect = Variable('x', group='effect', provided=True)
 
     # OtherProcess should always appear after SomeProcess in a model
@@ -145,11 +146,12 @@ def model():
 @pytest.fixture(scope='session')
 def model_repr():
     return dedent("""\
-        <xsimlab.Model (4 processes, 3 inputs)>
+        <xsimlab.Model (4 processes, 4 inputs)>
         grid
-            x_size      (in) grid size
+            x_size       (in) grid size
         some_process
-            some_param  (in) some parameter
+            some_param   (in) some parameter
         other_process
+            other_param  (in) other parameter
         quantity
-            quantity    (in) a quantity""")
+            quantity     (in) a quantity""")

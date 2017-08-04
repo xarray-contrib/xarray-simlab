@@ -256,8 +256,8 @@ class SimlabAccessor(object):
         if isinstance(process, Process):
             process = process.name
         if process not in self._model:
-            raise ValueError("the model attached to this Dataset has no "
-                             "process named %r" % process)
+            raise KeyError("the model attached to this Dataset has no "
+                           "process named %r" % process)
 
         process_inputs = self._model.input_vars[process]
 
@@ -268,33 +268,33 @@ class SimlabAccessor(object):
                                 process))
 
         # convert to xarray variables and validate the given dimensions
-        variables = {}
+        xr_variables = {}
         for name, var in self._model.input_vars[process].items():
             xr_var = var.to_xarray_variable(inputs.get(name))
             var.validate_dimensions(xr_var.dims,
                                     ignore_dims=(self.dim_master_clock,
                                                  'this_variable'))
-            variables[name] = xr_var
+            xr_variables[name] = xr_var
 
         # validate at the process level
         # first assign values to a cloned process object to avoid conflicts
         process_obj = self._model._processes[process].clone()
-        for name, xr_var in variables.items():
+        for name, xr_var in xr_variables.items():
             process_obj[name].value = xr_var.values
         process_obj.validate()
 
         # maybe set optional variables, and validate each variable
-        for name, xr_var in variables.items():
+        for name, xr_var in xr_variables.items():
             var = process_obj[name]
             if var.value is not xr_var.values:
                 xr_var = var.to_xarray_variable(var.value)
-                variables[name] = xr_var
+                xr_variables[name] = xr_var
             var.run_validators(xr_var)
             var.validate(xr_var)
 
         # add variables to dataset if all validation tests passed
         # also rename the 'this_variable' dimension if present
-        for name, xr_var in variables.items():
+        for name, xr_var in xr_variables.items():
             xr_var_name = process + '__' + name
             rename_dict = {'this_variable': xr_var_name}
             dims = tuple(rename_dict.get(dim, dim) for dim in xr_var.dims)
@@ -331,8 +331,8 @@ class SimlabAccessor(object):
 
         for proc_name, vars in process_vars.items():
             if proc_name not in self._model:
-                raise ValueError("the model attached to this Dataset has no "
-                                 "process named %r" % proc_name)
+                raise KeyError("the model attached to this Dataset has no "
+                               "process named %r" % proc_name)
             process = self._model[proc_name]
             if isinstance(vars, str):
                 vars = [vars]
@@ -347,13 +347,13 @@ class SimlabAccessor(object):
         if clock_dim is None:
             self._obj.attrs[self._snapshot_vars_key] = snapshot_vars
         else:
-            clock_var = self._obj[clock_dim]
-            if not clock_var.attrs.get(self._snapshot_clock_key, False):
-                raise ValueError("%r coordinate is not a snapshot clock "
-                                 "coordinate. "
-                                 "Use Dataset.xsimlab.set_snapshot_clock first"
-                                 % clock_dim)
-            clock_var.attrs[self._snapshot_vars_key] = snapshot_vars
+            coord = self._obj.coords[clock_dim]
+            is_clock = (coord.attrs.get(self._master_clock_key, False) or
+                        coord.attrs.get(self._snapshot_clock_key, False))
+            if not is_clock:
+                raise ValueError("%r coordinate is not a valid clock "
+                                 "coordinate. " % clock_dim)
+            coord.attrs[self._snapshot_vars_key] = snapshot_vars
 
     def _get_snapshot_vars(self, name, obj):
         vars_str = obj.attrs.get(self._snapshot_vars_key, '')

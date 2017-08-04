@@ -1,6 +1,6 @@
 import pytest
 import xarray as xr
-from numpy.testing import assert_array_equal
+import numpy as np
 
 from xsimlab import xr_accessor
 
@@ -17,6 +17,7 @@ class TestSimlabAccessor(object):
 
     _master_clock_key = xr_accessor.SimlabAccessor._master_clock_key
     _snapshot_clock_key = xr_accessor.SimlabAccessor._snapshot_clock_key
+    _snapshot_vars_key = xr_accessor.SimlabAccessor._snapshot_vars_key
 
     def test_dim_master_clock(self):
         attrs = {self._master_clock_key: 1}
@@ -57,7 +58,7 @@ class TestSimlabAccessor(object):
         for kwargs in valid_kwargs:
             ds = xr.Dataset()
             ds.xsimlab.set_master_clock('clock', **kwargs)
-            assert_array_equal(ds.clock.values, data)
+            np.testing.assert_array_equal(ds.clock.values, data)
 
         invalid_kwargs = [
             {'nsteps': 4, 'end': 8, 'step': 3},
@@ -88,12 +89,113 @@ class TestSimlabAccessor(object):
         ds.xsimlab.set_master_clock('clock', data=[0, 2, 4, 6, 8])
 
         ds.xsimlab.set_snapshot_clock('snap_clock', end=8, step=4)
-        assert_array_equal(ds['snap_clock'], [0, 4, 8])
+        np.testing.assert_array_equal(ds['snap_clock'], [0, 4, 8])
         assert self._snapshot_clock_key in ds['snap_clock'].attrs
 
         ds.xsimlab.set_snapshot_clock('snap_clock', data=[0, 3, 8])
-        assert_array_equal(ds['snap_clock'], [0, 4, 8])
+        np.testing.assert_array_equal(ds['snap_clock'], [0, 4, 8])
 
         with pytest.raises(KeyError):
             ds.xsimlab.set_snapshot_clock('snap_clock', data=[0, 3, 8],
                                           auto_adjust=False)
+
+    def test_set_input_vars(self, model):
+        ds = xr.Dataset()
+
+        with pytest.raises(ValueError) as excinfo:
+            ds.xsimlab.set_input_vars('process', var=1)
+        assert "no model attached" in str(excinfo.value)
+
+        ds.xsimlab.use_model(model)
+        with pytest.raises(KeyError) as excinfo:
+            ds.xsimlab.set_input_vars('invalid_process', var=1)
+        assert "no process named" in str(excinfo.value)
+
+        with pytest.raises(ValueError) as excinfo:
+            ds.xsimlab.set_input_vars('some_process', some_param=0,
+                                      invalid_var=1)
+        assert "not valid input variables" in str(excinfo.value)
+
+        ds.xsimlab.set_input_vars('quantity', quantity=('x', np.zeros(10)))
+        expected = xr.DataArray(data=np.zeros(10), dims='x')
+        assert "quantity__quantity" in ds
+        xr.testing.assert_equal(ds['quantity__quantity'], expected)
+
+        # test time and parameter dimensions
+        ds.xsimlab.set_input_vars('some_process', some_param=[1, 2])
+        expected = xr.DataArray(data=[1, 2], dims='some_process__some_param',
+                                coords={'some_process__some_param': [1, 2]})
+        xr.testing.assert_equal(ds['some_process__some_param'], expected)
+        del ds['some_process__some_param']
+
+        ds['clock'] = ('clock', [0, 1], {self._master_clock_key: 1})
+        ds.xsimlab.set_input_vars('some_process', some_param=('clock', [1, 2]))
+        expected = xr.DataArray(data=[1, 2], dims='clock',
+                                coords={'clock': [0, 1]})
+        xr.testing.assert_equal(ds['some_process__some_param'], expected)
+
+        # test optional
+        ds.xsimlab.set_input_vars('grid')
+        expected = xr.DataArray(data=5)
+        xr.testing.assert_equal(ds['grid__x_size'], expected)
+
+    def test_set_snapshot_vars(self, model):
+        ds = xr.Dataset()
+        ds['clock'] = ('clock', [0, 2, 4, 6, 8], {self._master_clock_key: 1})
+        ds['snap_clock'] = ('snap_clock', [0, 4, 8],
+                            {self._snapshot_clock_key: 1})
+        ds['not_a_clock'] = ('not_a_clock', [0 ,1])
+
+        with pytest.raises(ValueError) as excinfo:
+            ds.xsimlab.set_snapshot_vars(None, process='var')
+        assert "no model attached" in str(excinfo.value)
+
+        ds.xsimlab.use_model(model)
+        with pytest.raises(KeyError) as excinfo:
+            ds.xsimlab.set_snapshot_vars(None, invalid_process='var')
+        assert "no process named" in str(excinfo.value)
+
+        with pytest.raises(KeyError) as excinfo:
+            ds.xsimlab.set_snapshot_vars(None, quantity='invalid_var')
+        assert "has no variable" in str(excinfo.value)
+
+        ds.xsimlab.set_snapshot_vars(None, grid='x')
+        assert ds.attrs[self._snapshot_vars_key] == 'grid__x'
+
+        ds.xsimlab.set_snapshot_vars('clock', some_process='some_effect',
+                                     quantity='quantity')
+        assert ds['clock'].attrs[self._snapshot_vars_key] == (
+            'some_process__some_effect,quantity__quantity')
+
+        ds.xsimlab.set_snapshot_vars('snap_clock',
+                                     other_process=('other_effect', 'x2'))
+        assert ds['snap_clock'].attrs[self._snapshot_vars_key] == (
+            'other_process__other_effect,other_process__x2')
+
+        with pytest.raises(ValueError) as excinfo:
+            ds.xsimlab.set_snapshot_vars('not_a_clock', quantity='quantity')
+        assert "not a valid clock" in str(excinfo.value)
+
+    def test_snapshot_vars(self, model):
+        ds = xr.Dataset()
+        ds['clock'] = ('clock', [0, 2, 4, 6, 8], {self._master_clock_key: 1})
+        ds['snap_clock'] = ('snap_clock', [0, 4, 8],
+                            {self._snapshot_clock_key: 1})
+
+        ds.xsimlab.use_model(model)
+        ds.xsimlab.set_snapshot_vars(None, grid='x')
+        ds.xsimlab.set_snapshot_vars('clock', quantity='quantity')
+        ds.xsimlab.set_snapshot_vars('snap_clock',
+                                     other_process=('other_effect', 'x2'))
+
+        expected = {None: [('grid', 'x')],
+                    'clock': [('quantity', 'quantity')],
+                    'snap_clock': [('other_process', 'other_effect'),
+                                   ('other_process', 'x2')]}
+        assert ds.xsimlab.snapshot_vars == expected
+
+    def test_run_multi(self):
+        ds = xr.Dataset()
+
+        with pytest.raises(NotImplementedError):
+            ds.xsimlab.run_multi()

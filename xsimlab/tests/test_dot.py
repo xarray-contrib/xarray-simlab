@@ -63,7 +63,7 @@ def test_to_graphviz(model):
     actual_nodes = _get_graph_nodes(g)
     actual_edges = _get_graph_edges(g)
     expected_nodes = ['grid', 'some_process', 'other_process', 'quantity',
-                      'x_size', 'some_param', 'quantity']
+                      'x_size', 'some_param', 'other_param', 'quantity']
     expected_edges = [
         ('grid', 'some_process'),
         ('some_process', 'other_process'),
@@ -72,6 +72,7 @@ def test_to_graphviz(model):
         ('other_process', 'quantity'),
         (hash_variable(model.grid.x_size), 'grid'),
         (hash_variable(model.some_process.some_param), 'some_process'),
+        (hash_variable(model.other_process.other_param), 'other_process'),
         (hash_variable(model.quantity.quantity), 'quantity')
     ]
     assert sorted(actual_nodes) == sorted(expected_nodes)

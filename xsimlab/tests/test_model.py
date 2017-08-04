@@ -50,6 +50,7 @@ class TestModel(object):
     def test_input_vars(self, model):
         expected = {'grid': ['x_size'],
                     'some_process': ['some_param'],
+                    'other_process': ['other_param'],
                     'quantity': ['quantity']}
         actual = {k: list(v.keys()) for k, v in model.input_vars.items()}
         assert expected == actual
