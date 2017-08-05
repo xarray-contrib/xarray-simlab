@@ -144,7 +144,7 @@ class TestSimlabAccessor(object):
         ds['clock'] = ('clock', [0, 2, 4, 6, 8], {self._master_clock_key: 1})
         ds['snap_clock'] = ('snap_clock', [0, 4, 8],
                             {self._snapshot_clock_key: 1})
-        ds['not_a_clock'] = ('not_a_clock', [0 ,1])
+        ds['not_a_clock'] = ('not_a_clock', [0, 1])
 
         with pytest.raises(ValueError) as excinfo:
             ds.xsimlab.set_snapshot_vars(None, process='var')
@@ -164,13 +164,15 @@ class TestSimlabAccessor(object):
 
         ds.xsimlab.set_snapshot_vars('clock', some_process='some_effect',
                                      quantity='quantity')
-        assert ds['clock'].attrs[self._snapshot_vars_key] == (
-            'some_process__some_effect,quantity__quantity')
+        expected = {'some_process__some_effect', 'quantity__quantity'}
+        actual = set(ds['clock'].attrs[self._snapshot_vars_key].split(','))
+        assert actual == expected
 
         ds.xsimlab.set_snapshot_vars('snap_clock',
                                      other_process=('other_effect', 'x2'))
-        assert ds['snap_clock'].attrs[self._snapshot_vars_key] == (
-            'other_process__other_effect,other_process__x2')
+        expected = {'other_process__other_effect', 'other_process__x2'}
+        actual = set(ds['snap_clock'].attrs[self._snapshot_vars_key].split(','))
+        assert actual == expected
 
         with pytest.raises(ValueError) as excinfo:
             ds.xsimlab.set_snapshot_vars('not_a_clock', quantity='quantity')
@@ -188,11 +190,12 @@ class TestSimlabAccessor(object):
         ds.xsimlab.set_snapshot_vars('snap_clock',
                                      other_process=('other_effect', 'x2'))
 
-        expected = {None: [('grid', 'x')],
-                    'clock': [('quantity', 'quantity')],
-                    'snap_clock': [('other_process', 'other_effect'),
-                                   ('other_process', 'x2')]}
-        assert ds.xsimlab.snapshot_vars == expected
+        expected = {None: set([('grid', 'x')]),
+                    'clock': set([('quantity', 'quantity')]),
+                    'snap_clock': set([('other_process', 'other_effect'),
+                                       ('other_process', 'x2')])}
+        actual = {k: set(v) for k, v in ds.xsimlab.snapshot_vars.items()}
+        assert actual == expected
 
     def test_run_multi(self):
         ds = xr.Dataset()
