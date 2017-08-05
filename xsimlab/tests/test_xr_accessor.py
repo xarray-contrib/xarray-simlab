@@ -122,7 +122,7 @@ class TestSimlabAccessor(object):
         xr.testing.assert_equal(ds['quantity__quantity'], expected)
 
         # test time and parameter dimensions
-        ds.xsimlab.set_input_vars('some_process', some_param=[1, 2])
+        ds.xsimlab.set_input_vars(model.some_process, some_param=[1, 2])
         expected = xr.DataArray(data=[1, 2], dims='some_process__some_param',
                                 coords={'some_process__some_param': [1, 2]})
         xr.testing.assert_equal(ds['some_process__some_param'], expected)
@@ -183,6 +183,9 @@ class TestSimlabAccessor(object):
         ds['clock'] = ('clock', [0, 2, 4, 6, 8], {self._master_clock_key: 1})
         ds['snap_clock'] = ('snap_clock', [0, 4, 8],
                             {self._snapshot_clock_key: 1})
+        # snapshot clock with no snapshot variable (attribute) set
+        ds['snap_clock2'] = ('snap_clock2', [0, 8],
+                             {self._snapshot_clock_key: 1})
 
         ds.xsimlab.use_model(model)
         ds.xsimlab.set_snapshot_vars(None, grid='x')
