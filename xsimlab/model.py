@@ -1,105 +1,10 @@
 from collections import OrderedDict
 
-import numpy as np
-import xarray as xr
-
 from .variable.base import (AbstractVariable, Variable, ForeignVariable,
                             VariableList, VariableGroup)
 from .process import Process
 from .utils import AttrMapping
 from .formatting import _calculate_col_width, pretty_print, maybe_truncate
-
-
-class SimulationSnapshots(object):
-    """Interface that allows taking snapshots for given `Variable` objects
-    during a model run.
-
-    Snaphots are only for values given by `Variable.state` (or equivalently
-    `Variable.value`).
-
-    """
-
-    def __init__(self, model, dataset):
-        self.model = model
-        self.ds = dataset
-
-        self.snapshot_clocks_vars = dataset.xsimlab.snapshot_vars
-
-        self.snapshot_arrays = {}
-        for vars in self.snapshot_clocks_vars.values():
-            self.snapshot_arrays.update({v: [] for v in vars})
-
-        master_clock_values = dataset[dataset.xsimlab.dim_master_clock].values
-        self.snapshot_clocks_steps = {
-            clock: np.in1d(master_clock_values, dataset[clock].values)
-            for clock in self.snapshot_clocks_vars if clock is not None
-        }
-
-    def _take_snapshot_var(self, key):
-        proc_name, var_name = key
-        model_var = self.model._processes[proc_name]._variables[var_name]
-        self.snapshot_arrays[key].append(np.array(model_var.state))
-
-    def take_snapshots(self, step):
-        for clock, vars in self.snapshot_clocks_vars.items():
-            if clock is None:
-                if step == -1:
-                    for key in vars:
-                        self._take_snapshot_var(key)
-            elif self.snapshot_clocks_steps[clock][step]:
-                for key in vars:
-                    self._take_snapshot_var(key)
-
-    def _get_dims(self, array, variable):
-        for dims in variable.allowed_dims:
-            if len(dims) == array.ndim:
-                return dims
-
-        return tuple()
-
-    def _to_xarray_variable(self, key, clock=None):
-        proc_name, var_name = key
-        variable = self.model._processes[proc_name]._variables[var_name]
-
-        array_list = self.snapshot_arrays[key]
-        first_array = array_list[0]
-
-        if len(array_list) == 1:
-            data = first_array
-        else:
-            data = np.stack(array_list)
-
-        dims = self._get_dims(first_array, variable)
-        if clock is not None:
-            dims = (clock,) + dims
-
-        attrs = variable.attrs.copy()
-        attrs['description'] = variable.description
-
-        return xr.Variable(dims, data, attrs=attrs)
-
-    def to_dataset(self):
-        from .xr_accessor import SimlabAccessor
-
-        xr_variables = {}
-
-        for clock, vars in self.snapshot_clocks_vars.items():
-            for key in vars:
-                var_name = '__'.join(key)
-                xr_variables[var_name] = self._to_xarray_variable(
-                    key, clock=clock
-                )
-
-        out_ds = self.ds.update(xr_variables, inplace=False)
-
-        for clock in self.snapshot_clocks_vars:
-            if clock is None:
-                attrs = out_ds.attrs
-            else:
-                attrs = out_ds[clock].attrs
-            attrs.pop(SimlabAccessor._snapshot_vars_key)
-
-        return out_ds
 
 
 def _set_process_names(processes):
@@ -404,62 +309,6 @@ class Model(AttrMapping):
         """Run `.finalize()` for each processes in the model."""
         for proc in self._processes.values():
             proc.finalize()
-
-    def run(self, ds, safe_mode=True):
-        """Run the model.
-
-        Parameters
-        ----------
-        ds : xarray.Dataset object
-            Dataset to use as model input.
-        safe_mode : bool, optional
-            If True (default), it is safe to run multiple simulations
-            simultaneously. Generally safe mode shouldn't be disabled, except
-            in a few cases (e.g., debugging).
-
-        Returns
-        -------
-        out_ds : xarray.Dataset object
-            Another Dataset with model inputs and outputs.
-
-        """
-        dim_master_clock = ds.xsimlab.dim_master_clock
-        if dim_master_clock is None:
-            raise ValueError("missing master clock dimension / coordinate ")
-
-        if safe_mode:
-            obj = self.clone()
-        else:
-            obj = self
-
-        ds_no_time = ds.filter(lambda v: dim_master_clock not in v.dims)
-        obj._set_inputs_values(ds_no_time)
-
-        obj.initialize()
-
-        ds_time = ds.filter(lambda v: dim_master_clock in v.dims)
-        has_time_var = bool(ds_time.data_vars)
-
-        time_steps = ds[dim_master_clock].diff(dim_master_clock).values
-
-        snapshots = SimulationSnapshots(obj, ds)
-
-        for i, dt in enumerate(time_steps):
-            if has_time_var:
-                ds_step = ds_time.isel(**{dim_master_clock: i})
-                obj._set_inputs_values(ds_step)
-
-            obj.run_step(dt)
-
-            snapshots.take_snapshots(i)
-
-            obj.finalize_step()
-
-        snapshots.take_snapshots(-1)
-
-        obj.finalize()
-
-        return snapshots.to_dataset()
 
     def clone(self):
         """Clone the Model.

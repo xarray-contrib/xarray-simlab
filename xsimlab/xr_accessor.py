@@ -8,6 +8,7 @@ from xarray import register_dataset_accessor
 
 from .process import Process
 from .model import Model
+from .xr_interface import DatasetModelInterface
 
 
 @register_dataset_accessor('filter')
@@ -394,7 +395,14 @@ class SimlabAccessor(object):
         if self._model is None:
             raise ValueError("No model attached to this Dataset")
 
-        return self._model.run(self._obj, safe_mode=safe_mode)
+        if safe_mode:
+            model = self._model.clone()
+        else:
+            model = self._model
+
+        ds_model_interface = DatasetModelInterface(model, self._obj)
+        out_ds = ds_model_interface.run_model()
+        return out_ds
 
     def run_multi(self):
         """Run multiple models.

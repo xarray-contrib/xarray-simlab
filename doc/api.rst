@@ -86,8 +86,10 @@ Running a model
 ---------------
 
 In most cases, the methods listed below should not be used directly.
-For running simulations, it is preferable to use the ``Dataset.xsimlab`` accessor
-instead. These methods might be useful for debugging, though.
+For running simulations, it is preferable to use the
+``Dataset.xsimlab`` accessor instead. These methods might be useful
+though, e.g., for debugging or for using ``Model`` objects with other
+interfaces.
 
 .. autosummary::
    :toctree: _api_generated/
@@ -96,7 +98,6 @@ instead. These methods might be useful for debugging, though.
    Model.run_step
    Model.finalize_step
    Model.finalize
-   Model.run
 
 Process
 =======
