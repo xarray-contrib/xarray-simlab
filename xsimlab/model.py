@@ -338,6 +338,8 @@ class Model(AttrMapping):
         """
         if isinstance(variable, AbstractVariable):
             proc_name, var_name = self._get_proc_var_name(variable)
+        elif isinstance(variable, (VariableList, VariableGroup)):
+            proc_name, var_name = None, None   # prevent unpack iterable below
         else:
             proc_name, var_name = variable
 

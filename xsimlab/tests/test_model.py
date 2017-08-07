@@ -2,7 +2,8 @@ import pytest
 import numpy as np
 from numpy.testing import assert_array_equal
 
-from xsimlab.variable.base import Variable, ForeignVariable
+from xsimlab.variable.base import (Variable, ForeignVariable, VariableList,
+                                   VariableGroup)
 from xsimlab.process import Process
 from xsimlab.model import Model
 from xsimlab.tests.conftest import (Grid, SomeProcess, OtherProcess, Quantity,
@@ -58,11 +59,19 @@ class TestModel(object):
     def test_is_input(self, model):
         assert model.is_input(model.grid.x_size) is True
         assert model.is_input(('grid', 'x_size')) is True
-        assert model.is_input(('quantity', 'all_effects')) is False
+        assert model.is_input(model.quantity.all_effects) is False
         assert model.is_input(('other_process', 'copy_param')) is False
 
         external_variable = Variable(())
         assert model.is_input(external_variable) is False
+
+        var_list = [Variable(()), Variable(()), Variable(())]
+        variable_list = VariableList(var_list)
+        assert model.is_input(variable_list) is False
+
+        variable_group = VariableGroup('group')
+        variable_group._set_variables({})
+        assert model.is_input(variable_group) is False
 
     def test_visualize(self, model):
         pytest.importorskip('graphviz')
