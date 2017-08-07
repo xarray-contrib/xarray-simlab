@@ -279,14 +279,6 @@ class Model(AttrMapping):
                          show_inputs=show_inputs,
                          show_variables=show_variables)
 
-    def _set_inputs_values(self, ds):
-        """Set model inputs values from xarray.Dataset."""
-        for name, var in ds.data_vars.items():
-            proc_name, var_name = name.split('__')
-
-            if self.is_input((proc_name, var_name)):
-                self[proc_name][var_name].value = var.values.copy()
-
     def initialize(self):
         """Run `.initialize()` for each processes in the model."""
         for proc in self._processes.values():
