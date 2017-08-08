@@ -135,11 +135,6 @@ def model():
                    'some_process': SomeProcess,
                    'other_process': OtherProcess,
                    'quantity': Quantity})
-
-    model.grid.x_size.value = 10
-    model.quantity.quantity.state = np.zeros(10)
-    model.some_process.some_param.value = 1
-
     return model
 
 

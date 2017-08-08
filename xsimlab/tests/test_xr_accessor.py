@@ -200,6 +200,9 @@ class TestSimlabAccessor(object):
         actual = {k: set(v) for k, v in ds.xsimlab.snapshot_vars.items()}
         assert actual == expected
 
+    def test_run(self, model):
+        pass  # TODO: test only safe_mode True and False
+
     def test_run_multi(self):
         ds = xr.Dataset()
 

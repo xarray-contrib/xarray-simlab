@@ -10,6 +10,18 @@ from xsimlab.tests.conftest import (Grid, SomeProcess, OtherProcess, Quantity,
                                     PlugProcess)
 
 
+@pytest.fixture
+def model(model):
+    """Override fixture defined in conftest.py, return a model
+    with values set for some of its variables.
+    """
+    model.grid.x_size.value = 10
+    model.quantity.quantity.state = np.zeros(10)
+    model.some_process.some_param.value = 1
+
+    return model
+
+
 class TestModel(object):
 
     def test_constructor(self, model):

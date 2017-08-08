@@ -32,89 +32,7 @@ class DatasetModelInterface(object):
         if self.dim_master_clock is None:
             raise ValueError("missing master clock dimension / coordinate ")
 
-    def init_snapshots(self):
-        """Initialize snapshots for model variables given in attributes of
-        Dataset.
-        """
-        self.snapshot_vars = self.dataset.xsimlab.snapshot_vars
-        self.snapshot_values = {}
-        for vars in self.snapshot_vars.values():
-            self.snapshot_values.update({v: [] for v in vars})
-
-        self.snapshot_save = {
-            clock: np.in1d(self.dataset[self.dim_master_clock].values,
-                           self.dataset[clock].values)
-            for clock in self.snapshot_vars if clock is not None
-        }
-
-    def take_snapshot_var(self, key):
-        """Take a snapshot of a given model variable (i.e., a copy of the value
-        of its `state` property).
-        """
-        proc_name, var_name = key
-        model_var = self.model._processes[proc_name]._variables[var_name]
-        self.snapshot_values[key].append(np.array(model_var.state))
-
-    def take_snapshots(self, istep):
-        """Take snapshots at a given step index."""
-        for clock, vars in self.snapshot_vars.items():
-            if clock is None:
-                if istep == -1:
-                    for key in vars:
-                        self.take_snapshot_var(key)
-            elif self.snapshot_save[clock][istep]:
-                for key in vars:
-                    self.take_snapshot_var(key)
-
-    def snapshot_to_xarray_variable(self, key, clock=None):
-        """Convert snapshots taken for a specific model variable to an
-        xarray.Variable object.
-        """
-        proc_name, var_name = key
-        variable = self.model._processes[proc_name]._variables[var_name]
-
-        array_list = self.snapshot_values[key]
-        first_array = array_list[0]
-
-        if len(array_list) == 1:
-            data = first_array
-        else:
-            data = np.stack(array_list)
-
-        dims = _get_dims_from_variable(first_array, variable)
-        if clock is not None:
-            dims = (clock,) + dims
-
-        attrs = variable.attrs.copy()
-        attrs['description'] = variable.description
-
-        return xr.Variable(dims, data, attrs=attrs)
-
-    def get_output_dataset(self):
-        """Build a new output Dataset from the input Dataset and
-        all snapshots taken during a model run.
-        """
-        from .xr_accessor import SimlabAccessor
-
-        xr_variables = {}
-
-        for clock, vars in self.snapshot_vars.items():
-            for key in vars:
-                var_name = '__'.join(key)
-                xr_variables[var_name] = self.snapshot_to_xarray_variable(
-                    key, clock=clock
-                )
-
-        out_ds = self.dataset.update(xr_variables, inplace=False)
-
-        for clock in self.snapshot_vars:
-            if clock is None:
-                attrs = out_ds.attrs
-            else:
-                attrs = out_ds[clock].attrs
-            attrs.pop(SimlabAccessor._snapshot_vars_key)
-
-        return out_ds
+        self.check_model_inputs_in_dataset()
 
     def check_model_inputs_in_dataset(self):
         """Check if all model inputs have their corresponding data variables
@@ -160,6 +78,91 @@ class DatasetModelInterface(object):
         clock_coord = self.dataset[self.dim_master_clock]
         return clock_coord.diff(self.dim_master_clock).values
 
+    def init_snapshots(self):
+        """Initialize snapshots for model variables given in attributes of
+        Dataset.
+        """
+        self.snapshot_vars = self.dataset.xsimlab.snapshot_vars
+
+        self.snapshot_values = {}
+        for vars in self.snapshot_vars.values():
+            self.snapshot_values.update({v: [] for v in vars})
+
+        self.snapshot_save = {
+            clock: np.in1d(self.dataset[self.dim_master_clock].values,
+                           self.dataset[clock].values)
+            for clock in self.snapshot_vars if clock is not None
+        }
+
+    def take_snapshot_var(self, key):
+        """Take a snapshot of a given model variable (i.e., a copy of the value
+        of its `state` property).
+        """
+        proc_name, var_name = key
+        model_var = self.model._processes[proc_name]._variables[var_name]
+        self.snapshot_values[key].append(np.array(model_var.state))
+
+    def take_snapshots(self, istep):
+        """Take snapshots at a given step index."""
+        for clock, vars in self.snapshot_vars.items():
+            if clock is None:
+                if istep == -1:
+                    for key in vars:
+                        self.take_snapshot_var(key)
+            elif self.snapshot_save[clock][istep]:
+                for key in vars:
+                    self.take_snapshot_var(key)
+
+    def snapshot_to_xarray_variable(self, key, clock=None):
+        """Convert snapshots taken for a specific model variable to an
+        xarray.Variable object.
+        """
+        proc_name, var_name = key
+        variable = self.model._processes[proc_name]._variables[var_name]
+
+        array_list = self.snapshot_values[key]
+        first_array = array_list[0]
+
+        if len(array_list) == 1:
+            data = first_array
+        else:
+            data = np.stack(array_list)
+
+        dims = _get_dims_from_variable(first_array, variable)
+        if clock is not None and len(array_list) > 1:
+            dims = (clock,) + dims
+
+        attrs = variable.attrs.copy()
+        attrs['description'] = variable.description
+
+        return xr.Variable(dims, data, attrs=attrs)
+
+    def get_output_dataset(self):
+        """Build a new output Dataset from the input Dataset and
+        all snapshots taken during a model run.
+        """
+        from .xr_accessor import SimlabAccessor
+
+        xr_variables = {}
+
+        for clock, vars in self.snapshot_vars.items():
+            for key in vars:
+                var_name = '__'.join(key)
+                xr_variables[var_name] = self.snapshot_to_xarray_variable(
+                    key, clock=clock
+                )
+
+        out_ds = self.dataset.update(xr_variables, inplace=False)
+
+        for clock in self.snapshot_vars:
+            if clock is None:
+                attrs = out_ds.attrs
+            else:
+                attrs = out_ds[clock].attrs
+            attrs.pop(SimlabAccessor._snapshot_vars_key)
+
+        return out_ds
+
     def run_model(self):
         """Run the model.
 
@@ -172,7 +175,6 @@ class DatasetModelInterface(object):
         snapshots.
 
         """
-        self.check_model_inputs_in_dataset()
         ds_clock, ds_no_clock = self.split_data_vars_clock()
         ds_clock_any = bool(ds_clock.data_vars)
 
