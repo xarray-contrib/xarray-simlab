@@ -99,14 +99,14 @@ class SimlabAccessor(object):
         return data
 
     def set_master_clock(self, dim, data=None, start=0., end=None,
-                         step=None, nsteps=None):
+                         step=None, nsteps=None, units=None, calendar=None):
         """Add a dimension coordinate as master clock for model runs.
 
         Parameters
         ----------
         dim : str
             Name of the dimension / coordinate to add.
-        data : array-like, optional
+        data : array-like or xarray object or pandas Index, optional
             Absolute time values for the master clock (must be 1-dimensional).
             If provided, all other parameters below will be ignored.
         start : float, optional
@@ -117,12 +117,27 @@ class SimlabAccessor(object):
             Time step duration.
         nsteps : int, optional
             Number of time steps.
+        units : str, optional
+            Time units (CF-convention style) that will be added as attribute of
+            the coordinate. Mostly useful when `data` is not provided or when
+            it doesn't have datetime-like values.
+        calendar : str, optional
+            Calendar (CF-convention style). It will also be added in coordinate
+            attributes.
 
         Raises
         ------
         ValueError
             If Dataset has already a dimension named `dim`
-            or in case of ambiguous combination of `nsteps`, `step` and `end`.
+            or in case of ambiguous combination of `nsteps`, `step` and `end`
+            or if any xarray object provided for `data` has other dimensions
+            than `dim`.
+
+        Notes
+        -----
+        Arguments other than `dim` and `data` are quite irrelevant when
+        working with datetime-like values. In this case, it is better to provide
+        a value for `data` using, e.g., a `pandas.DatetimeIndex` object.
 
         """
         if dim in self._obj.dims:
@@ -130,6 +145,11 @@ class SimlabAccessor(object):
 
         self._obj[dim] = self._set_clock_data(dim, data, start, end,
                                               step, nsteps)
+        if units is not None:
+            self._obj[dim].attrs['units'] = units
+        if calendar is not None:
+            self._obj[dim].attrs['calendar'] = calendar
+
         self.dim_master_clock = dim
 
     def set_snapshot_clock(self, dim, data=None, start=0., end=None,
@@ -166,6 +186,11 @@ class SimlabAccessor(object):
         ValueError
             If no master clock dimension / coordinate is found in Dataset.
 
+        Notes
+        -----
+        If set, 'units' and 'calendar' attributes will be copied from the master
+        clock coordinate.
+
         See Also
         --------
         :meth:`Dataset.xsimlab.set_master_clock`
@@ -194,6 +219,11 @@ class SimlabAccessor(object):
         # _xsimlab_master_clock attribute has propagated with .sel
         self._obj[dim].attrs.pop(self._master_clock_key)
         self._obj[dim].attrs[self._snapshot_clock_key] = np.uint8(True)
+
+        for attr_name in ('units', 'calendar'):
+            attr_value = da_master_clock.attrs.get(attr_name)
+            if attr_value is not None:
+                self._obj[dim].attrs[attr_name] = attr_value
 
     def use_model(self, obj):
         """Set a Model to use with this Dataset.

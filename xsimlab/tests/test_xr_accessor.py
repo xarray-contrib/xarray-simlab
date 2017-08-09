@@ -72,8 +72,12 @@ class TestSimlabAccessor(object):
             assert "Invalid combination" in str(excinfo.value)
 
         ds = xr.Dataset()
-        ds.xsimlab.set_master_clock('clock', data=data)
+        ds.xsimlab.set_master_clock('clock', data=data,
+                                    units='years since 1-1-1 0:0:0',
+                                    calendar='365_day')
         assert self._master_clock_key in ds.clock.attrs
+        assert ds.clock.attrs['units'] == 'years since 1-1-1 0:0:0'
+        assert ds.clock.attrs['calendar'] == '365_day'
 
         with pytest.raises(ValueError) as excinfo:
             ds.xsimlab.set_master_clock('clock', data=data)
@@ -92,11 +96,15 @@ class TestSimlabAccessor(object):
         assert "no master clock" in str(excinfo.value)
 
         ds = xr.Dataset()
-        ds.xsimlab.set_master_clock('clock', data=[0, 2, 4, 6, 8])
+        ds.xsimlab.set_master_clock('clock', data=[0, 2, 4, 6, 8],
+                                    units='years since 1-1-1 0:0:0',
+                                    calendar='365_day')
 
         ds.xsimlab.set_snapshot_clock('snap_clock', end=8, step=4)
         np.testing.assert_array_equal(ds['snap_clock'], [0, 4, 8])
         assert self._snapshot_clock_key in ds['snap_clock'].attrs
+        assert 'units' in ds['snap_clock'].attrs
+        assert 'calendar' in ds['snap_clock'].attrs
 
         ds.xsimlab.set_snapshot_clock('snap_clock', data=[0, 3, 8])
         np.testing.assert_array_equal(ds['snap_clock'], [0, 4, 8])
