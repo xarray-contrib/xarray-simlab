@@ -79,6 +79,12 @@ class TestSimlabAccessor(object):
             ds.xsimlab.set_master_clock('clock', data=data)
         assert "already exists" in str(excinfo.value)
 
+        ds = xr.Dataset()
+        da = xr.DataArray(data, dims='other_dim')
+        with pytest.raises(ValueError) as excinfo:
+            ds.xsimlab.set_master_clock('clock', data=da)
+        assert "expected dimension" in str(excinfo.value)
+
     def test_set_snapshot_clock(self):
         with pytest.raises(ValueError) as excinfo:
             ds = xr.Dataset()

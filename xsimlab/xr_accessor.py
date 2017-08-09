@@ -72,8 +72,12 @@ class SimlabAccessor(object):
         self._obj[dim].attrs[self._master_clock_key] = np.uint8(True)
         self._dim_master_clock = dim
 
-    def _set_clock_data(self, data, start, end, step, nsteps):
+    def _set_clock_data(self, dim, data, start, end, step, nsteps):
         if data is not None:
+            data_dims = getattr(data, 'dims', None)
+            if data_dims is not None and data_dims != (dim,):
+                raise ValueError("expected dimension %r for clock coordinate"
+                                 "but found %r" % (dim, data_dims))
             return data
 
         args = {'step': step, 'nsteps': nsteps, 'end': end}
@@ -124,7 +128,8 @@ class SimlabAccessor(object):
         if dim in self._obj.dims:
             raise ValueError("dimension %r already exists" % dim)
 
-        self._obj[dim] = self._set_clock_data(data, start, end, step, nsteps)
+        self._obj[dim] = self._set_clock_data(dim, data, start, end,
+                                              step, nsteps)
         self.dim_master_clock = dim
 
     def set_snapshot_clock(self, dim, data=None, start=0., end=None,
@@ -172,7 +177,7 @@ class SimlabAccessor(object):
                              "in Dataset. "
                              "Use `Dataset.xsimlab.set_master_clock` first")
 
-        clock_data = self._set_clock_data(data, start, end, step, nsteps)
+        clock_data = self._set_clock_data(dim, data, start, end, step, nsteps)
 
         da_master_clock = self._obj[self.dim_master_clock]
 
