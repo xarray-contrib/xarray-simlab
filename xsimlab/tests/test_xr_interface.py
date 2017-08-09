@@ -9,33 +9,6 @@ from xsimlab.xr_interface import DatasetModelInterface
 
 class TestDatasetModelInterface(object):
 
-    @pytest.fixture
-    def input_dataset(self):
-        mclock_key = SimlabAccessor._master_clock_key
-        sclock_key = SimlabAccessor._snapshot_clock_key
-        svars_key = SimlabAccessor._snapshot_vars_key
-
-        ds = xr.Dataset()
-
-        ds['clock'] = ('clock', [0, 2, 4, 6, 8], {mclock_key: 1})
-        ds['out'] = ('out', [0, 4, 8], {sclock_key: 1})
-
-        ds['grid__x_size'] = 10
-        ds['quantity__quantity'] = ('x', np.zeros(10))
-        ds['some_process__some_param'] = 1
-        ds['other_process__other_param'] = ('clock', [1, 2, 3, 4, 5])
-
-        ds['clock'].attrs[svars_key] = 'quantity__quantity'
-        ds['out'].attrs[svars_key] = (
-            'some_process__some_effect,other_process__other_effect')
-        ds.attrs[svars_key] = 'grid__x'
-
-        return ds
-
-    @pytest.fixture
-    def ds_model_interface(self, model, input_dataset):
-        return DatasetModelInterface(model, input_dataset)
-
     def test_constructor(self, model, input_dataset):
         ds = xr.Dataset()
         with pytest.raises(ValueError) as excinfo:

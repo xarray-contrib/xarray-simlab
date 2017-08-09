@@ -200,8 +200,16 @@ class TestSimlabAccessor(object):
         actual = {k: set(v) for k, v in ds.xsimlab.snapshot_vars.items()}
         assert actual == expected
 
-    def test_run(self, model):
-        pass  # TODO: test only safe_mode True and False
+    def test_run(self, model, input_dataset):
+        input_dataset.xsimlab.use_model(model)
+
+        # safe mode True: model cloned -> values not set in original model
+        _ = input_dataset.xsimlab.run()
+        assert model.quantity.quantity.value is None
+
+        # safe mode False: model not cloned -> values set in original model
+        _ = input_dataset.xsimlab.run(safe_mode=False)
+        assert model.quantity.quantity.value is not None
 
     def test_run_multi(self):
         ds = xr.Dataset()
