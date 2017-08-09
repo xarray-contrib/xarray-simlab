@@ -69,7 +69,7 @@ class SimlabAccessor(object):
         if self.dim_master_clock is not None:
             self._obj[self.dim_master_clock].attrs.pop(self._master_clock_key)
 
-        self._obj[dim].attrs[self._master_clock_key] = True
+        self._obj[dim].attrs[self._master_clock_key] = np.uint8(True)
         self._dim_master_clock = dim
 
     def _set_clock_data(self, data, start, end, step, nsteps):
@@ -188,7 +188,7 @@ class SimlabAccessor(object):
         self._obj[dim] = da_snapshot_clock.rename({self.dim_master_clock: dim})
         # _xsimlab_master_clock attribute has propagated with .sel
         self._obj[dim].attrs.pop(self._master_clock_key)
-        self._obj[dim].attrs[self._snapshot_clock_key] = True
+        self._obj[dim].attrs[self._snapshot_clock_key] = np.uint8(True)
 
     def use_model(self, obj):
         """Set a Model to use with this Dataset.
