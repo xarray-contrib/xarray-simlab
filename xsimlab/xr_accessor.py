@@ -39,6 +39,15 @@ class SimlabAccessor(object):
         self._dim_master_clock = None
 
     @property
+    def clock_coords(self):
+        """Dictionary of xarray.DataArray objects corresponding to clock
+        coordinates (including master clock and snapshot clocks).
+        """
+        is_clock = lambda coord: (self._master_clock_key in coord.attrs or
+                                  self._snapshot_clock_key in coord.attrs)
+        return {k: v for k, v in self._obj.coords.items() if is_clock(v)}
+
+    @property
     def dim_master_clock(self):
         """Dimension used as master clock for model runs. Returns None
         if no dimension is set as master clock.

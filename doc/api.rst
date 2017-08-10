@@ -39,6 +39,7 @@ properties listed below. Proper use of this accessor should be like:
    :template: autosummary/accessor_attribute.rst
 
    Dataset.xsimlab.model
+   Dataset.xsimlab.clock_coords
    Dataset.xsimlab.dim_master_clock
    Dataset.xsimlab.snapshot_vars
 

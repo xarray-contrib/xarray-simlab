@@ -19,6 +19,16 @@ class TestSimlabAccessor(object):
     _snapshot_clock_key = xr_accessor.SimlabAccessor._snapshot_clock_key
     _snapshot_vars_key = xr_accessor.SimlabAccessor._snapshot_vars_key
 
+    def test_clock_coords(self):
+        ds = xr.Dataset(
+            coords={
+                'mclock': ('mclock', [0, 1, 2], {self._master_clock_key: 1}),
+                'sclock': ('sclock', [0, 2], {self._snapshot_clock_key: 1}),
+                'no_clock': ('no_clock', [3, 4])
+            }
+        )
+        assert set(ds.xsimlab.clock_coords) == {'mclock', 'sclock'}
+
     def test_dim_master_clock(self):
         attrs = {self._master_clock_key: 1}
         ds = xr.Dataset(coords={'clock': ('clock', [1, 2], attrs)})
