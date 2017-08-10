@@ -530,9 +530,10 @@ def create_setup(model=None, input_vars=None, clocks=None, master_clock=None,
             raise KeyError("master clock dimension name %r not found "
                            "in `clocks`" % dim_master_clock)
 
-        ds.xsimlab.set_master_clock(dim_master_clock,
-                                    **clocks.pop(dim_master_clock),
-                                    **attrs_master_clock)
+        master_clock_kwargs = clocks.pop(dim_master_clock)
+        master_clock_kwargs.update(attrs_master_clock)
+        ds.xsimlab.set_master_clock(dim_master_clock, **master_clock_kwargs)
+
         for dim, kwargs in clocks.items():
             ds.xsimlab.set_snapshot_clock(dim, **kwargs)
 
