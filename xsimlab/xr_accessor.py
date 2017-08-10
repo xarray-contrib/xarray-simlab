@@ -4,7 +4,7 @@ xarray extensions (accessors).
 """
 
 import numpy as np
-from xarray import register_dataset_accessor
+from xarray import Dataset, register_dataset_accessor
 
 from .process import Process
 from .model import Model
@@ -452,3 +452,99 @@ class SimlabAccessor(object):
         """
         # TODO:
         raise NotImplementedError()
+
+
+def create_setup(model=None, input_vars=None, clocks=None, master_clock=None,
+                 snapshot_vars=None):
+    """Create a specific setup for model runs.
+
+    This is a convenient function that creates a new xarray.Dataset object
+    with model input values, time steps and model output variables (including
+    snapshot times) as data variables, coordinates and attributes.
+
+    Parameters
+    ----------
+    model : Model object, optional
+        Create a simulation setup for this model.
+    input_vars : dict of dicts, optional
+        Used to set values for model inputs. The structure of the dict of
+        dicts looks like {'process_name': {'var_name': value, ...}, ...}.
+        The given values are anything that can be easily converted to
+        xarray.Variable objects, e.g., single values, array-like,
+        (dims, data, attrs) tuples or xarray objects.
+    clocks : dict of dicts, optional
+        Used to set master or snapshot clocks. The structure of the dict of
+        dicts looks like {'dim': {kwarg: value, ...}, ...}.
+        kwarg is any keyword argument of `Dataset.xsimlab.set_master_clock` or
+        `Dataset.xsimlab.set_snapshot_clock`. If only one clock is provided,
+        it will be used as master clock.
+    master_clock : str or dict, optional
+        Name of the clock coordinate (dimension) that will be used as master
+        clock. A dictionary with at least a 'dim' key can also be provided.
+        Time units and calendar (CF-conventions) can be set manually using
+        'units' and 'calendar' keys, respectively.
+    snapshot_vars : dict of dicts, optional
+        Model variables to save as simulation snapshots. The structure of the
+        dict of dicts looks like
+        {'dim': {'process_name': 'var_name', ...}, ...}.
+        'dim' correspond to the dimension of a clock coordinate. None can be
+        used instead to take snapshots only at the end of a simulation.
+        To take snapshots for multiple variables that belong to the same
+        process, a tuple can be given instead of a string.
+
+    Returns
+    -------
+    input_dataset : xarray.Dataset object
+        A new Dataset object that may be used for running simulations.
+
+    Notes
+    -----
+    All inputs of `model` that are not provided in `input_vars` and that have a
+    default value will also be added as data variables in the returned Dataset.
+
+    """
+    if model is None:
+        # TODO: try get model object from context
+        raise ValueError("no model provided")
+
+    attrs_master_clock = {}
+
+    if isinstance(master_clock, str):
+        dim_master_clock = master_clock
+    elif isinstance(master_clock, dict):
+        dim_master_clock = master_clock.pop('dim')
+        attrs_master_clock.update(master_clock)
+    elif master_clock is None and clocks is not None and len(clocks) == 1:
+        dim_master_clock = list(clocks.keys())[0]
+    else:
+        dim_master_clock = None
+
+    ds = Dataset()
+    ds.xsimlab.use_model(model)
+
+    if clocks is not None:
+        if dim_master_clock is None:
+            raise ValueError("cannot determine which clock coordinate is "
+                             "the master clock")
+        elif dim_master_clock not in clocks:
+            raise KeyError("master clock dimension name %r not found "
+                           "in `clocks`" % dim_master_clock)
+
+        ds.xsimlab.set_master_clock(dim_master_clock,
+                                    **clocks.pop(dim_master_clock),
+                                    **attrs_master_clock)
+        for dim, kwargs in clocks.items():
+            ds.xsimlab.set_snapshot_clock(dim, **kwargs)
+
+    if input_vars is not None:
+        for proc_name in model.input_vars:
+            if proc_name not in input_vars:
+                input_vars[proc_name] = {}
+        for proc_name, vars in input_vars.items():
+            ds.xsimlab.set_input_vars(proc_name, **vars)
+
+    if snapshot_vars is not None:
+        for dim, proc_vars in snapshot_vars.items():
+            ds.xsimlab.set_snapshot_vars(dim, **proc_vars)
+
+    return ds

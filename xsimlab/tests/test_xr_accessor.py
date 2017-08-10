@@ -2,7 +2,7 @@ import pytest
 import xarray as xr
 import numpy as np
 
-from xsimlab import xr_accessor
+from xsimlab import xr_accessor, create_setup
 
 
 def test_filter_accessor():
@@ -230,3 +230,67 @@ class TestSimlabAccessor(object):
 
         with pytest.raises(NotImplementedError):
             ds.xsimlab.run_multi()
+
+
+def test_create_setup(model, input_dataset):
+    with pytest.raises(ValueError) as excinfo:
+        create_setup()
+    assert "no model provided" in str(excinfo.value)
+
+    expected = xr.Dataset()
+    actual = create_setup(model=model)
+    xr.testing.assert_identical(actual, expected)
+
+    with pytest.raises(ValueError) as excinfo:
+        create_setup(model=model, clocks={})
+    assert "cannot determine which clock" in str(excinfo.value)
+
+    with pytest.raises(ValueError) as excinfo:
+        create_setup(model=model,
+                     clocks={
+                         'clock': {'data': [0, 1, 2]},
+                         'out': {'data': [0, 2]}
+                     })
+    assert "cannot determine which clock" in str(excinfo.value)
+
+    with pytest.raises(KeyError) as excinfo:
+        create_setup(model=model,
+                     clocks={'clock': {'data': [0, 1, 2]}},
+                     master_clock='non_existing_clock_dim')
+    assert "master clock dimension name" in str(excinfo.value)
+
+    ds = create_setup(model=model, clocks={'clock': {'data': [0, 1, 2]}})
+    assert ds.xsimlab.dim_master_clock == 'clock'
+
+    ds = create_setup(model=model,
+                      clocks={
+                          'clock': {'data': [0, 1, 2]}
+                      },
+                      master_clock={
+                          'dim': 'clock',
+                          'units': 'days since 1-1-1 0:0:0',
+                          'calendar': '365_days'})
+    assert 'units' in ds.clock.attrs
+    assert 'calendar' in ds.clock.attrs
+
+    ds = create_setup(
+        model=model,
+        input_vars={
+            'grid': {'x_size': 10},
+            'quantity': {'quantity': ('x', np.zeros(10))},
+            # omit input below, should be set anyway using default value
+            # 'some_process': {'some_param': 1},
+            'other_process': {'other_param': ('clock', [1, 2, 3, 4, 5])}
+        },
+        clocks={
+            'clock': {'data': [0, 2, 4, 6, 8]},
+            'out': {'data': [0, 4, 8]},
+        },
+        master_clock='clock',
+        snapshot_vars={
+            'clock': {'quantity': 'quantity'},
+            'out': {'some_process': 'some_effect',
+                    'other_process': 'other_effect'},
+            None: {'grid': 'x'}
+        })
+    xr.testing.assert_identical(ds, input_dataset)

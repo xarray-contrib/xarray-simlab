@@ -88,7 +88,7 @@ class Quantity(Process):
 
 
 class SomeProcess(Process):
-    some_param = Variable((), description='some parameter')
+    some_param = Variable((), default_value=1, description='some parameter')
     x = ForeignVariable(Grid, 'x')
     quantity = ForeignVariable(Quantity, 'quantity')
     some_effect = Variable('x', group='effect', provided=True)
@@ -163,13 +163,15 @@ def input_dataset():
 
     ds = xr.Dataset()
 
-    ds['clock'] = ('clock', [0, 2, 4, 6, 8], {mclock_key: 1})
-    ds['out'] = ('out', [0, 4, 8], {sclock_key: 1})
+    ds['clock'] = ('clock', [0, 2, 4, 6, 8], {mclock_key: np.uint8(True)})
+    ds['out'] = ('out', [0, 4, 8], {sclock_key: np.uint8(True)})
 
-    ds['grid__x_size'] = 10
-    ds['quantity__quantity'] = ('x', np.zeros(10))
-    ds['some_process__some_param'] = 1
-    ds['other_process__other_param'] = ('clock', [1, 2, 3, 4, 5])
+    ds['grid__x_size'] = ((), 10, {'description': 'grid size'})
+    ds['quantity__quantity'] = ('x', np.zeros(10),
+                                {'description': 'a quantity'})
+    ds['some_process__some_param'] = ((), 1, {'description': 'some parameter'})
+    ds['other_process__other_param'] = ('clock', [1, 2, 3, 4, 5],
+                                        {'description': 'other parameter'})
 
     ds['clock'].attrs[svars_key] = 'quantity__quantity'
     ds['out'].attrs[svars_key] = ('some_process__some_effect,'

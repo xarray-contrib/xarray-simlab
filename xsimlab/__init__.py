@@ -2,7 +2,7 @@
 xarray-simlab.
 
 """
-from .xr_accessor import SimlabAccessor
+from .xr_accessor import SimlabAccessor, create_setup
 from .variable.base import (Variable, ForeignVariable, VariableList,
                             VariableGroup, diagnostic, ValidationError)
 from .variable.custom import NumberVariable, FloatVariable, IntegerVariable

@@ -8,6 +8,15 @@ This page provides an auto-generated summary of xarray-simlab's API. For more
 details and examples, refer to the relevant sections in the main part of the
 documentation.
 
+Top-level functions
+===================
+
+.. currentmodule:: xsimlab
+.. autosummary::
+   :toctree: _api_generated/
+
+   create_setup
+
 Dataset.xsimlab (xarray accessor)
 =================================
 
