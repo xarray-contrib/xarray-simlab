@@ -26,7 +26,7 @@ asking usage questions.
 Development environment
 -----------------------
 
-If you whish to contribute to the development of the code and/or the
+If you wish to contribute to the development of the code and/or the
 documentation, here are a few steps for setting a development environment.
 
 Fork the repository and download the code
