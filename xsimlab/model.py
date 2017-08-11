@@ -265,7 +265,7 @@ class Model(AttrMapping):
         show_inputs : bool, optional
             If True, show all input variables in the graph (default: False).
             Ignored if `show_only_variable` is not None.
-        show_variabless : bool, optional
+        show_variables : bool, optional
             If True, show also the other variables (default: False).
             Ignored if `show_only_variable` is not None.
 
