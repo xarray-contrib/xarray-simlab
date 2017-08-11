@@ -21,8 +21,8 @@ For model visualization
 Install from source
 -------------------
 
-There is currently no ``xarray-simlab`` release available at PyPi_
-or conda-forge_.
+While there are ``xarray-simlab`` releases available at `PyPi <https://pypi.python.org/pypi/xarray-simlab/0.0.9>`_ 
+and `conda-forge <https://github.com/conda-forge/xarray-simlab-feedstock>`_, you may prefer to install from source.
 
 Be sure you have the required dependencies (numpy and xarray)
 installed first. You might consider using conda_ to install them::
@@ -53,7 +53,7 @@ For development purpose, use the following command::
 Import xarray-simlab
 --------------------
 
-To make sure that ``xarray-simlab`` is correctly installed, try import it by
+To make sure that ``xarray-simlab`` is correctly installed, try to import it by
 running this line::
 
     $ python -c "import xsimlab"
