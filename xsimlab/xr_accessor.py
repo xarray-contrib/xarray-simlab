@@ -422,9 +422,9 @@ class SimlabAccessor(object):
     def update_clocks(self, model=None, clocks=None, master_clock=None):
         """Update clock coordinates.
 
-        It adds or replaces a whole set of master and snapshot clock
-        coordinates. Snapshot-related attributes will be copied from existing
-        coordinates, if any.
+        Update the entire set of master and snapshot clock coordinates.
+        Snapshot-related attributes will be copied from existing coordinates, if
+        any.
 
         Parameters
         ----------
@@ -443,11 +443,12 @@ class SimlabAccessor(object):
         Returns
         -------
         updated : Dataset
-            Another Dataset with new or updated coordinates.
+            Another Dataset with new or replaced coordinates.
 
         See Also
         --------
         :meth:`xsimlab.create_setup`
+
         """
         if model is None:
             # TODO: try get model ob ject from context
@@ -518,7 +519,7 @@ class SimlabAccessor(object):
         Returns
         -------
         updated : Dataset
-            Another Dataset with new or updated variables (inputs) and/or
+            Another Dataset with new or replaced variables (inputs) and/or
             attributes (snaphots).
 
         See Also
@@ -540,6 +541,59 @@ class SimlabAccessor(object):
         if snapshot_vars is not None:
             for dim, proc_vars in snapshot_vars.items():
                 ds.xsimlab.set_snapshot_vars(dim, **proc_vars)
+
+        return ds
+
+    def filter_vars(self, model=None):
+        """Filter Dataset content according to Model.
+
+        Keep only data variables and coordinates that correspond to inputs of
+        the model (keep clock coordinates too). Also update snapshot-specific
+        attributes so that all included variable names correspond to variables
+        declared in the processes of the model.
+
+        Parameters
+        ----------
+        model : Model object, optional
+            Reference model.
+
+        Returns
+        -------
+        filtered : Dataset
+            Another Dataset with (maybe) dropped variables and updated
+            attributes.
+
+        See Also
+        --------
+        :meth:`Dataset.xsimlab.update_vars`
+
+        """
+        if model is None:
+            # TODO: try get model object from context
+            raise ValueError("no model provided")
+
+        drop_variables = []
+
+        for xr_var_name in self._obj:
+            if xr_var_name in self.clock_coords:
+                continue
+            try:
+                proc_name, var_name = xr_var_name.split('__')
+            except ValueError:
+                continue
+
+            if model.is_input((proc_name, var_name)):
+                drop_variables.append(xr_var_name)
+
+        ds = self._obj.drop(drop_variables)
+
+        for dim, var_list in self.snapshot_vars.items():
+            var_dict = defaultdict(list)
+            for proc_name, var_name in var_list:
+                if model.is_input((proc_name, var_name)):
+                    var_dict[proc_name].append(var_name)
+
+            ds.xsimlab.set_snapshot_vars(dim, **var_dict)
 
         return ds
 
