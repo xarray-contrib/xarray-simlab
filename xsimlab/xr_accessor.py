@@ -422,7 +422,7 @@ class SimlabAccessor(object):
     def update_clocks(self, model=None, clocks=None, master_clock=None):
         """Update clock coordinates.
 
-        Use this to add or replace a whole set of master and snapshot clock
+        It adds or replaces a whole set of master and snapshot clock
         coordinates. Snapshot-related attributes will be copied from existing
         coordinates, if any.
 
@@ -436,9 +436,9 @@ class SimlabAccessor(object):
             See :meth:`xsimlab.create_setup` for more info.
         master_clock : str or dict, optional
             Name of the clock coordinate (dimension) that will be used as master
-            clock. A dictionary with at least a 'dim' key can also be provided.
-            Time units and calendar (CF-conventions) can be set manually using
-            'units' and 'calendar' keys, respectively.
+            clock. A dictionary with at least a 'dim' key can be provided
+            instead. Time units and calendar (CF-conventions) can be set
+            manually using 'units' and 'calendar' keys, respectively.
 
         Returns
         -------
@@ -590,9 +590,9 @@ def create_setup(model=None, input_vars=None, clocks=None, master_clock=None,
                  snapshot_vars=None):
     """Create a specific setup for model runs.
 
-    This is a convenient function that creates a new xarray.Dataset object
-    with model input values, time steps and model output variables (including
-    snapshot times) as data variables, coordinates and attributes.
+    This convenient function creates a new xarray.Dataset object with model
+    input values, time steps and model output variables (including snapshot
+    times) as data variables, coordinates and attributes.
 
     Parameters
     ----------
@@ -612,7 +612,7 @@ def create_setup(model=None, input_vars=None, clocks=None, master_clock=None,
         it will be used as master clock.
     master_clock : str or dict, optional
         Name of the clock coordinate (dimension) that will be used as master
-        clock. A dictionary with at least a 'dim' key can also be provided.
+        clock. A dictionary with at least a 'dim' key can be provided instead.
         Time units and calendar (CF-conventions) can be set manually using
         'units' and 'calendar' keys, respectively.
     snapshot_vars : dict of dicts, optional

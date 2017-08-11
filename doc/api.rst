@@ -50,6 +50,8 @@ properties listed below. Proper use of this accessor should be like:
    :template: autosummary/accessor_method.rst
 
    Dataset.xsimlab.use_model
+   Dataset.xsimlab.update_clocks
+   Dataset.xsimlab.update_vars
    Dataset.xsimlab.set_master_clock
    Dataset.xsimlab.set_snapshot_clock
    Dataset.xsimlab.set_input_vars
