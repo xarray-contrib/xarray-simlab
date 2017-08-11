@@ -174,8 +174,8 @@ def input_dataset():
                                         {'description': 'other parameter'})
 
     ds['clock'].attrs[svars_key] = 'quantity__quantity'
-    ds['out'].attrs[svars_key] = ('some_process__some_effect,'
-                                  'other_process__other_effect')
+    ds['out'].attrs[svars_key] = ('other_process__other_effect,'
+                                  'some_process__some_effect')
     ds.attrs[svars_key] = 'grid__x'
 
     return ds

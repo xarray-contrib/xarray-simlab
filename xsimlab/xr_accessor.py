@@ -374,7 +374,7 @@ class SimlabAccessor(object):
 
         xr_vars_list = []
 
-        for proc_name, vars in process_vars.items():
+        for proc_name, vars in sorted(process_vars.items()):
             if proc_name not in self._model:
                 raise KeyError("the model attached to this Dataset has no "
                                "process named %r" % proc_name)
