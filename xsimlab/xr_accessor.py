@@ -2,6 +2,7 @@
 xarray extensions (accessors).
 
 """
+from collections import defaultdict
 
 import numpy as np
 from xarray import Dataset, register_dataset_accessor
@@ -417,6 +418,130 @@ class SimlabAccessor(object):
             snapshot_vars.update(self._get_snapshot_vars(cname, coord))
         snapshot_vars.update(self._get_snapshot_vars(None, self._obj))
         return snapshot_vars
+
+    def update_clocks(self, model=None, clocks=None, master_clock=None):
+        """Update clock coordinates.
+
+        Use this to add or replace a whole set of master and snapshot clock
+        coordinates. Snapshot-related attributes will be copied from existing
+        coordinates, if any.
+
+        Parameters
+        ----------
+        model : Model object, optional
+            Reference model.
+        clocks : dict of dicts, optional
+            Used to create on or several clock coordinates. The structure of the
+            dict of dicts looks like {'dim': {kwarg: value, ...}, ...}.
+            See :meth:`xsimlab.create_setup` for more info.
+        master_clock : str or dict, optional
+            Name of the clock coordinate (dimension) that will be used as master
+            clock. A dictionary with at least a 'dim' key can also be provided.
+            Time units and calendar (CF-conventions) can be set manually using
+            'units' and 'calendar' keys, respectively.
+
+        Returns
+        -------
+        updated : Dataset
+            Another Dataset with new or updated coordinates.
+
+        See Also
+        --------
+        :meth:`xsimlab.create_setup`
+        """
+        if model is None:
+            # TODO: try get model ob ject from context
+            raise ValueError("no model provided")
+
+        ds = self._obj.drop(self.clock_coords)
+        ds.xsimlab.use_model(model)
+
+        attrs_master_clock = {}
+
+        if isinstance(master_clock, str):
+            dim_master_clock = master_clock
+        elif isinstance(master_clock, dict):
+            dim_master_clock = master_clock.pop('dim')
+            attrs_master_clock.update(master_clock)
+        elif master_clock is None and clocks is not None and len(clocks) == 1:
+            dim_master_clock = list(clocks.keys())[0]
+        else:
+            dim_master_clock = None
+
+        if clocks is not None:
+            if dim_master_clock is None:
+                raise ValueError("cannot determine which clock coordinate is "
+                                 "the master clock")
+            elif dim_master_clock not in clocks:
+                raise KeyError("master clock dimension name %r not found "
+                               "in `clocks`" % dim_master_clock)
+
+            master_clock_kwargs = clocks.pop(dim_master_clock)
+            master_clock_kwargs.update(attrs_master_clock)
+            ds.xsimlab.set_master_clock(dim_master_clock, **master_clock_kwargs)
+
+            for dim, kwargs in clocks.items():
+                ds.xsimlab.set_snapshot_clock(dim, **kwargs)
+
+        for dim, var_list in self.snapshot_vars.items():
+            var_dict = defaultdict(list)
+            for proc_name, var_name in var_list:
+                var_dict[proc_name].append(var_name)
+
+            if dim is None or dim in ds:
+                ds.xsimlab.set_snapshot_vars(dim, **var_dict)
+
+        return ds
+
+    def update_vars(self, model=None, input_vars=None, snapshot_vars=None):
+        """Update model input values and/or snapshot variable names.
+
+        Parameters
+        ----------
+        model : Model object, optional
+            Reference model.
+        input_vars : dict of dicts, optional
+            Used to set values for model inputs. The structure of the dict of
+            dicts looks like {'process_name': {'var_name': value, ...}, ...}.
+            The given values are anything that can be easily converted to
+            xarray.Variable objects, e.g., single values, array-like,
+            (dims, data, attrs) tuples or xarray objects.
+        snapshot_vars : dict of dicts, optional
+            Model variables to save as simulation snapshots. The structure of
+            the dict of dicts looks like
+            {'dim': {'process_name': 'var_name', ...}, ...}.
+            'dim' correspond to the dimension of a clock coordinate. None can be
+            used instead to take snapshots only at the end of a simulation.
+            To take snapshots for multiple variables that belong to the same
+            process, a tuple can be given instead of a string.
+
+        Returns
+        -------
+        updated : Dataset
+            Another Dataset with new or updated variables (inputs) and/or
+            attributes (snaphots).
+
+        See Also
+        --------
+        :meth:`xsimlab.create_setup`
+
+        """
+        if model is None:
+            # TODO: try get model object from context
+            raise ValueError("no model provided")
+
+        ds = self._obj.copy()
+        ds.xsimlab.use_model(model)
+
+        if input_vars is not None:
+            for proc_name, vars in input_vars.items():
+                ds.xsimlab.set_input_vars(proc_name, **vars)
+
+        if snapshot_vars is not None:
+            for dim, proc_vars in snapshot_vars.items():
+                ds.xsimlab.set_snapshot_vars(dim, **proc_vars)
+
+        return ds
 
     def run(self, safe_mode=True):
         """Run the model.
