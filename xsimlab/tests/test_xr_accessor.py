@@ -288,8 +288,7 @@ def test_create_setup(model, input_dataset):
         input_vars={
             'grid': {'x_size': 10},
             'quantity': {'quantity': ('x', np.zeros(10))},
-            # omit input below, should be set anyway using default value
-            # 'some_process': {'some_param': 1},
+            'some_process': {'some_param': 1},
             'other_process': {'other_param': ('clock', [1, 2, 3, 4, 5])}
         },
         clocks={
