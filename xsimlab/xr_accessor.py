@@ -392,12 +392,10 @@ class SimlabAccessor(object):
         if clock_dim is None:
             self._obj.attrs[self._snapshot_vars_key] = snapshot_vars
         else:
-            coord = self._obj.coords[clock_dim]
-            is_clock = (coord.attrs.get(self._master_clock_key, False) or
-                        coord.attrs.get(self._snapshot_clock_key, False))
-            if not is_clock:
+            if clock_dim not in self.clock_coords:
                 raise ValueError("%r coordinate is not a valid clock "
                                  "coordinate. " % clock_dim)
+            coord = self.clock_coords[clock_dim]
             coord.attrs[self._snapshot_vars_key] = snapshot_vars
 
     def _get_snapshot_vars(self, name, obj):
