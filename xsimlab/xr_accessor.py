@@ -67,12 +67,11 @@ class SimlabAccessor(object):
                     return dim
             return None
 
-    @master_clock_dim.setter
-    def master_clock_dim(self, dim):
+    def _set_master_clock_dim(self, dim):
         if dim not in self._obj.coords:
             raise KeyError("Dataset has no %r dimension coordinate. "
                            "To create a new master clock dimension, "
-                           "use Dataset.xsimlab.set_master_clock instead."
+                           "use Dataset.xsimlab.update_clock."
                            % dim)
 
         if self.master_clock_dim is not None:
@@ -160,7 +159,7 @@ class SimlabAccessor(object):
         if calendar is not None:
             self._obj[dim].attrs['calendar'] = calendar
 
-        self.master_clock_dim = dim
+        self._set_master_clock_dim(dim)
 
     def set_snapshot_clock(self, dim, data=None, start=0., end=None,
                            step=None, nsteps=None, auto_adjust=True):

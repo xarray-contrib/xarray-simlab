@@ -41,18 +41,18 @@ class TestSimlabAccessor(object):
         ds = xr.Dataset()
         assert ds.xsimlab.master_clock_dim is None
 
-    def test_master_clock_dim_setter(self):
+    def test_set_master_clock_dim(self):
         ds = xr.Dataset(coords={'clock': [1, 2], 'clock2': [3, 4]})
 
-        ds.xsimlab.master_clock_dim = 'clock'
+        ds.xsimlab._set_master_clock_dim('clock')
         assert self._master_clock_key in ds.clock.attrs
 
-        ds.xsimlab.master_clock_dim = 'clock2'
+        ds.xsimlab._set_master_clock_dim('clock2')
         assert self._master_clock_key not in ds.clock.attrs
         assert self._master_clock_key in ds.clock2.attrs
 
         with pytest.raises(KeyError):
-            ds.xsimlab.master_clock_dim = 'invalid_clock'
+            ds.xsimlab._set_master_clock_dim('invalid_clock')
 
     def test_set_master_clock(self):
         data = [0, 2, 4, 6, 8]
