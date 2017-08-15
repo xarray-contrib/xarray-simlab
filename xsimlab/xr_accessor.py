@@ -422,23 +422,24 @@ class SimlabAccessor(object):
     def update_clocks(self, model=None, clocks=None, master_clock=None):
         """Update clock coordinates.
 
-        Update the entire set of master and snapshot clock coordinates.
-        Snapshot-related attributes will be copied from existing coordinates, if
-        any.
+        Drop all clock coordinates (if any) and add a new set of master and
+        snapshot clock coordinates.
+        Also copy the snapshot-specific attributes of replaced coordinates
+        (i.e., coordinates with unchanged names).
 
         Parameters
         ----------
         model : Model object, optional
             Reference model.
         clocks : dict of dicts, optional
-            Used to create on or several clock coordinates. The structure of the
-            dict of dicts looks like {'dim': {kwarg: value, ...}, ...}.
+            Used to create one or several clock coordinates. The structure of
+            the dict of dicts looks like {'dim': {kwarg: value, ...}, ...}.
             See :meth:`xsimlab.create_setup` for more info.
         master_clock : str or dict, optional
             Name of the clock coordinate (dimension) that will be used as master
             clock. A dictionary with at least a 'dim' key can be provided
-            instead. Time units and calendar (CF-conventions) can be set
-            manually using 'units' and 'calendar' keys, respectively.
+            instead. Time units and calendar (CF-conventions) can also be set
+            using 'units' and 'calendar' keys, respectively.
 
         Returns
         -------
@@ -549,8 +550,8 @@ class SimlabAccessor(object):
 
         Keep only data variables and coordinates that correspond to inputs of
         the model (keep clock coordinates too). Also update snapshot-specific
-        attributes so that all included variable names correspond to variables
-        declared in the processes of the model.
+        attributes so that their values all correspond to processes and
+        variables defined in the model.
 
         Parameters
         ----------
