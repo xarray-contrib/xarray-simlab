@@ -582,15 +582,16 @@ class SimlabAccessor(object):
             except ValueError:
                 continue
 
-            if model.is_input((proc_name, var_name)):
+            if not model.is_input((proc_name, var_name)):
                 drop_variables.append(xr_var_name)
 
         ds = self._obj.drop(drop_variables)
+        ds.xsimlab.use_model(model)  # TODO: remove this
 
         for dim, var_list in self.snapshot_vars.items():
             var_dict = defaultdict(list)
             for proc_name, var_name in var_list:
-                if model.is_input((proc_name, var_name)):
+                if model.get(proc_name, {}).get(var_name, False):
                     var_dict[proc_name].append(var_name)
 
             ds.xsimlab.set_snapshot_vars(dim, **var_dict)
