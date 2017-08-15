@@ -127,7 +127,6 @@ class TestSimlabAccessor(object):
     def test_set_input_vars(self, model):
         ds = xr.Dataset()
 
-        ds.xsimlab.use_model(model)
         with pytest.raises(KeyError) as excinfo:
             ds.xsimlab._set_input_vars(model, 'invalid_process', var=1)
         assert "no process named" in str(excinfo.value)
@@ -169,7 +168,6 @@ class TestSimlabAccessor(object):
         ds['snap_clock'] = ('snap_clock', [0, 4, 8], {self._clock_key: 1})
         ds['not_a_clock'] = ('not_a_clock', [0, 1])
 
-        ds.xsimlab.use_model(model)
         with pytest.raises(KeyError) as excinfo:
             ds.xsimlab._set_snapshot_vars(model, None, invalid_process='var')
         assert "no process named" in str(excinfo.value)
@@ -208,7 +206,6 @@ class TestSimlabAccessor(object):
         ds['snap_clock2'] = ('snap_clock2', [0, 8],
                              {self._clock_key: 1})
 
-        ds.xsimlab.use_model(model)
         ds.xsimlab._set_snapshot_vars(model, None, grid='x')
         ds.xsimlab._set_snapshot_vars(model, 'clock', quantity='quantity')
         ds.xsimlab._set_snapshot_vars(model, 'snap_clock',

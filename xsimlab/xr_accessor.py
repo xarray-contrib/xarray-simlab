@@ -45,7 +45,6 @@ class SimlabAccessor(object):
 
     def __init__(self, xarray_obj):
         self._obj = xarray_obj
-        self._model = None
         self._master_clock_dim = None
 
     @property
@@ -241,40 +240,6 @@ class SimlabAccessor(object):
             attr_value = da_master_clock.attrs.get(attr_name)
             if attr_value is not None:
                 self._obj[dim].attrs[attr_name] = attr_value
-
-    def use_model(self, obj):
-        """Set a Model to use with this Dataset.
-
-        Parameters
-        ----------
-        obj : object
-            The `Model` instance to use.
-
-        Raises
-        ------
-        TypeError
-            If `obj` is not a Model object.
-
-        """
-        if not isinstance(obj, Model):
-            raise TypeError("%r is not a Model object" % obj)
-        self._model = obj
-
-    @property
-    def model(self):
-        """Model instance to use with this dataset (read-only).
-
-        See Also
-        --------
-        :meth:`xarray.Dataset.xsimlab.use_model`
-
-        """
-        return self._model
-
-    @model.setter
-    def model(self, value):
-        raise AttributeError("can't set 'model' attribute, "
-                             "use `Dataset.xsimlab.use_model` instead")
 
     def _set_input_vars(self, model, process, **inputs):
         """Set or add Dataset variables that correspond to model

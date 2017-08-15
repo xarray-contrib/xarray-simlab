@@ -38,7 +38,6 @@ properties listed below. Proper use of this accessor should be like:
    :toctree: _api_generated/
    :template: autosummary/accessor_attribute.rst
 
-   Dataset.xsimlab.model
    Dataset.xsimlab.clock_coords
    Dataset.xsimlab.master_clock_dim
    Dataset.xsimlab.snapshot_vars
@@ -49,7 +48,6 @@ properties listed below. Proper use of this accessor should be like:
    :toctree: _api_generated/
    :template: autosummary/accessor_method.rst
 
-   Dataset.xsimlab.use_model
    Dataset.xsimlab.update_clocks
    Dataset.xsimlab.update_vars
    Dataset.xsimlab.filter_vars
