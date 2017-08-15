@@ -598,7 +598,7 @@ class SimlabAccessor(object):
 
         return ds
 
-    def run(self, safe_mode=True):
+    def run(self, model=None, safe_mode=True):
         """Run the model.
 
         Parameters
@@ -614,13 +614,13 @@ class SimlabAccessor(object):
             Another Dataset with model inputs and outputs.
 
         """
-        if self._model is None:
-            raise ValueError("No model attached to this Dataset")
+        if model is None:
+            if self._model is None:
+                raise ValueError("No model attached to this Dataset")
+            model = self._model
 
         if safe_mode:
-            model = self._model.clone()
-        else:
-            model = self._model
+            model = model.clone()
 
         ds_model_interface = DatasetModelInterface(model, self._obj)
         out_ds = ds_model_interface.run_model()
