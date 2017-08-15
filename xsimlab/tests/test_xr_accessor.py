@@ -15,22 +15,23 @@ def test_filter_accessor():
 
 class TestSimlabAccessor(object):
 
+    _clock_key = xr_accessor.SimlabAccessor._clock_key
     _master_clock_key = xr_accessor.SimlabAccessor._master_clock_key
-    _snapshot_clock_key = xr_accessor.SimlabAccessor._snapshot_clock_key
     _snapshot_vars_key = xr_accessor.SimlabAccessor._snapshot_vars_key
 
     def test_clock_coords(self):
         ds = xr.Dataset(
             coords={
-                'mclock': ('mclock', [0, 1, 2], {self._master_clock_key: 1}),
-                'sclock': ('sclock', [0, 2], {self._snapshot_clock_key: 1}),
+                'mclock': ('mclock', [0, 1, 2],
+                           {self._clock_key: 1, self._master_clock_key: 1}),
+                'sclock': ('sclock', [0, 2], {self._clock_key: 1}),
                 'no_clock': ('no_clock', [3, 4])
             }
         )
         assert set(ds.xsimlab.clock_coords) == {'mclock', 'sclock'}
 
     def test_master_clock_dim(self):
-        attrs = {self._master_clock_key: 1}
+        attrs = {self._clock_key: 1, self._master_clock_key: 1}
         ds = xr.Dataset(coords={'clock': ('clock', [1, 2], attrs)})
 
         assert ds.xsimlab.master_clock_dim == 'clock'
@@ -112,7 +113,7 @@ class TestSimlabAccessor(object):
 
         ds.xsimlab.set_snapshot_clock('snap_clock', end=8, step=4)
         np.testing.assert_array_equal(ds['snap_clock'], [0, 4, 8])
-        assert self._snapshot_clock_key in ds['snap_clock'].attrs
+        assert self._clock_key in ds['snap_clock'].attrs
         assert 'units' in ds['snap_clock'].attrs
         assert 'calendar' in ds['snap_clock'].attrs
 
@@ -165,9 +166,9 @@ class TestSimlabAccessor(object):
 
     def test_set_snapshot_vars(self, model):
         ds = xr.Dataset()
-        ds['clock'] = ('clock', [0, 2, 4, 6, 8], {self._master_clock_key: 1})
-        ds['snap_clock'] = ('snap_clock', [0, 4, 8],
-                            {self._snapshot_clock_key: 1})
+        ds['clock'] = ('clock', [0, 2, 4, 6, 8],
+                       {self._clock_key: 1, self._master_clock_key: 1})
+        ds['snap_clock'] = ('snap_clock', [0, 4, 8], {self._clock_key: 1})
         ds['not_a_clock'] = ('not_a_clock', [0, 1])
 
         with pytest.raises(ValueError) as excinfo:
@@ -204,12 +205,12 @@ class TestSimlabAccessor(object):
 
     def test_snapshot_vars(self, model):
         ds = xr.Dataset()
-        ds['clock'] = ('clock', [0, 2, 4, 6, 8], {self._master_clock_key: 1})
-        ds['snap_clock'] = ('snap_clock', [0, 4, 8],
-                            {self._snapshot_clock_key: 1})
+        ds['clock'] = ('clock', [0, 2, 4, 6, 8],
+                       {self._clock_key: 1, self._master_clock_key: 1})
+        ds['snap_clock'] = ('snap_clock', [0, 4, 8], {self._clock_key: 1})
         # snapshot clock with no snapshot variable (attribute) set
         ds['snap_clock2'] = ('snap_clock2', [0, 8],
-                             {self._snapshot_clock_key: 1})
+                             {self._clock_key: 1})
 
         ds.xsimlab.use_model(model)
         ds.xsimlab.set_snapshot_vars(None, grid='x')

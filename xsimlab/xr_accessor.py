@@ -30,8 +30,8 @@ def filter_accessor(dataset):
 class SimlabAccessor(object):
     """simlab extension to `xarray.Dataset`."""
 
+    _clock_key = '_xsimlab_snapshot_clock'
     _master_clock_key = '_xsimlab_master_clock'
-    _snapshot_clock_key = '_xsimlab_snapshot_clock'
     _snapshot_vars_key = '_xsimlab_snapshot_vars'
 
     def __init__(self, xarray_obj):
@@ -44,9 +44,8 @@ class SimlabAccessor(object):
         """Dictionary of xarray.DataArray objects corresponding to clock
         coordinates (including master clock and snapshot clocks).
         """
-        is_clock = lambda coord: (self._master_clock_key in coord.attrs or
-                                  self._snapshot_clock_key in coord.attrs)
-        return {k: v for k, v in self._obj.coords.items() if is_clock(v)}
+        return {k: coord for k, coord in self._obj.coords.items()
+                if self._clock_key in coord.attrs}
 
     @property
     def master_clock_dim(self):
@@ -79,6 +78,7 @@ class SimlabAccessor(object):
         if self.master_clock_dim is not None:
             self._obj[self.master_clock_dim].attrs.pop(self._master_clock_key)
 
+        self._obj[dim].attrs[self._clock_key] = np.uint8(True)
         self._obj[dim].attrs[self._master_clock_key] = np.uint8(True)
         self._master_clock_dim = dim
 
@@ -226,9 +226,8 @@ class SimlabAccessor(object):
         da_snapshot_clock = da_master_clock.sel(**kwargs)
 
         self._obj[dim] = da_snapshot_clock.rename({self.master_clock_dim: dim})
-        # _xsimlab_master_clock attribute has propagated with .sel
+        # .sel copies variable attributes
         self._obj[dim].attrs.pop(self._master_clock_key)
-        self._obj[dim].attrs[self._snapshot_clock_key] = np.uint8(True)
 
         for attr_name in ('units', 'calendar'):
             attr_value = da_master_clock.attrs.get(attr_name)
