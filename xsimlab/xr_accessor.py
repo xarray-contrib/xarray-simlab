@@ -54,7 +54,7 @@ class SimlabAccessor(object):
 
         See Also
         --------
-        :meth:`Dataset.xsimlab.set_master_clock`
+        :meth:`Dataset.xsimlab._set_master_clock`
 
         """
         if self._master_clock_dim is not None:
@@ -107,8 +107,8 @@ class SimlabAccessor(object):
 
         return data
 
-    def set_master_clock(self, dim, data=None, start=0., end=None,
-                         step=None, nsteps=None, units=None, calendar=None):
+    def _set_master_clock(self, dim, data=None, start=0., end=None,
+                          step=None, nsteps=None, units=None, calendar=None):
         """Add a dimension coordinate as master clock for model runs.
 
         Parameters
@@ -161,8 +161,8 @@ class SimlabAccessor(object):
 
         self._set_master_clock_dim(dim)
 
-    def set_snapshot_clock(self, dim, data=None, start=0., end=None,
-                           step=None, nsteps=None, auto_adjust=True):
+    def _set_snapshot_clock(self, dim, data=None, start=0., end=None,
+                            step=None, nsteps=None, auto_adjust=True):
         """Set or add a dimension coordinate used by model snapshots.
 
         The coordinate labels must be also labels of the master clock
@@ -202,14 +202,14 @@ class SimlabAccessor(object):
 
         See Also
         --------
-        :meth:`Dataset.xsimlab.set_master_clock`
+        :meth:`Dataset.xsimlab._set_master_clock`
         :meth:`Dataset.xsimlab.master_clock_dim`
 
         """
         if self.master_clock_dim is None:
             raise ValueError("no master clock dimension/coordinate is defined "
                              "in Dataset. "
-                             "Use `Dataset.xsimlab.set_master_clock` first")
+                             "Use `Dataset.xsimlab._set_master_clock` first")
 
         clock_data = self._set_clock_data(dim, data, start, end, step, nsteps)
 
@@ -267,7 +267,7 @@ class SimlabAccessor(object):
         raise AttributeError("can't set 'model' attribute, "
                              "use `Dataset.xsimlab.use_model` instead")
 
-    def set_input_vars(self, process, **inputs):
+    def _set_input_vars(self, model, process, **inputs):
         """Set or add Dataset variables that correspond to model
         inputs variables (for a given process), with given (or default)
         values.
@@ -293,17 +293,13 @@ class SimlabAccessor(object):
         :py:meth:`xarray.as_variable`
 
         """
-        if self._model is None:
-            raise ValueError("no model attached to this Dataset. Use "
-                             "`Dataset.xsimlab.use_model` first.")
-
         if isinstance(process, Process):
             process = process.name
-        if process not in self._model:
-            raise KeyError("the model attached to this Dataset has no "
-                           "process named %r" % process)
+        if process not in model:
+            raise KeyError("no process named %r found in current model"
+                           % process)
 
-        process_inputs = self._model.input_vars[process]
+        process_inputs = model.input_vars[process]
 
         invalid_inputs = set(inputs) - set(process_inputs)
         if invalid_inputs:
@@ -313,7 +309,7 @@ class SimlabAccessor(object):
 
         # convert to xarray variables and validate the given dimensions
         xr_variables = {}
-        for name, var in self._model.input_vars[process].items():
+        for name, var in model.input_vars[process].items():
             xr_var = var.to_xarray_variable(inputs.get(name))
             var.validate_dimensions(xr_var.dims,
                                     ignore_dims=(self.master_clock_dim,
@@ -322,7 +318,7 @@ class SimlabAccessor(object):
 
         # validate at the process level
         # first assign values to a cloned process object to avoid conflicts
-        process_obj = self._model._processes[process].clone()
+        process_obj = model._processes[process].clone()
         for name, xr_var in xr_variables.items():
             process_obj[name].value = xr_var.values
         process_obj.validate()
@@ -345,7 +341,7 @@ class SimlabAccessor(object):
             xr_var.dims = dims
             self._obj[xr_var_name] = xr_var
 
-    def set_snapshot_vars(self, clock_dim, **process_vars):
+    def _set_snapshot_vars(self, model, clock_dim, **process_vars):
         """Set model variables to save as snapshots during a model run.
 
         Parameters
@@ -367,17 +363,13 @@ class SimlabAccessor(object):
         Dataset if `clock_dim` is None.
 
         """
-        if self._model is None:
-            raise ValueError("no model attached to this Dataset. Use "
-                             "`Dataset.xsimlab.use_model` first.")
-
         xr_vars_list = []
 
         for proc_name, vars in sorted(process_vars.items()):
-            if proc_name not in self._model:
-                raise KeyError("the model attached to this Dataset has no "
-                               "process named %r" % proc_name)
-            process = self._model[proc_name]
+            if proc_name not in model:
+                raise KeyError("no process named %r found in current model"
+                               % proc_name)
+            process = model[proc_name]
             if isinstance(vars, str):
                 vars = [vars]
             for var_name in vars:
@@ -478,10 +470,11 @@ class SimlabAccessor(object):
 
             master_clock_kwargs = clocks.pop(master_clock_dim)
             master_clock_kwargs.update(attrs_master_clock)
-            ds.xsimlab.set_master_clock(master_clock_dim, **master_clock_kwargs)
+            ds.xsimlab._set_master_clock(master_clock_dim,
+                                         **master_clock_kwargs)
 
             for dim, kwargs in clocks.items():
-                ds.xsimlab.set_snapshot_clock(dim, **kwargs)
+                ds.xsimlab._set_snapshot_clock(dim, **kwargs)
 
         for dim, var_list in self.snapshot_vars.items():
             var_dict = defaultdict(list)
@@ -489,7 +482,7 @@ class SimlabAccessor(object):
                 var_dict[proc_name].append(var_name)
 
             if dim is None or dim in ds:
-                ds.xsimlab.set_snapshot_vars(dim, **var_dict)
+                ds.xsimlab._set_snapshot_vars(model, dim, **var_dict)
 
         return ds
 
@@ -535,11 +528,11 @@ class SimlabAccessor(object):
 
         if input_vars is not None:
             for proc_name, vars in input_vars.items():
-                ds.xsimlab.set_input_vars(proc_name, **vars)
+                ds.xsimlab._set_input_vars(model, proc_name, **vars)
 
         if snapshot_vars is not None:
             for dim, proc_vars in snapshot_vars.items():
-                ds.xsimlab.set_snapshot_vars(dim, **proc_vars)
+                ds.xsimlab._set_snapshot_vars(model, dim, **proc_vars)
 
         return ds
 
@@ -593,7 +586,7 @@ class SimlabAccessor(object):
                 if model.get(proc_name, {}).get(var_name, False):
                     var_dict[proc_name].append(var_name)
 
-            ds.xsimlab.set_snapshot_vars(dim, **var_dict)
+            ds.xsimlab._set_snapshot_vars(model, dim, **var_dict)
 
         return ds
 
@@ -655,8 +648,8 @@ def create_setup(model=None, clocks=None, master_clock=None,
     clocks : dict of dicts, optional
         Used to create on or several clock coordinates. The structure of the
         dict of dicts looks like {'dim': {kwarg: value, ...}, ...}.
-        kwarg is any keyword argument of `Dataset.xsimlab.set_master_clock` or
-        `Dataset.xsimlab.set_snapshot_clock`. If only one clock is provided,
+        kwarg is any keyword argument of `Dataset.xsimlab._set_master_clock` or
+        `Dataset.xsimlab._set_snapshot_clock`. If only one clock is provided,
         it will be used as master clock.
     master_clock : str or dict, optional
         Name of the clock coordinate (dimension) that will be used as master
