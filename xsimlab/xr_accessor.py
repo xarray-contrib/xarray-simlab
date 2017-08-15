@@ -26,6 +26,15 @@ def filter_accessor(dataset):
     return filter
 
 
+def _maybe_get_model_from_context(model):
+    """Return the given model or try to find it in the context if there was
+    none supplied.
+    """
+    if model is None:
+        return Model.get_context()
+    return model
+
+
 @register_dataset_accessor('xsimlab')
 class SimlabAccessor(object):
     """simlab extension to `xarray.Dataset`."""
@@ -441,12 +450,9 @@ class SimlabAccessor(object):
         :meth:`xsimlab.create_setup`
 
         """
-        if model is None:
-            # TODO: try get model ob ject from context
-            raise ValueError("no model provided")
+        model = _maybe_get_model_from_context(model)
 
         ds = self._obj.drop(self.clock_coords)
-        ds.xsimlab.use_model(model)
 
         attrs_master_clock = {}
 
@@ -519,12 +525,9 @@ class SimlabAccessor(object):
         :meth:`xsimlab.create_setup`
 
         """
-        if model is None:
-            # TODO: try get model object from context
-            raise ValueError("no model provided")
+        model = _maybe_get_model_from_context(model)
 
         ds = self._obj.copy()
-        ds.xsimlab.use_model(model)
 
         if input_vars is not None:
             for proc_name, vars in input_vars.items():
@@ -560,9 +563,7 @@ class SimlabAccessor(object):
         :meth:`Dataset.xsimlab.update_vars`
 
         """
-        if model is None:
-            # TODO: try get model object from context
-            raise ValueError("no model provided")
+        model = _maybe_get_model_from_context(model)
 
         drop_variables = []
 
@@ -578,7 +579,6 @@ class SimlabAccessor(object):
                 drop_variables.append(xr_var_name)
 
         ds = self._obj.drop(drop_variables)
-        ds.xsimlab.use_model(model)  # TODO: remove this
 
         for dim, var_list in self.snapshot_vars.items():
             var_dict = defaultdict(list)
@@ -606,10 +606,7 @@ class SimlabAccessor(object):
             Another Dataset with model inputs and outputs.
 
         """
-        if model is None:
-            if self._model is None:
-                raise ValueError("No model attached to this Dataset")
-            model = self._model
+        model = _maybe_get_model_from_context(model)
 
         if safe_mode:
             model = model.clone()
@@ -677,9 +674,7 @@ def create_setup(model=None, clocks=None, master_clock=None,
         A new Dataset object that may be used for running simulations.
 
     """
-    if model is None:
-        # TODO: try get model object from context
-        raise ValueError("no model provided")
+    model = _maybe_get_model_from_context(model)
 
     ds = (Dataset()
           .xsimlab.update_clocks(model=model, clocks=clocks,

@@ -222,14 +222,12 @@ class TestSimlabAccessor(object):
         assert actual == expected
 
     def test_run(self, model, input_dataset):
-        input_dataset.xsimlab.use_model(model)
-
         # safe mode True: model cloned -> values not set in original model
-        _ = input_dataset.xsimlab.run()
+        _ = input_dataset.xsimlab.run(model=model)
         assert model.quantity.quantity.value is None
 
         # safe mode False: model not cloned -> values set in original model
-        _ = input_dataset.xsimlab.run(safe_mode=False)
+        _ = input_dataset.xsimlab.run(model=model, safe_mode=False)
         assert model.quantity.quantity.value is not None
 
     def test_run_multi(self):
@@ -240,9 +238,9 @@ class TestSimlabAccessor(object):
 
 
 def test_create_setup(model, input_dataset):
-    with pytest.raises(ValueError) as excinfo:
+    with pytest.raises(TypeError) as excinfo:
         create_setup()
-    assert "no model provided" in str(excinfo.value)
+    assert "No context on context stack" in str(excinfo.value)
 
     expected = xr.Dataset()
     actual = create_setup(model=model)
