@@ -641,8 +641,8 @@ class SimlabAccessor(object):
         raise NotImplementedError()
 
 
-def create_setup(model=None, input_vars=None, clocks=None, master_clock=None,
-                 snapshot_vars=None):
+def create_setup(model=None, clocks=None, master_clock=None,
+                 input_vars=None, snapshot_vars=None):
     """Create a specific setup for model runs.
 
     This convenient function creates a new xarray.Dataset object with model
@@ -653,12 +653,6 @@ def create_setup(model=None, input_vars=None, clocks=None, master_clock=None,
     ----------
     model : Model object, optional
         Create a simulation setup for this model.
-    input_vars : dict of dicts, optional
-        Used to set values for model inputs. The structure of the dict of
-        dicts looks like {'process_name': {'var_name': value, ...}, ...}.
-        The given values are anything that can be easily converted to
-        xarray.Variable objects, e.g., single values, array-like,
-        (dims, data, attrs) tuples or xarray objects.
     clocks : dict of dicts, optional
         Used to create on or several clock coordinates. The structure of the
         dict of dicts looks like {'dim': {kwarg: value, ...}, ...}.
@@ -668,8 +662,14 @@ def create_setup(model=None, input_vars=None, clocks=None, master_clock=None,
     master_clock : str or dict, optional
         Name of the clock coordinate (dimension) that will be used as master
         clock. A dictionary with at least a 'dim' key can be provided instead.
-        Time units and calendar (CF-conventions) can be set manually using
+        Time units and calendar (CF-conventions) can also be set using
         'units' and 'calendar' keys, respectively.
+    input_vars : dict of dicts, optional
+        Used to set values for model inputs. The structure of the dict of
+        dicts looks like {'process_name': {'var_name': value, ...}, ...}.
+        The given values are anything that can be easily converted to
+        xarray.Variable objects, e.g., single values, array-like,
+        (dims, data, attrs) tuples or xarray objects.
     snapshot_vars : dict of dicts, optional
         Model variables to save as simulation snapshots. The structure of the
         dict of dicts looks like
