@@ -29,29 +29,29 @@ class TestSimlabAccessor(object):
         )
         assert set(ds.xsimlab.clock_coords) == {'mclock', 'sclock'}
 
-    def test_dim_master_clock(self):
+    def test_master_clock_dim(self):
         attrs = {self._master_clock_key: 1}
         ds = xr.Dataset(coords={'clock': ('clock', [1, 2], attrs)})
 
-        assert ds.xsimlab.dim_master_clock == 'clock'
-        assert ds.xsimlab._dim_master_clock == 'clock'  # cache
-        assert ds.xsimlab.dim_master_clock == 'clock'   # get cached value
+        assert ds.xsimlab.master_clock_dim == 'clock'
+        assert ds.xsimlab._master_clock_dim == 'clock'  # cache
+        assert ds.xsimlab.master_clock_dim == 'clock'   # get cached value
 
         ds = xr.Dataset()
-        assert ds.xsimlab.dim_master_clock is None
+        assert ds.xsimlab.master_clock_dim is None
 
-    def test_dim_master_clock_setter(self):
+    def test_master_clock_dim_setter(self):
         ds = xr.Dataset(coords={'clock': [1, 2], 'clock2': [3, 4]})
 
-        ds.xsimlab.dim_master_clock = 'clock'
+        ds.xsimlab.master_clock_dim = 'clock'
         assert self._master_clock_key in ds.clock.attrs
 
-        ds.xsimlab.dim_master_clock = 'clock2'
+        ds.xsimlab.master_clock_dim = 'clock2'
         assert self._master_clock_key not in ds.clock.attrs
         assert self._master_clock_key in ds.clock2.attrs
 
         with pytest.raises(KeyError):
-            ds.xsimlab.dim_master_clock = 'invalid_clock'
+            ds.xsimlab.master_clock_dim = 'invalid_clock'
 
     def test_set_master_clock(self):
         data = [0, 2, 4, 6, 8]
@@ -270,7 +270,7 @@ def test_create_setup(model, input_dataset):
     assert "master clock dimension name" in str(excinfo.value)
 
     ds = create_setup(model=model, clocks={'clock': {'data': [0, 1, 2]}})
-    assert ds.xsimlab.dim_master_clock == 'clock'
+    assert ds.xsimlab.master_clock_dim == 'clock'
 
     ds = create_setup(model=model,
                       clocks={

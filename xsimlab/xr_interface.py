@@ -28,8 +28,8 @@ class DatasetModelInterface(object):
         self.model = model
         self.dataset = dataset
 
-        self.dim_master_clock = dataset.xsimlab.dim_master_clock
-        if self.dim_master_clock is None:
+        self.master_clock_dim = dataset.xsimlab.master_clock_dim
+        if self.master_clock_dim is None:
             raise ValueError("missing master clock dimension / coordinate ")
 
         self.check_model_inputs_in_dataset()
@@ -65,18 +65,18 @@ class DatasetModelInterface(object):
         dimension and those that don't.
         """
         ds_clock = self.dataset.filter(
-            lambda v: self.dim_master_clock in v.dims
+            lambda v: self.master_clock_dim in v.dims
         )
         ds_no_clock = self.dataset.filter(
-            lambda v: self.dim_master_clock not in v.dims
+            lambda v: self.master_clock_dim not in v.dims
         )
         return ds_clock, ds_no_clock
 
     @property
     def time_step_lengths(self):
         """Return a DataArray with time-step durations."""
-        clock_coord = self.dataset[self.dim_master_clock]
-        return clock_coord.diff(self.dim_master_clock).values
+        clock_coord = self.dataset[self.master_clock_dim]
+        return clock_coord.diff(self.master_clock_dim).values
 
     def init_snapshots(self):
         """Initialize snapshots for model variables given in attributes of
@@ -89,7 +89,7 @@ class DatasetModelInterface(object):
             self.snapshot_values.update({v: [] for v in vars})
 
         self.snapshot_save = {
-            clock: np.in1d(self.dataset[self.dim_master_clock].values,
+            clock: np.in1d(self.dataset[self.master_clock_dim].values,
                            self.dataset[clock].values)
             for clock in self.snapshot_vars if clock is not None
         }
@@ -184,7 +184,7 @@ class DatasetModelInterface(object):
 
         for istep, dt in enumerate(self.time_step_lengths):
             if ds_clock_any:
-                ds_step = ds_clock.isel(**{self.dim_master_clock: istep})
+                ds_step = ds_clock.isel(**{self.master_clock_dim: istep})
                 self.set_model_inputs(ds_step)
 
             self.model.run_step(dt)

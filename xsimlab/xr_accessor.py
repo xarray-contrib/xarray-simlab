@@ -37,7 +37,7 @@ class SimlabAccessor(object):
     def __init__(self, xarray_obj):
         self._obj = xarray_obj
         self._model = None
-        self._dim_master_clock = None
+        self._master_clock_dim = None
 
     @property
     def clock_coords(self):
@@ -49,7 +49,7 @@ class SimlabAccessor(object):
         return {k: v for k, v in self._obj.coords.items() if is_clock(v)}
 
     @property
-    def dim_master_clock(self):
+    def master_clock_dim(self):
         """Dimension used as master clock for model runs. Returns None
         if no dimension is set as master clock.
 
@@ -58,29 +58,29 @@ class SimlabAccessor(object):
         :meth:`Dataset.xsimlab.set_master_clock`
 
         """
-        if self._dim_master_clock is not None:
-            return self._dim_master_clock
+        if self._master_clock_dim is not None:
+            return self._master_clock_dim
         else:
             for c in self._obj.coords.values():
                 if c.attrs.get(self._master_clock_key, False):
                     dim = c.dims[0]
-                    self._dim_master_clock = dim
+                    self._master_clock_dim = dim
                     return dim
             return None
 
-    @dim_master_clock.setter
-    def dim_master_clock(self, dim):
+    @master_clock_dim.setter
+    def master_clock_dim(self, dim):
         if dim not in self._obj.coords:
             raise KeyError("Dataset has no %r dimension coordinate. "
                            "To create a new master clock dimension, "
                            "use Dataset.xsimlab.set_master_clock instead."
                            % dim)
 
-        if self.dim_master_clock is not None:
-            self._obj[self.dim_master_clock].attrs.pop(self._master_clock_key)
+        if self.master_clock_dim is not None:
+            self._obj[self.master_clock_dim].attrs.pop(self._master_clock_key)
 
         self._obj[dim].attrs[self._master_clock_key] = np.uint8(True)
-        self._dim_master_clock = dim
+        self._master_clock_dim = dim
 
     def _set_clock_data(self, dim, data, start, end, step, nsteps):
         if data is not None:
@@ -160,7 +160,7 @@ class SimlabAccessor(object):
         if calendar is not None:
             self._obj[dim].attrs['calendar'] = calendar
 
-        self.dim_master_clock = dim
+        self.master_clock_dim = dim
 
     def set_snapshot_clock(self, dim, data=None, start=0., end=None,
                            step=None, nsteps=None, auto_adjust=True):
@@ -204,28 +204,28 @@ class SimlabAccessor(object):
         See Also
         --------
         :meth:`Dataset.xsimlab.set_master_clock`
-        :meth:`Dataset.xsimlab.dim_master_clock`
+        :meth:`Dataset.xsimlab.master_clock_dim`
 
         """
-        if self.dim_master_clock is None:
+        if self.master_clock_dim is None:
             raise ValueError("no master clock dimension/coordinate is defined "
                              "in Dataset. "
                              "Use `Dataset.xsimlab.set_master_clock` first")
 
         clock_data = self._set_clock_data(dim, data, start, end, step, nsteps)
 
-        da_master_clock = self._obj[self.dim_master_clock]
+        da_master_clock = self._obj[self.master_clock_dim]
 
         if auto_adjust:
             kwargs = {'method': 'nearest'}
         else:
             kwargs = {}
 
-        indexer = {self.dim_master_clock: clock_data}
+        indexer = {self.master_clock_dim: clock_data}
         kwargs.update(indexer)
         da_snapshot_clock = da_master_clock.sel(**kwargs)
 
-        self._obj[dim] = da_snapshot_clock.rename({self.dim_master_clock: dim})
+        self._obj[dim] = da_snapshot_clock.rename({self.master_clock_dim: dim})
         # _xsimlab_master_clock attribute has propagated with .sel
         self._obj[dim].attrs.pop(self._master_clock_key)
         self._obj[dim].attrs[self._snapshot_clock_key] = np.uint8(True)
@@ -318,7 +318,7 @@ class SimlabAccessor(object):
         for name, var in self._model.input_vars[process].items():
             xr_var = var.to_xarray_variable(inputs.get(name))
             var.validate_dimensions(xr_var.dims,
-                                    ignore_dims=(self.dim_master_clock,
+                                    ignore_dims=(self.master_clock_dim,
                                                  'this_variable'))
             xr_variables[name] = xr_var
 
@@ -461,26 +461,26 @@ class SimlabAccessor(object):
         attrs_master_clock = {}
 
         if isinstance(master_clock, str):
-            dim_master_clock = master_clock
+            master_clock_dim = master_clock
         elif isinstance(master_clock, dict):
-            dim_master_clock = master_clock.pop('dim')
+            master_clock_dim = master_clock.pop('dim')
             attrs_master_clock.update(master_clock)
         elif master_clock is None and clocks is not None and len(clocks) == 1:
-            dim_master_clock = list(clocks.keys())[0]
+            master_clock_dim = list(clocks.keys())[0]
         else:
-            dim_master_clock = None
+            master_clock_dim = None
 
         if clocks is not None:
-            if dim_master_clock is None:
+            if master_clock_dim is None:
                 raise ValueError("cannot determine which clock coordinate is "
                                  "the master clock")
-            elif dim_master_clock not in clocks:
+            elif master_clock_dim not in clocks:
                 raise KeyError("master clock dimension name %r not found "
-                               "in `clocks`" % dim_master_clock)
+                               "in `clocks`" % master_clock_dim)
 
-            master_clock_kwargs = clocks.pop(dim_master_clock)
+            master_clock_kwargs = clocks.pop(master_clock_dim)
             master_clock_kwargs.update(attrs_master_clock)
-            ds.xsimlab.set_master_clock(dim_master_clock, **master_clock_kwargs)
+            ds.xsimlab.set_master_clock(master_clock_dim, **master_clock_kwargs)
 
             for dim, kwargs in clocks.items():
                 ds.xsimlab.set_snapshot_clock(dim, **kwargs)
