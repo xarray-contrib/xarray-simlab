@@ -161,6 +161,69 @@ class TestSimlabAccessor(object):
         expected = xr.DataArray(data=5)
         xr.testing.assert_equal(ds['grid__x_size'], expected)
 
+    def test_update_clocks(self, model):
+        ds = xr.Dataset()
+        with pytest.raises(ValueError) as excinfo:
+            ds.xsimlab.update_clocks(model=model, clocks={})
+        assert "cannot determine which clock" in str(excinfo.value)
+
+        ds = xr.Dataset()
+        with pytest.raises(ValueError) as excinfo:
+            ds.xsimlab.update_clocks(
+                model=model,
+                clocks={'clock': {'data': [0, 1, 2]},
+                        'out': {'data': [0, 2]}}
+            )
+        assert "cannot determine which clock" in str(excinfo.value)
+
+        ds = xr.Dataset()
+        with pytest.raises(KeyError) as excinfo:
+            ds.xsimlab.update_clocks(
+                model=model,
+                clocks={'clock': {'data': [0, 1, 2]}},
+                master_clock='non_existing_clock_dim'
+            )
+        assert "master clock dimension name" in str(excinfo.value)
+
+        ds = xr.Dataset()
+        ds = ds.xsimlab.update_clocks(
+            model=model,
+            clocks={'clock': {'data': [0, 1, 2]}}
+        )
+        assert ds.xsimlab.master_clock_dim == 'clock'
+
+        ds.clock.attrs[self._snapshot_vars_key] = 'quantity__quantity'
+
+        ds = ds.xsimlab.update_clocks(
+            model=model,
+            clocks={'clock': {'data': [0, 1, 2]}},
+            master_clock={'dim': 'clock',
+                          'units': 'days since 1-1-1 0:0:0',
+                          'calendar': '365_days'}
+        )
+        assert 'units' in ds.clock.attrs
+        assert 'calendar' in ds.clock.attrs
+        assert ds.clock.attrs[self._snapshot_vars_key] == 'quantity__quantity'
+
+    def test_update_vars(self, model, input_dataset):
+        ds = input_dataset.xsimlab.update_vars(
+            model=model,
+            input_vars={'some_process': {'some_param': 2}},
+            snapshot_vars={'out': {'other_process': 'other_effect'}}
+        )
+        var = 'some_process__some_param'
+        assert not ds[var].equals(input_dataset[var])
+        assert not ds['out'].identical(input_dataset['out'])
+
+    def test_filter_vars(self, model, input_dataset):
+        alt_model = model.drop_processes(['other_process'])
+
+        ds = input_dataset.xsimlab.filter_vars(model=alt_model)
+        assert 'other_process__other_param' not in ds
+        assert sorted(ds.xsimlab.clock_coords) == ['clock', 'out']
+        expected = 'some_process__some_effect'
+        assert ds.out.attrs[self._snapshot_vars_key] == expected
+
     def test_set_snapshot_vars(self, model):
         ds = xr.Dataset()
         ds['clock'] = ('clock', [0, 2, 4, 6, 8],
@@ -203,8 +266,7 @@ class TestSimlabAccessor(object):
                        {self._clock_key: 1, self._master_clock_key: 1})
         ds['snap_clock'] = ('snap_clock', [0, 4, 8], {self._clock_key: 1})
         # snapshot clock with no snapshot variable (attribute) set
-        ds['snap_clock2'] = ('snap_clock2', [0, 8],
-                             {self._clock_key: 1})
+        ds['snap_clock2'] = ('snap_clock2', [0, 8], {self._clock_key: 1})
 
         ds.xsimlab._set_snapshot_vars(model, None, grid='x')
         ds.xsimlab._set_snapshot_vars(model, 'clock', quantity='quantity')
@@ -243,38 +305,6 @@ def test_create_setup(model, input_dataset):
     actual = create_setup(model=model)
     xr.testing.assert_identical(actual, expected)
 
-    with pytest.raises(ValueError) as excinfo:
-        create_setup(model=model, clocks={})
-    assert "cannot determine which clock" in str(excinfo.value)
-
-    with pytest.raises(ValueError) as excinfo:
-        create_setup(model=model,
-                     clocks={
-                         'clock': {'data': [0, 1, 2]},
-                         'out': {'data': [0, 2]}
-                     })
-    assert "cannot determine which clock" in str(excinfo.value)
-
-    with pytest.raises(KeyError) as excinfo:
-        create_setup(model=model,
-                     clocks={'clock': {'data': [0, 1, 2]}},
-                     master_clock='non_existing_clock_dim')
-    assert "master clock dimension name" in str(excinfo.value)
-
-    ds = create_setup(model=model, clocks={'clock': {'data': [0, 1, 2]}})
-    assert ds.xsimlab.master_clock_dim == 'clock'
-
-    ds = create_setup(model=model,
-                      clocks={
-                          'clock': {'data': [0, 1, 2]}
-                      },
-                      master_clock={
-                          'dim': 'clock',
-                          'units': 'days since 1-1-1 0:0:0',
-                          'calendar': '365_days'})
-    assert 'units' in ds.clock.attrs
-    assert 'calendar' in ds.clock.attrs
-
     ds = create_setup(
         model=model,
         input_vars={
@@ -295,3 +325,14 @@ def test_create_setup(model, input_dataset):
             None: {'grid': 'x'}
         })
     xr.testing.assert_identical(ds, input_dataset)
+
+
+def test_model_context(model):
+    with pytest.raises(TypeError) as excinfo:
+        create_setup()
+    assert "No context on context stack" in str(excinfo.value)
+
+    expected = xr.Dataset()
+    with model:
+        actual = create_setup(model=model)
+    xr.testing.assert_identical(actual, expected)
