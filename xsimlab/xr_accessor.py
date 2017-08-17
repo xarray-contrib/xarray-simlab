@@ -14,7 +14,7 @@ from .xr_interface import DatasetModelInterface
 
 @register_dataset_accessor('filter')
 def filter_accessor(dataset):
-    """A temporary hack until `filter` is available in xarray (GH916)."""
+    """A temporary hack until ``filter`` is available in xarray (GH916)."""
 
     def filter(func=None, like=None, regex=None):
         variables = {k: v for k, v in dataset._variables.items() if func(v)}
@@ -37,7 +37,7 @@ def _maybe_get_model_from_context(model):
 
 @register_dataset_accessor('xsimlab')
 class SimlabAccessor(object):
-    """simlab extension to `xarray.Dataset`."""
+    """simlab extension to :class:`xarray.Dataset`."""
 
     _clock_key = '_xsimlab_snapshot_clock'
     _master_clock_key = '_xsimlab_master_clock'
@@ -49,8 +49,8 @@ class SimlabAccessor(object):
 
     @property
     def clock_coords(self):
-        """Dictionary of xarray.DataArray objects corresponding to clock
-        coordinates (including master clock and snapshot clocks).
+        """Dictionary of :class:`xarray.DataArray` objects corresponding to
+        clock coordinates (including master clock and snapshot clocks).
         """
         return {k: coord for k, coord in self._obj.coords.items()
                 if self._clock_key in coord.attrs}
@@ -62,7 +62,7 @@ class SimlabAccessor(object):
 
         See Also
         --------
-        :meth:`Dataset.xsimlab._set_master_clock`
+        :meth:`Dataset.xsimlab.update_clocks`
 
         """
         if self._master_clock_dim is not None:
@@ -117,46 +117,6 @@ class SimlabAccessor(object):
 
     def _set_master_clock(self, dim, data=None, start=0., end=None,
                           step=None, nsteps=None, units=None, calendar=None):
-        """Add a dimension coordinate as master clock for model runs.
-
-        Parameters
-        ----------
-        dim : str
-            Name of the dimension / coordinate to add.
-        data : array-like or xarray object or pandas Index, optional
-            Absolute time values for the master clock (must be 1-dimensional).
-            If provided, all other parameters below will be ignored.
-        start : float, optional
-            Start simulation time (default: 0).
-        end : float, optional
-            End simulation time.
-        step : float, optional
-            Time step duration.
-        nsteps : int, optional
-            Number of time steps.
-        units : str, optional
-            Time units (CF-convention style) that will be added as attribute of
-            the coordinate. Mostly useful when `data` is not provided or when
-            it doesn't have datetime-like values.
-        calendar : str, optional
-            Calendar (CF-convention style). It will also be added in coordinate
-            attributes.
-
-        Raises
-        ------
-        ValueError
-            If Dataset has already a dimension named `dim`
-            or in case of ambiguous combination of `nsteps`, `step` and `end`
-            or if any xarray object provided for `data` has other dimensions
-            than `dim`.
-
-        Notes
-        -----
-        Arguments other than `dim` and `data` are quite irrelevant when
-        working with datetime-like values. In this case, it is better to provide
-        a value for `data` using, e.g., a `pandas.DatetimeIndex` object.
-
-        """
         if dim in self._obj.dims:
             raise ValueError("dimension %r already exists" % dim)
 
@@ -171,49 +131,6 @@ class SimlabAccessor(object):
 
     def _set_snapshot_clock(self, dim, data=None, start=0., end=None,
                             step=None, nsteps=None, auto_adjust=True):
-        """Set or add a dimension coordinate used by model snapshots.
-
-        The coordinate labels must be also labels of the master clock
-        coordinate. By default labels are adjusted automatically.
-
-        Parameters
-        ----------
-        dim : str
-            Name of the dimension / coordinate.
-        data : array-like, optional
-            Absolute time values for the master clock (must be 1-dimensional).
-            If provided, all other parameters below will be ignored.
-        start : float, optional
-            Start simulation time (default: 0).
-        end : float, optional
-            End simulation time.
-        step : float, optional
-            Time step duration.
-        nsteps : int, optional
-            Number of time steps.
-        auto_adjust : bool, optional
-            If True (default), the resulting coordinate labels are
-            automatically adjusted so that they are consistent with the
-            labels of the master clock coordinate.
-            Otherwise raise a KeyError if labels are not valid.
-            (DataArray.sel is used internally).
-
-        Raises
-        ------
-        ValueError
-            If no master clock dimension / coordinate is found in Dataset.
-
-        Notes
-        -----
-        If set, 'units' and 'calendar' attributes will be copied from the master
-        clock coordinate.
-
-        See Also
-        --------
-        :meth:`Dataset.xsimlab._set_master_clock`
-        :meth:`Dataset.xsimlab.master_clock_dim`
-
-        """
         if self.master_clock_dim is None:
             raise ValueError("no master clock dimension/coordinate is defined "
                              "in Dataset. "
@@ -242,31 +159,6 @@ class SimlabAccessor(object):
                 self._obj[dim].attrs[attr_name] = attr_value
 
     def _set_input_vars(self, model, process, **inputs):
-        """Set or add Dataset variables that correspond to model
-        inputs variables (for a given process), with given (or default)
-        values.
-
-        The names of the Dataset variables also include the name of the process
-        (i.e., Dataset['<process_name>__<variable_name>']).
-
-        Parameters
-        ----------
-        process : str or Process object
-            (Name of) the process in which the model input variables are
-            defined.
-        **inputs : {var_name: value, ...}
-            Inputs with variable names as keys and variable values as values.
-            Values can be any object that can be easily converted to a
-            xarray.Variable.
-            Dataset variables with default values will be added for
-            all other model inputs defined in the process that are not
-            provided here.
-
-        See Also
-        --------
-        :py:meth:`xarray.as_variable`
-
-        """
         if isinstance(process, Process):
             process = process.name
         if process not in model:
@@ -316,27 +208,6 @@ class SimlabAccessor(object):
             self._obj[xr_var_name] = xr_var
 
     def _set_snapshot_vars(self, model, clock_dim, **process_vars):
-        """Set model variables to save as snapshots during a model run.
-
-        Parameters
-        ----------
-        clock_dim : str or None
-            Name of dimension corresponding to the snapshot clock to use for
-            these variables. If None, only one snapshot is done at the end of
-            the simulation and the variables won't have a clock dimension
-            (also useful for getting variables in processes that are not time
-            dependent).
-        **process_vars : {process: variables, ...}
-            Keyword arguments where keys are names of processes and variables
-            (str or list of str) are one or more names of variables defined
-            in these processes.
-
-        Notes
-        -----
-        Specific attributes are added to the `clock_dim` coordinate or to the
-        Dataset if `clock_dim` is None.
-
-        """
         xr_vars_list = []
 
         for proc_name, vars in sorted(process_vars.items()):
@@ -388,22 +259,20 @@ class SimlabAccessor(object):
 
         Drop all clock coordinates (if any) and add a new set of master and
         snapshot clock coordinates.
-        Also copy the snapshot-specific attributes of replaced coordinates
-        (i.e., coordinates with unchanged names).
+        Also copy all snapshot-specific attributes of the replaced coordinates.
+
+        More details about the values allowed for the parameters below can be
+        found in the doc of :meth:`xsimlab.create_setup`.
 
         Parameters
         ----------
-        model : Model object, optional
-            Reference model.
+        model : :class:`xsimlab.Model` object, optional
+            Reference model. If None, tries to get model from context.
         clocks : dict of dicts, optional
-            Used to create one or several clock coordinates. The structure of
-            the dict of dicts looks like {'dim': {kwarg: value, ...}, ...}.
-            See :meth:`xsimlab.create_setup` for more info.
+            Used to create one or several clock coordinates.
         master_clock : str or dict, optional
-            Name of the clock coordinate (dimension) that will be used as master
-            clock. A dictionary with at least a 'dim' key can be provided
-            instead. Time units and calendar (CF-conventions) can also be set
-            using 'units' and 'calendar' keys, respectively.
+            Name (and units/calendar) of the clock coordinate (dimension) to
+            use as master clock.
 
         Returns
         -------
@@ -460,24 +329,21 @@ class SimlabAccessor(object):
     def update_vars(self, model=None, input_vars=None, snapshot_vars=None):
         """Update model input values and/or snapshot variable names.
 
+        Add or replace all input values (resp. snapshot variable names) per
+        given process (resp. clock coordinate).
+
+        More details about the values allowed for the parameters below can be
+        found in the doc of :meth:`xsimlab.create_setup`.
+
         Parameters
         ----------
-        model : Model object, optional
-            Reference model.
+        model : :class:`xsimlab.Model` object, optional
+            Reference model. If None, tries to get model from context.
         input_vars : dict of dicts, optional
-            Used to set values for model inputs. The structure of the dict of
-            dicts looks like {'process_name': {'var_name': value, ...}, ...}.
-            The given values are anything that can be easily converted to
-            xarray.Variable objects, e.g., single values, array-like,
-            (dims, data, attrs) tuples or xarray objects.
+            Model input values given per process.
         snapshot_vars : dict of dicts, optional
-            Model variables to save as simulation snapshots. The structure of
-            the dict of dicts looks like
-            {'dim': {'process_name': 'var_name', ...}, ...}.
-            'dim' correspond to the dimension of a clock coordinate. None can be
-            used instead to take snapshots only at the end of a simulation.
-            To take snapshots for multiple variables that belong to the same
-            process, a tuple can be given instead of a string.
+            Model variables to save as simulation snapshots, given per
+            clock coordinate.
 
         Returns
         -------
@@ -514,8 +380,8 @@ class SimlabAccessor(object):
 
         Parameters
         ----------
-        model : Model object, optional
-            Reference model.
+        model : :class:`xsimlab.Model` object, optional
+            Reference model. If None, tries to get model from context.
 
         Returns
         -------
@@ -560,6 +426,8 @@ class SimlabAccessor(object):
 
         Parameters
         ----------
+        model : :class:`xsimlab.Model` object, optional
+            Reference model. If None, tries to get model from context.
         safe_mode : bool, optional
             If True (default), it is safe to run multiple simulations
             simultaneously. Generally safe mode shouldn't be disabled, except
@@ -567,8 +435,8 @@ class SimlabAccessor(object):
 
         Returns
         -------
-        out_ds : Dataset
-            Another Dataset with model inputs and outputs.
+        output : Dataset
+            Another Dataset with both model inputs and outputs (snapshots).
 
         """
         model = _maybe_get_model_from_context(model)
@@ -583,8 +451,7 @@ class SimlabAccessor(object):
     def run_multi(self):
         """Run multiple models.
 
-        Parameters
-        ----------
+        Not yet implemented.
 
         See Also
         --------
@@ -599,44 +466,82 @@ def create_setup(model=None, clocks=None, master_clock=None,
                  input_vars=None, snapshot_vars=None):
     """Create a specific setup for model runs.
 
-    This convenient function creates a new xarray.Dataset object with model
-    input values, time steps and model output variables (including snapshot
-    times) as data variables, coordinates and attributes.
+    This convenient function creates a new :class:`xarray.Dataset` object with
+    model input values, time steps and model output variables (including
+    snapshot times) as data variables, coordinates and attributes.
 
     Parameters
     ----------
-    model : Model object, optional
-        Create a simulation setup for this model.
+    model : :class:`xsimlab.Model` object, optional
+        Create a simulation setup for this model. If None, tries to get model
+        from context.
     clocks : dict of dicts, optional
-        Used to create on or several clock coordinates. The structure of the
-        dict of dicts looks like {'dim': {kwarg: value, ...}, ...}.
-        kwarg is any keyword argument of `Dataset.xsimlab._set_master_clock` or
-        `Dataset.xsimlab._set_snapshot_clock`. If only one clock is provided,
-        it will be used as master clock.
+        Used to create one or several clock coordinates. The structure of the
+        dict of dicts looks like ``{'dim': {key: value, ...}, ...}``.
+        See "Other Parameters" section below for allowed keys and values.
+        If only one clock is provided, it will be used as master clock.
     master_clock : str or dict, optional
-        Name of the clock coordinate (dimension) that will be used as master
-        clock. A dictionary with at least a 'dim' key can be provided instead.
-        Time units and calendar (CF-conventions) can also be set using
-        'units' and 'calendar' keys, respectively.
+        Name of the clock coordinate (dimension) to use as master clock (i.e.,
+        for time steps).
+        A dictionary with at least a 'dim' key can be provided instead, it
+        allows setting time units and calendar (CF-conventions) with
+        'units' and 'calendar' keys.
     input_vars : dict of dicts, optional
-        Used to set values for model inputs. The structure of the dict of
-        dicts looks like {'process_name': {'var_name': value, ...}, ...}.
-        The given values are anything that can be easily converted to
-        xarray.Variable objects, e.g., single values, array-like,
+        Model inputs values given per process. The structure of the dict of
+        dicts looks like ``{'process_name': {'var_name': value, ...}, ...}``.
+        Values are anything that can be easily converted to
+        :class:`xarray.Variable` objects, e.g., single values, array-like,
         (dims, data, attrs) tuples or xarray objects.
     snapshot_vars : dict of dicts, optional
-        Model variables to save as simulation snapshots. The structure of the
-        dict of dicts looks like
-        {'dim': {'process_name': 'var_name', ...}, ...}.
-        'dim' correspond to the dimension of a clock coordinate. None can be
-        used instead to take snapshots only at the end of a simulation.
+        Model variables to save as simulation snapshots, given per clock
+        coordinate. The structure of the dict of dicts looks like
+        ``{'dim': {'process_name': 'var_name', ...}, ...}``.
+        'dim' must correspond to the dimension of a clock coordinate or None
+        for snapshots that only have to be taken once at the end of the
+        simulation.
         To take snapshots for multiple variables that belong to the same
-        process, a tuple can be given instead of a string.
+        process, a tuple of multiple variable names can be given instead of a
+        string.
+
+    Other Parameters
+    ----------------
+    data : array-like or :class:`pandas.Index`, optional
+        Absolute time values for the master clock (must be 1-dimensional).
+        If provided, all other parameters below will be ignored.
+    start : float, optional
+        Start simulation time (default: 0).
+    end : float, optional
+        End simulation time.
+    step : float, optional
+        Time step duration.
+    nsteps : int, optional
+        Number of time steps.
+    auto_adjust : bool, optional
+        Only for snapshot clock coordinates. If True (default), the resulting
+        coordinate labels are automatically adjusted so that they are consistent
+        with the labels of the master clock coordinate. Otherwise raise a
+        KeyError if labels are not valid. (DataArray.sel is used internally).
 
     Returns
     -------
     dataset : :class:`xarray.Dataset`
-        A new Dataset object that may be used for running simulations.
+        A new Dataset object with model inputs as data variables or coordinates
+        (depending on their given value) and clock coordinates.
+        The names of the input variables also include the name of their process
+        (i.e., 'process_name__var_name').
+
+    Notes
+    -----
+    For clock coordinates, keys other than 'dim' and 'data' are quite
+    irrelevant when working with datetime-like values. In this case, it is
+    better to use, e.g., a :py:class:`pandas.DatetimeIndex` object.
+
+    Inputs of ``model`` for which no value is given are still added as variables
+    in the returned Dataset, using their default value (if any). It requires
+    that their process are provided as keys of ``input_vars``, though.
+
+    Snapshot variable names are added in Dataset as specific attributes
+    (global and/or clock coordinate attributes).
 
     """
     model = _maybe_get_model_from_context(model)
