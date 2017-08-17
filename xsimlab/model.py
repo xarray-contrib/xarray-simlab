@@ -3,7 +3,7 @@ from collections import OrderedDict
 from .variable.base import (AbstractVariable, Variable, ForeignVariable,
                             VariableList, VariableGroup)
 from .process import Process
-from .utils import AttrMapping
+from .utils import AttrMapping, ContextMixin
 from .formatting import _calculate_col_width, pretty_print, maybe_truncate
 
 
@@ -159,7 +159,7 @@ def _sort_processes(dep_processes):
     return ordered
 
 
-class Model(AttrMapping):
+class Model(AttrMapping, ContextMixin):
     """An immutable collection (mapping) of process units that together
     form a computational model.
 

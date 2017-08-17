@@ -157,14 +157,15 @@ def model_repr():
 
 @pytest.fixture
 def input_dataset():
+    clock_key = SimlabAccessor._clock_key
     mclock_key = SimlabAccessor._master_clock_key
-    sclock_key = SimlabAccessor._snapshot_clock_key
     svars_key = SimlabAccessor._snapshot_vars_key
 
     ds = xr.Dataset()
 
-    ds['clock'] = ('clock', [0, 2, 4, 6, 8], {mclock_key: np.uint8(True)})
-    ds['out'] = ('out', [0, 4, 8], {sclock_key: np.uint8(True)})
+    ds['clock'] = ('clock', [0, 2, 4, 6, 8],
+                   {clock_key: np.uint8(True), mclock_key: np.uint8(True)})
+    ds['out'] = ('out', [0, 4, 8], {clock_key: np.uint8(True)})
 
     ds['grid__x_size'] = ((), 10, {'description': 'grid size'})
     ds['quantity__quantity'] = ('x', np.zeros(10),

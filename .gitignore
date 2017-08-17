@@ -50,3 +50,6 @@ bin/
 # doc
 doc/_build
 doc/_api_generated
+
+# emacs
+.projectile
