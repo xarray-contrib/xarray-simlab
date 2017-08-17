@@ -41,6 +41,12 @@ the preliminary benchmarks that we have run show only a very small overhead.
 
 .. question_to_add: Can xarray-simlab be used without xarray?
 
+.. question_to_add: I already have model implementation.
+
+   Can I use xarray-simlab with it?  A: xarray-simlab encourages fine-grain
+   processes, but it is easy to warp more monolitic code as process, add an
+   interface (variables) and then leverage the features of xarray-simlab.
+
 Will xarray-simlab support Python 2.7.x?
 ----------------------------------------
 
