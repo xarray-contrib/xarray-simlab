@@ -67,7 +67,17 @@ Then install xarray-simlab locally using ``pip``::
 Run tests
 ~~~~~~~~~
 
-Not yet available!
+To make sure everything behaves as expected, you may want to run
+xarray-simlab's unit tests locally using the `pytest`_ package. You
+can first install it with conda::
+
+  $ conda install pytest -c conda-forge
+
+Then you can run tests from the main xarray-simlab directory::
+
+  $ pytest xsimlab --verbose
+
+.. _pytest: https://docs.pytest.org/en/latest/
 
 Contributing to code
 --------------------
@@ -111,7 +121,22 @@ unless there are very good reasons to do so.
 Test
 ~~~~
 
-Not yet available!
+xarray-simlab's uses unit tests extensively to make sure that every
+part of the code behaves as we expect. Test coverage is required for
+all code contributions.
+
+Unit test are written using `pytest`_ style (i.e., mostly using the
+``assert`` statement directly) in various files located in the
+``xsimlab/tests`` folder. The file ``conftest.py`` defines some
+``Process`` subclasses, ``Model`` objects and ``xarray.Dataset``
+objects that can be used as fixtures for testing.
+
+You can run tests locally from the main xarray-simlab directory::
+
+  $ pytest xsimlab --verbose
+
+All tests are also executed automatically on the Travis.ci continuous
+integration platform on every push to every pull request on GitHub.
 
 Docstrings
 ~~~~~~~~~~
@@ -132,7 +157,7 @@ Source code checker
 ~~~~~~~~~~~~~~~~~~~
 
 To check about any potential error or bad style in your code, you might want
-using a source chode checker like flake8_. You can install it in your
+using a source code checker like flake8_. You can install it in your
 development environment::
 
   $ conda install flake8 -c conda-forge
