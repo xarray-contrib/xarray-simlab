@@ -478,7 +478,7 @@ def create_setup(model=None, clocks=None, master_clock=None,
     clocks : dict of dicts, optional
         Used to create one or several clock coordinates. The structure of the
         dict of dicts looks like ``{'dim': {key: value, ...}, ...}``.
-        See "Other Parameters" section below for allowed keys and values.
+        See the "Notes" section below for allowed keys and values.
         If only one clock is provided, it will be used as master clock.
     master_clock : str or dict, optional
         Name of the clock coordinate (dimension) to use as master clock (i.e.,
@@ -503,25 +503,6 @@ def create_setup(model=None, clocks=None, master_clock=None,
         process, a tuple of multiple variable names can be given instead of a
         string.
 
-    Other Parameters
-    ----------------
-    data : array-like or :class:`pandas.Index`, optional
-        Absolute time values for the master clock (must be 1-dimensional).
-        If provided, all other parameters below will be ignored.
-    start : float, optional
-        Start simulation time (default: 0).
-    end : float, optional
-        End simulation time.
-    step : float, optional
-        Time step duration.
-    nsteps : int, optional
-        Number of time steps.
-    auto_adjust : bool, optional
-        Only for snapshot clock coordinates. If True (default), the resulting
-        coordinate labels are automatically adjusted so that they are consistent
-        with the labels of the master clock coordinate. Otherwise raise a
-        KeyError if labels are not valid. (DataArray.sel is used internally).
-
     Returns
     -------
     dataset : :class:`xarray.Dataset`
@@ -532,9 +513,26 @@ def create_setup(model=None, clocks=None, master_clock=None,
 
     Notes
     -----
-    For clock coordinates, keys other than 'dim' and 'data' are quite
-    irrelevant when working with datetime-like values. In this case, it is
-    better to use, e.g., a :py:class:`pandas.DatetimeIndex` object.
+    Allowed parameters for creating clock coordinates:
+
+    - data : array-like or :class:`pandas.Index`, optional
+        Absolute time values for the master clock (must be 1-dimensional).
+        If provided, all other parameters below will be ignored.
+        A :py:class:`pandas.DatetimeIndex` object can be used, e.g.,
+        when working with datetime-like values.
+    - start : float, optional
+        Start simulation time (default: 0).
+    - end : float, optional
+        End simulation time.
+    - step : float, optional
+        Time step duration.
+    - nsteps : int, optional
+        Number of time steps.
+    - auto_adjust : bool, optional
+        Only for snapshot clock coordinates. If True (default), the resulting
+        coordinate labels are automatically adjusted so that they are consistent
+        with the labels of the master clock coordinate. Otherwise raise a
+        KeyError if labels are not valid. (DataArray.sel is used internally).
 
     Inputs of ``model`` for which no value is given are still added as variables
     in the returned Dataset, using their default value (if any). It requires
