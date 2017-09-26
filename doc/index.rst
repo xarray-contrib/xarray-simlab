@@ -32,9 +32,9 @@ Documentation index
 **User Guide**
 
 * :doc:`framework`
+* :doc:`create_model`
 * :doc:`inspect_model`
 * :doc:`run_model`
-* :doc:`create_model`
 
 .. toctree::
    :maxdepth: 1
@@ -42,9 +42,9 @@ Documentation index
    :caption: User Guide
 
    framework
+   create_model
    inspect_model
    run_model
-   create_model
 
 **Help & reference**
 
