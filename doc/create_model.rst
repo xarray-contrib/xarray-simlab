@@ -36,38 +36,7 @@ xarray-simlab. We will also show that, while enabling useful features,
 the refactoring still results in a short amount of readable code that
 can be easily maintained.
 
-.. code-block:: python
-
-    import numpy as np
-
-
-    # grid
-    spacing = 0.01
-    length = 1.5
-    x = np.arange(0, length, spacing)
-
-    # velocity
-    v = 1.
-
-    # time
-    start = 0.
-    end = 1.
-    step = 0.01
-
-    # initial gauss profile
-    loc = 0.3
-    scale = 0.1
-    u = np.exp(-1 / scale**2 * (x - loc)**2)
-    u0 = u.copy()
-
-    # time loop - Lax method
-    factor = (v * step) / (2 * spacing)
-
-    for t in np.arange(start, end, step):
-        u_left = np.roll(u, 1)
-        u_right = np.roll(u, -1)
-        u1 = 0.5 * (u_right + u_left) - factor * (u_right - u_left)
-        u = u1.copy()
+.. literalinclude:: scripts/advection_lax_numpy.py
 
 .. _`Lax method`: https://en.wikipedia.org/wiki/Lax%E2%80%93Friedrichs_method
 
@@ -78,42 +47,8 @@ Let's first wrap the code above into a single subclass of
 :class:`~xsimlab.Process` named ``AdvectionLax1D``. Next we'll explain in
 detail the content of this class.
 
-.. hidden_todo
-
-   move all code blocks of this section in one or more Python modules
-   so that it can be imported in other sections. Then use the
-   literalinclude directive to show relevant code blocks in this
-   sections.
-
-.. code-block:: python
-
-    class AdvectionLax1D(Process):
-        """Wrap 1-dimensional advection in a single Process."""
-
-        spacing = FloatVariable((), description='grid spacing')
-        length = FloatVariable((), description='grid total length')
-        x = FloatVariable('x', provided=True)
-
-        v = FloatVariable([(), 'x'], description='velocity')
-
-        loc = FloatVariable((), description='location of initial profile')
-        scale = FloatVariable((), description='scale of initial profile')
-        u = FloatVariable('x', description='quantity u',
-                          attrs={'units': 'm'}, provided=True)
-
-        def initialize(self):
-            self.x.value = np.arange(0, self.length.value, self.spacing.value)
-            self.u.state = np.exp(-1 / self.scale.value**2 *
-                                  (self.x.value - self.loc.value)**2)
-
-        def run_step(self, dt):
-            factor = (self.v.value * dt) / (2 * self.spacing.value)
-            u_left = np.roll(self.u.state, 1)
-            u_right = np.roll(self.u.state, -1)
-            self.u1 = 0.5 * (u_right + u_left) - factor * (u_right - u_left)
-
-        def finalize_step(self):
-            self.u.state = self.u1
+.. literalinclude:: scripts/advection_lax_xsimlab.py
+   :lines: 7-33
 
 Process interface
 ~~~~~~~~~~~~~~~~~
@@ -214,9 +149,8 @@ Creating a new :class:`~xsimlab.Model` instance is very easy. We just
 need to provide a dictionary with the process(es) that we want to
 include in the model, e.g., with only the process created above:
 
-.. code-block:: python
-
-    model1 = Model({'advect': AdvectionLax1D})
+.. literalinclude:: scripts/advection_lax_xsimlab.py
+   :lines: 36
 
 That's it! Now we can use that model with the xarray extension provided
 by xarray-simlab to create new setups, run the model, take snapshots
@@ -249,19 +183,8 @@ separate processes:
 This process declares all grid-related variables and computes
 x-coordinate values.
 
-.. code-block:: python
-
-   class UniformGrid1D(Process):
-       """Create a 1-dimensional, equally spaced grid."""
-       spacing = FloatVariable((), description='uniform spacing')
-       length = FloatVariable((), description='total length')
-       x = FloatVariable('x', provided=True)
-
-       class Meta:
-           time_dependent = False
-
-       def initialize(self):
-           self.x.value = np.arange(0, self.length.value, self.spacing.value)
+.. literalinclude:: scripts/advection_lax_xsimlab.py
+   :lines: 39-50
 
 ``class Meta`` is used here to specify that this process is not time
 dependent (by default processes are considered as
@@ -271,19 +194,8 @@ the beginning of the simulation ; there is no need to implement
 
 **ProfileU**
 
-.. code-block:: python
-
-    class ProfileU(Process):
-        """Compute the evolution of the profile of quantity `u`."""
-        u_vars = VariableGroup('u_vars')
-        u = FloatVariable('x', description='quantity u',
-                          attrs={'units': 'm'})
-
-        def run_step(self, *args):
-            self.u.change = sum((var.change for var in self.u_vars))
-
-        def finalize_step(self):
-            self.u.state += self.u.change
+.. literalinclude:: scripts/advection_lax_xsimlab.py
+   :lines: 53-64
 
 ``u_vars`` is declared as a :class:`~xsimlab.VariableGroup`, i.e., an
 iterable of all variables declared elsewhere that belong the same
@@ -293,25 +205,8 @@ advection.
 
 **AdvectionLax**
 
-.. code-block:: python
-
-    class AdvectionLax(Process):
-        """Advection using finite difference (Lax method) on
-        a fixed grid with periodic boundary conditions.
-        """
-        v = FloatVariable([(), 'x'], description='velocity')
-        grid_spacing = ForeignVariable(UniformGrid1D, 'spacing')
-        u = ForeignVariable(ProfileU, 'u')
-        u_advected = FloatVariable('x', provided=True, group='u_vars')
-
-        def run_step(self, dt):
-            factor = self.v.value / (2 * self.grid_spacing.value)
-
-            u_left = np.roll(self.u.state, 1)
-            u_right = np.roll(self.u.state, -1)
-            u_1 = 0.5 * (u_right + u_left) - factor * dt * (u_right - u_left)
-
-            self.u_advected.change = u_1 - self.u.state
+.. literalinclude:: scripts/advection_lax_xsimlab.py
+   :lines: 67-84
 
 ``u_advected`` represents the effect of advection on the evolution of
 :math:`u` and therefore belongs to the group 'u_vars'. By convention
@@ -328,22 +223,8 @@ class will return the same value than ``self.spacing`` in
 
 **InitUGauss**
 
-.. code-block:: python
-
-    class InitUGauss(Process):
-        """Initialize `u` profile using a gaussian pulse."""
-        loc = FloatVariable((), description='location of initial pulse')
-        scale = FloatVariable((), description='scale of initial pulse')
-        x = ForeignVariable(UniformGrid1D, 'x')
-        u = ForeignVariable(ProfileU, 'u', provided=True)
-
-        class Meta:
-            time_dependent = False
-
-        def initialize(self):
-            self.u.state = np.exp(
-                -1 / self.scale.value**2 * (self.x.value - self.loc.value)**2
-            )
+.. literalinclude:: scripts/advection_lax_xsimlab.py
+   :lines: 87-101
 
 Note that ForeignVariable can also be used to set values for variables
 that are declared in other processes, as for ``u`` here.
@@ -352,12 +233,8 @@ that are declared in other processes, as for ``u`` here.
 
 We now have all the building blocks to create a more flexible model:
 
-.. code-block:: python
-
-    model2 = Model({'grid': UniformGrid1D,
-                    'profile': ProfileU,
-                    'init': InitUGauss,
-                    'advect': Advection})
+.. literalinclude:: scripts/advection_lax_xsimlab.py
+   :lines: 104-107
 
 The order in which processes are given doesn't matter (it is a
 dictionary). A computationally consistent order, as well as model
@@ -381,32 +258,8 @@ original, simple version.
 
 For this we create a new process:
 
-.. code-block:: python
-
-    class SourcePoint(Process):
-        """Source point for quantity `u`.
-
-        The location of the source point is adjusted to coincide with
-        the nearest node the grid.
-        """
-        loc = FloatVariable((), description='source location')
-        flux = FloatVariable((), description='source flux')
-        x = ForeignVariable(UniformGrid1D, 'x')
-        u_source = FloatVariable('x', provided=True, group='u_vars')
-
-        @property
-        def nearest_node(self):
-            idx = np.abs(self.x.value - self.loc.value).argmin()
-            return idx
-
-        @property
-        def source_rate(self):
-            src_array = np.zeros_like(self.x.value)
-            src_array[self.nearest_node] = self.flux.value
-            return src_array
-
-        def run_step(self, dt):
-            self.u_source.change = self.source_rate * dt
+.. literalinclude:: scripts/advection_lax_xsimlab.py
+   :lines: 110-134
 
 A couple of comments about this class:
 
@@ -425,26 +278,14 @@ In this example we also want to start with a flat, zero :math:`u`
 profile instead of a gaussian pulse. We create another (minimal)
 process for that:
 
-.. code-block:: python
-
-    class InitUFlat(Process):
-        """Flat initial profile of `u`."""
-        x = ForeignVariable(UniformGrid1D, 'x')
-        u = ForeignVariable(ProfileU, 'u', provided=True)
-
-        class Meta:
-            time_dependent = False
-
-        def initialize(self):
-            self.u.state = np.zeros_like(x)
+.. literalinclude:: scripts/advection_lax_xsimlab.py
+   :lines: 137-147
 
 Using one command, we can then update the model with these new
 features:
 
-.. code-block:: python
-
-   model3 = model2.update_processes({'source': SourcePoint,
-                                     'init': InitUFlat})
+.. literalinclude:: scripts/advection_lax_xsimlab.py
+   :lines: 150-151
 
 Compared to ``model2``, this new ``model3`` have a new process named
 'source' and a replaced process 'init'.
@@ -454,9 +295,8 @@ Compared to ``model2``, this new ``model3`` have a new process named
 It is also possible to create new models by removing one or more
 processes from existing Model instances, e.g.,
 
-.. code-block:: python
-
-   model4 = model2.drop_processes('init')
+.. literalinclude:: scripts/advection_lax_xsimlab.py
+   :lines: 154
 
 In this latter case, users will have to provide initial values of
 :math:`u` along the grid directly as an input array.
