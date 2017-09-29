@@ -4,19 +4,19 @@ About xarray-simlab
 ===================
 
 xarray-simlab provides a framework for easily building custom computational
-models from a set of re-usable components (i.e., Python classes), called
+models from a set of modular components (i.e., Python classes), called
 processes.
 
-The framework handles issues that scientists who are developing models should
-not care too much about, like the model interface - including the data structure
-used - and the overall workflow management. Both are automatically determined
-from the succint, declarative-like interfaces of the model processes.
+The framework handles issues that scientists who are developing models
+should not care too much about, like the model interface and the
+overall workflow management. Both are automatically determined from
+the succint, declarative-like interfaces of the model processes.
 
-Next versions of xarray-simlab will hopefully handle other technical issues
-like logging simulation progress, a plug-in system for custom co-processors
-(e.g., for interactive visualization), command line integration and/or running
-many simulations in parallel (for example in the context of sensitivity analyses
-or inversion procedures).
+Notably via its xarray extension, xarray-simlab has already deep
+integration with the SciPy / PyData stack. Next versions will
+hopefully handle other technical issues like command line integration,
+interactive visualization and/or running many simulations in parallel,
+e.g., in the context of sensitivity analyses or inversion procedures.
 
 Motivation
 ----------
