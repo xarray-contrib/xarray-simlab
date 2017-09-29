@@ -36,7 +36,7 @@ xarray-simlab. We will also show that, while enabling useful features,
 the refactoring still results in a short amount of readable code that
 can be easily maintained.
 
-.. literalinclude:: scripts/advection_lax_numpy.py
+.. literalinclude:: scripts/advection_model_numpy.py
 
 .. _`Lax method`: https://en.wikipedia.org/wiki/Lax%E2%80%93Friedrichs_method
 
@@ -47,7 +47,7 @@ Let's first wrap the code above into a single subclass of
 :class:`~xsimlab.Process` named ``AdvectionLax1D``. Next we'll explain in
 detail the content of this class.
 
-.. literalinclude:: scripts/advection_lax_xsimlab.py
+.. literalinclude:: scripts/advection_model.py
    :lines: 7-33
 
 Process interface
@@ -149,7 +149,7 @@ Creating a new :class:`~xsimlab.Model` instance is very easy. We just
 need to provide a dictionary with the process(es) that we want to
 include in the model, e.g., with only the process created above:
 
-.. literalinclude:: scripts/advection_lax_xsimlab.py
+.. literalinclude:: scripts/advection_model.py
    :lines: 36
 
 That's it! Now we can use that model with the xarray extension provided
@@ -183,7 +183,7 @@ separate processes:
 This process declares all grid-related variables and computes
 x-coordinate values.
 
-.. literalinclude:: scripts/advection_lax_xsimlab.py
+.. literalinclude:: scripts/advection_model.py
    :lines: 39-50
 
 ``class Meta`` is used here to specify that this process is not time
@@ -194,7 +194,7 @@ the beginning of the simulation ; there is no need to implement
 
 **ProfileU**
 
-.. literalinclude:: scripts/advection_lax_xsimlab.py
+.. literalinclude:: scripts/advection_model.py
    :lines: 53-64
 
 ``u_vars`` is declared as a :class:`~xsimlab.VariableGroup`, i.e., an
@@ -205,7 +205,7 @@ advection.
 
 **AdvectionLax**
 
-.. literalinclude:: scripts/advection_lax_xsimlab.py
+.. literalinclude:: scripts/advection_model.py
    :lines: 67-84
 
 ``u_advected`` represents the effect of advection on the evolution of
@@ -223,7 +223,7 @@ class will return the same value than ``self.spacing`` in
 
 **InitUGauss**
 
-.. literalinclude:: scripts/advection_lax_xsimlab.py
+.. literalinclude:: scripts/advection_model.py
    :lines: 87-101
 
 Note that ForeignVariable can also be used to set values for variables
@@ -233,7 +233,7 @@ that are declared in other processes, as for ``u`` here.
 
 We now have all the building blocks to create a more flexible model:
 
-.. literalinclude:: scripts/advection_lax_xsimlab.py
+.. literalinclude:: scripts/advection_model.py
    :lines: 104-107
 
 The order in which processes are given doesn't matter (it is a
@@ -258,7 +258,7 @@ original, simple version.
 
 For this we create a new process:
 
-.. literalinclude:: scripts/advection_lax_xsimlab.py
+.. literalinclude:: scripts/advection_model.py
    :lines: 110-134
 
 A couple of comments about this class:
@@ -278,13 +278,13 @@ In this example we also want to start with a flat, zero :math:`u`
 profile instead of a gaussian pulse. We create another (minimal)
 process for that:
 
-.. literalinclude:: scripts/advection_lax_xsimlab.py
+.. literalinclude:: scripts/advection_model.py
    :lines: 137-147
 
 Using one command, we can then update the model with these new
 features:
 
-.. literalinclude:: scripts/advection_lax_xsimlab.py
+.. literalinclude:: scripts/advection_model.py
    :lines: 150-151
 
 Compared to ``model2``, this new ``model3`` have a new process named
@@ -295,7 +295,7 @@ Compared to ``model2``, this new ``model3`` have a new process named
 It is also possible to create new models by removing one or more
 processes from existing Model instances, e.g.,
 
-.. literalinclude:: scripts/advection_lax_xsimlab.py
+.. literalinclude:: scripts/advection_model.py
    :lines: 154
 
 In this latter case, users will have to provide initial values of
