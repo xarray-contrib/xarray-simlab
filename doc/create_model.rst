@@ -48,7 +48,7 @@ Let's first wrap the code above into a single subclass of
 detail the content of this class.
 
 .. literalinclude:: scripts/advection_model.py
-   :lines: 7-33
+   :lines: 3-32
 
 Process interface
 ~~~~~~~~~~~~~~~~~
@@ -150,7 +150,7 @@ need to provide a dictionary with the process(es) that we want to
 include in the model, e.g., with only the process created above:
 
 .. literalinclude:: scripts/advection_model.py
-   :lines: 36
+   :lines: 35-38
 
 That's it! Now we can use that model with the xarray extension provided
 by xarray-simlab to create new setups, run the model, take snapshots
@@ -184,7 +184,7 @@ This process declares all grid-related variables and computes
 x-coordinate values.
 
 .. literalinclude:: scripts/advection_model.py
-   :lines: 39-50
+   :lines: 41-52
 
 ``class Meta`` is used here to specify that this process is not time
 dependent (by default processes are considered as
@@ -195,7 +195,7 @@ the beginning of the simulation ; there is no need to implement
 **ProfileU**
 
 .. literalinclude:: scripts/advection_model.py
-   :lines: 53-64
+   :lines: 55-69
 
 ``u_vars`` is declared as a :class:`~xsimlab.VariableGroup`, i.e., an
 iterable of all variables declared elsewhere that belong the same
@@ -206,7 +206,7 @@ advection.
 **AdvectionLax**
 
 .. literalinclude:: scripts/advection_model.py
-   :lines: 67-84
+   :lines: 72-92
 
 ``u_advected`` represents the effect of advection on the evolution of
 :math:`u` and therefore belongs to the group 'u_vars'. By convention
@@ -224,7 +224,7 @@ class will return the same value than ``self.spacing`` in
 **InitUGauss**
 
 .. literalinclude:: scripts/advection_model.py
-   :lines: 87-101
+   :lines: 95-109
 
 Note that ForeignVariable can also be used to set values for variables
 that are declared in other processes, as for ``u`` here.
@@ -234,7 +234,7 @@ that are declared in other processes, as for ``u`` here.
 We now have all the building blocks to create a more flexible model:
 
 .. literalinclude:: scripts/advection_model.py
-   :lines: 104-107
+   :lines: 112-115
 
 The order in which processes are given doesn't matter (it is a
 dictionary). A computationally consistent order, as well as model
@@ -259,7 +259,7 @@ original, simple version.
 For this we create a new process:
 
 .. literalinclude:: scripts/advection_model.py
-   :lines: 110-134
+   :lines: 118-142
 
 A couple of comments about this class:
 
@@ -279,13 +279,13 @@ profile instead of a gaussian pulse. We create another (minimal)
 process for that:
 
 .. literalinclude:: scripts/advection_model.py
-   :lines: 137-147
+   :lines: 145-155
 
 Using one command, we can then update the model with these new
 features:
 
 .. literalinclude:: scripts/advection_model.py
-   :lines: 150-151
+   :lines: 158-159
 
 Compared to ``model2``, this new ``model3`` have a new process named
 'source' and a replaced process 'init'.
@@ -296,7 +296,7 @@ It is also possible to create new models by removing one or more
 processes from existing Model instances, e.g.,
 
 .. literalinclude:: scripts/advection_model.py
-   :lines: 154
+   :lines: 162
 
 In this latter case, users will have to provide initial values of
 :math:`u` along the grid directly as an input array.

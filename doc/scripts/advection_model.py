@@ -1,7 +1,6 @@
 import numpy as np
 
-from xsimlab import FloatVariable, VariableGroup, ForeignVariable
-from xsimlab import Process, Model
+from xsimlab import Process, FloatVariable
 
 
 class AdvectionLax1D(Process):
@@ -33,6 +32,9 @@ class AdvectionLax1D(Process):
         self.u.state = self.u1
 
 
+from xsimlab import Model
+
+
 model1 = Model({'advect': AdvectionLax1D})
 
 
@@ -50,6 +52,9 @@ class UniformGrid1D(Process):
         self.x.value = np.arange(0, self.length.value, self.spacing.value)
 
 
+from xsimlab import VariableGroup
+
+
 class ProfileU(Process):
     """Compute the evolution of the profile of quantity `u`."""
 
@@ -62,6 +67,9 @@ class ProfileU(Process):
 
     def finalize_step(self):
         self.u.state += self.u.change
+
+
+from xsimlab import ForeignVariable
 
 
 class AdvectionLax(Process):
