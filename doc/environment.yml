@@ -8,6 +8,7 @@ dependencies:
   - xarray=0.9.6
   - ipython=6.1.0
   - ipykernel=4.6.1
+  - matplotlib=2.0.2
   - graphviz
   - python-graphviz
   - nbconvert=5.2.1
