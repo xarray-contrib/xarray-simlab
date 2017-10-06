@@ -33,8 +33,7 @@ Python / Numpy code, e.g., here below assuming periodic boundary
 conditions and a gaussian pulse as initial profile. We will show,
 however, that it is very easy to refactor this code for using it with
 xarray-simlab. We will also show that, while enabling useful features,
-the refactoring still results in a short amount of readable code that
-can be easily maintained.
+the refactoring still results in a short amount of readable code.
 
 .. literalinclude:: scripts/advection_model_numpy.py
 

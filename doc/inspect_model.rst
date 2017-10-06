@@ -19,8 +19,8 @@ Inspect processes and variables
 -------------------------------
 
 Model *repr* already gives information about the number and names of
-processes and their variables that are model inputs (including a short
-description for the latter if provided):
+processes and their variables that need an input value (if provided, a
+short description is also displayed for these variables):
 
 .. ipython:: python
 
@@ -58,7 +58,7 @@ their declared variables, e.g.,
 It is also possible to have direct access to all input variables in a
 model using the :attr:`~xsimlab.Model.input_vars` property.
 
-We can test whether a variable is a model input or not, e.g.,
+We can further test whether a variable is a model input or not, e.g.,
 
 .. ipython:: python
 
@@ -84,8 +84,8 @@ Visualize models as graphs
               filename='savefig/model2_var_u.png')
 
 It is possible to visualize a model and its processes as a directed
-graph (note: this requires Graphviz and its Python bindings, which
-both can be found on conda-forge):
+graph (note: this requires installing Graphviz and its Python
+bindings, which both can be found on conda-forge):
 
 .. ipython:: python
 
@@ -94,8 +94,8 @@ both can be found on conda-forge):
 .. image:: savefig/model2_simple.png
    :width: 40%
 
-``show_inputs`` option allows to show model input variables (yellow
-square nodes) linked to their corresponding processes:
+``show_inputs`` option allows to show model input variables as yellow
+square nodes linked to their corresponding processes:
 
 .. ipython:: python
 
@@ -104,8 +104,8 @@ square nodes) linked to their corresponding processes:
 .. image:: savefig/model2_inputs.png
    :width: 60%
 
-``show_variables`` option allows to show the other variables as well
-(white square nodes):
+``show_variables`` option allows to show the other variables as white
+square nodes:
 
 .. ipython:: python
 
@@ -115,8 +115,8 @@ square nodes) linked to their corresponding processes:
    :width: 60%
 
 Nodes with solid border correspond to regular variables while nodes
-with dashed border correspond to ``ForeignVariable`` objects. Nodes in
-a 3d box correspond to iterables of Variable objects, like
+with dashed border correspond to ``ForeignVariable`` objects. 3d-box
+nodes correspond to iterables of Variable objects, like
 ``VariableGroup``. Variables connected to their process with an arrow
 have a value provided by the process.
 
