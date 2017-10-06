@@ -8,6 +8,8 @@ dependencies:
   - xarray=0.9.6
   - ipython=6.1.0
   - ipykernel=4.6.1
+  - graphviz
+  - python-graphviz
   - nbconvert=5.2.1
   - sphinx=1.6.2
   - nbsphinx=0.2.13
