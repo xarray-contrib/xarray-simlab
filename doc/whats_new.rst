@@ -3,4 +3,7 @@
 Release Notes
 =============
 
-No stable release yet.
+v0.1.0 (8 October 2017)
+-----------------------
+
+Initial release.
