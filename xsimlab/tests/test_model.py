@@ -157,3 +157,6 @@ class TestModel(object):
 
     def test_repr(self, model, model_repr):
         assert repr(model) == model_repr
+
+        expected = "<xsimlab.Model (0 processes, 0 inputs)>"
+        assert repr(Model({})) == expected

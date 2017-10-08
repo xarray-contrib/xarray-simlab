@@ -355,8 +355,11 @@ class Model(AttrMapping, ContextMixin):
     def __repr__(self):
         n_inputs = sum([len(v) for v in self._input_vars.values()])
 
-        hdr = ("<xsimlab.Model (%d processes, %d inputs)>\n"
+        hdr = ("<xsimlab.Model (%d processes, %d inputs)>"
                % (len(self._processes), n_inputs))
+
+        if not len(self._processes):
+            return hdr
 
         max_line_length = 70
         col_width = max([_calculate_col_width(var)
@@ -378,4 +381,4 @@ class Model(AttrMapping, ContextMixin):
                 proc_str += '\n' + '\n'.join(lines)
             blocks.append(proc_str)
 
-        return hdr + '\n'.join(blocks)
+        return hdr + '\n' + '\n'.join(blocks)
