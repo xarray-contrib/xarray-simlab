@@ -1,6 +1,6 @@
 .. _whats_new:
 
-What's New
-==========
+Release Notes
+=============
 
 No stable release yet.
