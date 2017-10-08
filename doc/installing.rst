@@ -18,24 +18,46 @@ For model visualization
 
 - `graphviz <http://graphviz.readthedocs.io>`__
 
+Install using conda
+-------------------
+
+xarray-simlab can be installed or updated using conda_::
+
+  $ conda install xarray-simlab -c conda-forge
+
+This installs xarray-simlab and all common dependencies, including
+numpy and xarray.
+
+xarray-simlab conda package is maintained on the `conda-forge`_
+channel.
+
+.. _conda-forge: https://conda-forge.org/
+.. _conda: https://conda.io/docs/
+
+Install using pip
+-----------------
+
+You can also install xarray-simlab and its required dependencies using
+``pip``::
+
+  $ pip install xarray-simlab
+
 Install from source
 -------------------
 
-While there are ``xarray-simlab`` releases available at `PyPi`_ and
-`conda-forge`_, you may prefer to install from source.
-
-Be sure you have the required dependencies (numpy and xarray)
-installed first. You might consider using conda_ to install them::
+To install xarray-simlab from source, be sure you have the required
+dependencies (numpy and xarray) installed first. You might consider
+using conda_ to install them::
 
     $ conda install xarray numpy pip -c conda-forge
 
-A good practice (especially for development purpose) is to install the packages
-in a separate environment, e.g. using conda::
+A good practice (especially for development purpose) is to install the
+packages in a separate environment, e.g. using conda::
 
     $ conda create -n simlab_py36 python=3.6 xarray numpy pip -c conda-forge
     $ source activate simlab_py36
 
-Then you can clone the ``xarray-simlab`` git repository and install it
+Then you can clone the xarray-simlab git repository and install it
 using ``pip`` locally::
 
     $ git clone https://github.com/benbovy/xarray-simlab
@@ -47,13 +69,11 @@ For development purpose, use the following command::
     $ pip install -e .
 
 .. _PyPi: https://pypi.python.org/pypi/xarray-simlab/
-.. _conda-forge: https://github.com/conda-forge/xarray-simlab-feedstock
-.. _conda: http://conda.io/
 
 Import xarray-simlab
 --------------------
 
-To make sure that ``xarray-simlab`` is correctly installed, try to import it by
-running this line::
+To make sure that xarray-simlab is correctly installed, try to import
+it by running this line::
 
     $ python -c "import xsimlab"
