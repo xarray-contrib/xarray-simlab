@@ -9,8 +9,6 @@ xarray_ extension for setting and running simulations using the
 xarray's ``Dataset`` structure. It is designed for interactive and
 exploratory modeling.
 
-**Warning: this package is currently under heavy development (no stable release yet).**
-
 .. _xarray: http://xarray.pydata.org
 .. |Build Status| image:: https://travis-ci.org/benbovy/xarray-simlab.svg?branch=master
    :target: https://travis-ci.org/benbovy/xarray-simlab
@@ -28,7 +26,7 @@ exploratory modeling.
 Documentation
 -------------
 
-A draft of documentation is hosted on ReadTheDocs:
+Documentation is hosted on ReadTheDocs:
 http://xarray-simlab.readthedocs.io
 
 License
