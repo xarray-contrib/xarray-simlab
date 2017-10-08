@@ -51,6 +51,7 @@ Documentation index
 * :doc:`api`
 * :doc:`develop`
 * :doc:`whats_new`
+* :doc:`citation`
 
 .. toctree::
    :maxdepth: 1
@@ -60,6 +61,7 @@ Documentation index
    api
    develop
    whats_new
+   citation
 
 Get in touch
 ------------
@@ -81,3 +83,10 @@ This project is supported by the `Earth Surface Process Modelling`_
 group of the GFZ Helmholtz Centre Potsdam.
 
 .. _`Earth Surface Process Modelling`: http://www.gfz-potsdam.de/en/section/earth-surface-process-modelling/
+
+Citation
+--------
+
+If you use xarray-simlab and would like to cite it in a scientific
+publication, we would certainly appreciate it (see :doc:`citation`
+section).
