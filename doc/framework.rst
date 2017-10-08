@@ -1,6 +1,6 @@
 .. _framework:
 
-Modeling framework
+Modeling Framework
 ==================
 
 This section explains the design of the xarray-simlab modeling

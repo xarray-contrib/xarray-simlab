@@ -1,6 +1,6 @@
 .. _run_model:
 
-Setup and run models
+Setup and Run Models
 ====================
 
 This section shows how to create new settings (either from scratch or

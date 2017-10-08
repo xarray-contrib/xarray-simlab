@@ -1,6 +1,6 @@
 .. _create_model:
 
-Create and modify models
+Create and Modify Models
 ========================
 
 Like the previous :doc:`framework` section, this section is useful

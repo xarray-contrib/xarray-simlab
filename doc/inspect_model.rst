@@ -1,6 +1,6 @@
 .. _inspect_model:
 
-Inspect models
+Inspect Models
 ==============
 
 We can inspect xarray-simlab's :class:`~xsimlab.Model` objects in
