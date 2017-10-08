@@ -1,7 +1,7 @@
 xarray-simlab: xarray extension for computer model simulations
 ==============================================================
 
-|Build Status| |Coverage| |Doc Status|
+|Build Status| |Coverage| |Doc Status| |Zenodo|
 
 xarray-simlab is a Python library that provides both a generic
 framework for building computational models in a modular fashion and a
@@ -21,6 +21,9 @@ exploratory modeling.
 .. |Doc Status| image:: http://readthedocs.org/projects/xarray-simlab/badge/?version=latest
    :target: http://xarray-simlab.readthedocs.io/en/latest/?badge=latest
    :alt: Documentation Status
+.. |Zenodo| image:: https://zenodo.org/badge/93938479.svg
+   :target: https://zenodo.org/badge/latestdoi/93938479
+   :alt: Citation
 
 Documentation
 -------------
@@ -48,3 +51,11 @@ This project is supported by the `Earth Surface Process Modelling`_
 group of the GFZ Helmholtz Centre Potsdam.
 
 .. _`Earth Surface Process Modelling`: http://www.gfz-potsdam.de/en/section/earth-surface-process-modelling/
+
+Citation
+--------
+
+If you use xarray-simlab in a scientific publication, we would
+appreciate a `citation`_.
+
+.. _`citation`: http://xarray-simlab.readthedocs.io/en/latest/citation.html
