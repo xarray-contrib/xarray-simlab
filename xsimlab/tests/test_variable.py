@@ -19,12 +19,15 @@ class TestVariable(object):
             var = Variable(allowed_dims)
             assert var.allowed_dims == ((),)
 
-        for allowed_dims in ('x', ['x'], tuple(['x'])):
+        for allowed_dims in ('x', ['x'], ('x')):
             var = Variable(allowed_dims)
             assert var.allowed_dims == (('x',),)
 
+        var = Variable(('x', 'y'))
+        assert var.allowed_dims == (('x', 'y'),)
+
         var = Variable([(), 'x', ('x', 'y')])
-        assert var.allowed_dims, ((), ('x',), ('x', 'y'))
+        assert var.allowed_dims == ((), ('x',), ('x', 'y'))
 
     def test_validators(self):
         # verify default validators + user supplied validators
@@ -74,7 +77,7 @@ class TestVariable(object):
         xr.testing.assert_identical(xr_var, expected_xr_var)
 
     def test_repr(self):
-        var = Variable(((), 'x', ('x', 'y')))
+        var = Variable([(), 'x', ('x', 'y')])
         expected_repr = "<xsimlab.Variable (), ('x'), ('x', 'y')>"
         assert repr(var) == expected_repr
 

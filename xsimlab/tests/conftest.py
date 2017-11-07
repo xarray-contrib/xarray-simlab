@@ -20,7 +20,7 @@ class ExampleProcess(Process):
     """A full example of process interface.
     """
     var = Variable((), provided=True)
-    var_list = VariableList([Variable('x'), Variable(((), 'x'))])
+    var_list = VariableList([Variable('x'), Variable([(), 'x'])])
     var_group = VariableGroup('group')
     no_var = 'this is not a variable object'
 

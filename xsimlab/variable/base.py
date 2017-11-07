@@ -96,12 +96,12 @@ class Variable(AbstractVariable):
 
         if not len(allowed_dims):
             allowed_dims = [()]
-        if isinstance(allowed_dims, str):
+        elif isinstance(allowed_dims, str):
             allowed_dims = [(allowed_dims,)]
         elif isinstance(allowed_dims, list):
             allowed_dims = [tuple([d]) if isinstance(d, str) else tuple(d)
                             for d in allowed_dims]
-        elif len(allowed_dims) == 1:
+        else:
             allowed_dims = [allowed_dims]
         self.allowed_dims = tuple(allowed_dims)
 
