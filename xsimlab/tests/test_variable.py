@@ -23,8 +23,11 @@ class TestVariable(object):
             var = Variable(allowed_dims)
             assert var.allowed_dims == (('x',),)
 
+        var = Variable(('x', 'y'))
+        assert var.allowed_dims == (('x', 'y'),)
+
         var = Variable([(), 'x', ('x', 'y')])
-        assert var.allowed_dims, ((), ('x',), ('x', 'y'))
+        assert var.allowed_dims == ((), ('x',), ('x', 'y'))
 
     def test_validators(self):
         # verify default validators + user supplied validators
