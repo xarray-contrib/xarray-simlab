@@ -5,6 +5,7 @@ channels:
 dependencies:
   - python=3.5
   - numpy=1.12
+  - pandas=0.20.3     # TODO: remove once pydata/xarray#1722 is fixed
   - xarray=0.9.6
   - ipython=6.1.0
   - ipykernel=4.6.1
