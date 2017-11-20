@@ -50,6 +50,7 @@ bin/
 # doc
 doc/_build
 doc/_api_generated
+doc/savefig
 
 # emacs
 .projectile
