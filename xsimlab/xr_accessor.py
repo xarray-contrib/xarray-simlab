@@ -31,7 +31,14 @@ def _maybe_get_model_from_context(model):
     none supplied.
     """
     if model is None:
-        return Model.get_context()
+        try:
+            return Model.get_context()
+        except TypeError:
+            raise TypeError("no model found in context")
+
+    if not isinstance(model, Model):
+        raise TypeError("%s is not an instance of xsimlab.Model" % model)
+
     return model
 
 

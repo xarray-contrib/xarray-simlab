@@ -3,6 +3,7 @@ import xarray as xr
 import numpy as np
 
 from xsimlab import xr_accessor, create_setup
+from xsimlab.xr_accessor import _maybe_get_model_from_context
 
 
 def test_filter_accessor():
@@ -297,10 +298,6 @@ class TestSimlabAccessor(object):
 
 
 def test_create_setup(model, input_dataset):
-    with pytest.raises(TypeError) as excinfo:
-        create_setup()
-    assert "No context on context stack" in str(excinfo.value)
-
     expected = xr.Dataset()
     actual = create_setup(model=model)
     xr.testing.assert_identical(actual, expected)
@@ -327,12 +324,14 @@ def test_create_setup(model, input_dataset):
     xr.testing.assert_identical(ds, input_dataset)
 
 
-def test_model_context(model):
+def test_get_model_from_context(model):
     with pytest.raises(TypeError) as excinfo:
-        create_setup()
-    assert "No context on context stack" in str(excinfo.value)
+        _maybe_get_model_from_context(None)
+    assert "no model found in context" in str(excinfo.value)
 
-    expected = xr.Dataset()
-    with model:
-        actual = create_setup(model=model)
-    xr.testing.assert_identical(actual, expected)
+    with model as m:
+        assert _maybe_get_model_from_context(None) is m
+
+    with pytest.raises(TypeError) as excinfo:
+        _maybe_get_model_from_context('not a model')
+    assert "is not an instance of xsimlab.Model" in str(excinfo.value)
