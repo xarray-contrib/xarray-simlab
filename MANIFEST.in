@@ -1,2 +1,14 @@
 include versioneer.py
 include xsimlab/_version.py
+
+include README.rst
+include CONTRIBUTING.rst
+include LICENSE
+recursive-include licenses *
+include MANIFEST.in
+
+recursive-include doc *
+prune doc/_build
+prune doc/generated
+
+global-exclude .DS_Store
