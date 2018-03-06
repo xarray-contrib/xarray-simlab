@@ -1,237 +1,159 @@
-import sys
-import inspect
-import copy
-from collections import OrderedDict
+from inspect import isclass
 
-from .variable.base import (AbstractVariable, DiagnosticVariable,
-                            VariableList, VariableGroup)
-from .formatting import process_info
-from .utils import AttrMapping, combomethod
+import attr
+
+from .variable import AttrType
 
 
-_process_meta_default = {
-    'time_dependent': True
-}
+def get_variables(process, attr_type=None):
+    if not isclass(process):
+        process = process.__class__
+
+    if attr_type is None:
+        return [field for field in attr.fields(process)]
+
+    else:
+        return [field for field in attr.fields(process)
+                if field.metadata['attr_type'] == AttrType(attr_type)]
 
 
-def _extract_variables(mapping):
-    # type: Dict[str, Any] -> Tuple[
-    #     Dict[str, Union[AbstractVariable, Variablelist, VariableGroup]],
-    #     Dict[str, Any]]
+def _attrify_class(cls):
+    """Return a class as if the input class `cls` was
+    decorated with `attr.s`.
 
-    var_dict = {}
-
-    for key, value in mapping.items():
-        if isinstance(value, (AbstractVariable, VariableList, VariableGroup)):
-            var_dict[key] = value
-
-        elif getattr(value, '_diagnostic', False):
-            var = DiagnosticVariable(value, description=value.__doc__,
-                                     attrs=value._diagnostic_attrs)
-            var_dict[key] = var
-
-    no_var_dict = {k: v for k, v in mapping.items() if k not in var_dict}
-
-    return var_dict, no_var_dict
-
-
-class ProcessBase(type):
-    """Metaclass for all processes."""
-
-    def __new__(cls, name, bases, attrs):
-        parents = [b for b in bases if isinstance(b, ProcessBase)]
-        if not parents:
-            # Skip customization for the `Process` class
-            # (only applied to its subclasses)
-            new_attrs = attrs.copy()
-            new_attrs.update({'_variables': {}, '_meta': {}})
-            return super().__new__(cls, name, bases, new_attrs)
-        for p in parents:
-            mro = [c for c in inspect.getmro(p)
-                   if isinstance(c, ProcessBase)]
-            if len(mro) > 1:
-                # Currently not supported to create a class that
-                # inherits from a subclass of Process
-                raise TypeError("subclassing a subclass of Process "
-                                "is not supported")
-
-        # start with new attributes
-        new_attrs = {'__module__': attrs.pop('__module__')}
-        classcell = attrs.pop('__classcell__', None)
-        if classcell is not None:
-            new_attrs['__classcell__'] = classcell  # pragma: no cover
-
-        # check and add metadata
-        meta_cls = attrs.pop('Meta', None)
-        meta_dict = _process_meta_default.copy()
-
-        if meta_cls is not None:
-            meta_attrs = {k: v for k, v in meta_cls.__dict__.items()
-                          if not k.startswith('__')}
-            invalid_attrs = set(meta_attrs) - set(meta_dict)
-            if invalid_attrs:
-                keys = ", ".join(["%r" % k for k in invalid_attrs])
-                raise AttributeError(
-                    "invalid attribute(s) %s set in class %s.Meta"
-                    % (keys, cls.__name__)
-                )
-            meta_dict.update(meta_attrs)
-
-        new_attrs['_meta'] = OrderedDict(sorted(meta_dict.items()))
-
-        # add variables and diagnostics separately from the rest of
-        # the attributes and methods defined in the class
-        vars, novars = _extract_variables(attrs)
-        new_attrs['_variables'] = OrderedDict(sorted(vars.items()))
-        for k, v in novars.items():
-            new_attrs[k] = v
-
-        new_class = super().__new__(cls, name, bases, new_attrs)
-
-        return new_class
-
-
-class Process(AttrMapping, metaclass=ProcessBase):
-    """Base class that represents a logical unit in a computational model.
-
-    A subclass of `Process` usually implements:
-
-    - A process interface as a set of `Variable`, `ForeignVariable`,
-      `VariableGroup` or `VariableList` objects, all defined as class
-      attributes.
-
-    - Some of the five `.validate()`, `.initialize()`, `.run_step()`,
-      `.finalize_step()` and `.finalize()` methods, which use or compute
-      values of the variables defined in the interface during a model run.
-
-    - Additional methods decorated with `@diagnostic` that compute
-      the values of diagnostic variables during a model run.
-
-    Once created, a `Process` object provides both dict-like and
-    attribute-like access for all its variables, including diagnostic
-    variables if any.
+    `attr.s` turns `attr.ib` (or derived) class attributes
+    into fields and adds dunder-methods such as `__init__`.
 
     """
-    def __init__(self):
-        # prevent modifying variables at the class level. also prevent
-        # using the same variable objects in two distinct instances
-        self._variables = copy.deepcopy(self._variables)
-
-        super(Process, self).__init__(self._variables)
-
-        for var in self._variables.values():
-            if isinstance(var, DiagnosticVariable):
-                var.assign_process_obj(self)
-
-        self._name = None
-        self._initialized = True
-
-    def clone(self):
-        """Clone the process.
-
-        This is equivalent to a deep copy, except that variable data
-        (i.e., `state`, `value`, `change` or `rate` properties) are not copied.
+    def post_init(self):
+        """Init instance attributes that will be used
+        during model creation or simulation runtime.
         """
-        obj = type(self)()
-        obj._name = self._name
-        return obj
+        self.name = None
+        self.__xsimlab_store__ = None
+        self.__xsimlab_store_keys__ = {}
 
-    @property
-    def variables(self):
-        """A dictionary of Process variables."""
-        return self._variables
+    setattr(cls, '__attrs_post_init__', post_init)
 
-    @property
-    def meta(self):
-        """A dictionary of Process metadata (i.e., Meta attributes)."""
-        return self._meta
+    return attr.attrs(cls)
 
-    @property
-    def name(self):
-        """Process name.
 
-        Returns the name of the Process subclass if it is not attached to
-        any Model object.
+def _make_property_variable(var):
+    """Create a property for a variable."""
 
-        """
-        if self._name is None:
-            return type(self).__name__
+    var_name = var.name
 
-        return self._name
+    def getter(self):
+        return self.__xsimlab_store__[(self.name, var_name)]
 
-    def validate(self):
-        """Validate and/or update the process variables values.
+    def setter(self, value):
+        self.__xsimlab_store__[(self.name, var_name)] = value
 
-        Implementation is optional (by default it does nothing).
+    return property(fget=getter, fset=setter)
 
-        An implementation of this method should be provided if the process
-        has variables that are optional and/or that depend on other
-        variables defined in this process.
 
-        To validate values of variables taken independently, it is
-        prefered to use Variable validators.
+def _make_property_derived(var):
+    """Create a read-only property for a derived variable."""
 
-        See Also
-        --------
-        Variable.validators
+    var_name = var.name
 
-        """
-        pass  # pragma: no cover
+    if 'compute' not in var.metadata:
+        raise KeyError("no compute method found for derived variable '{name}': "
+                       "a method decorated with '@{name}.compute' is required "
+                       "in the class definition.".format(name=var.name))
 
-    def initialize(self):
-        """This method will be called once at the beginning of a model run.
+    func_compute_value = var.metadata['compute']
 
-        Implementation is optional (by default it does nothing).
-        """
-        pass  # pragma: no cover
+    def getter(self):
+        value = func_compute_value(self)
+        self.__xsimlab_store__[(self.name, var_name)] = value
+        return value
 
-    def run_step(self, *args):
-        """This method will be called at every time step of a model run.
+    return property(fget=getter)
 
-        It should accepts one argument that corresponds to the time step
-        duration.
 
-        This must be implemented for all time dependent processes.
-        """
-        raise NotImplementedError(
-            "class %s has no method 'run_step' implemented"
-            % type(self).__name__
-        )
+def _make_property_foreign(var):
+    """Create a property for a foreign variable."""
 
-    def finalize_step(self):
-        """This method will be called at the end of every time step, i.e,
-        after `run_step` has been executed for all processes in a model.
+    var_name = var.name
 
-        Implementation is optional (by default it does nothing).
-        """
-        pass  # pragma: no cover
+    def getter(self):
+        key = self.__xsimlab_store_keys__[var_name]
+        return self.__xsimlab_store__[key]
 
-    def finalize(self):
-        """This method will be called once at the end of a model run.
+    def setter(self, value):
+        key = self.__xsimlab_store_keys__[var_name]
+        self.__xsimlab_store__[key] = value
 
-        Implementation is optional (by default does nothing).
-        """
-        pass  # pragma: no cover
+    return property(fget=getter, fset=setter)
 
-    @combomethod
-    def info(cls_or_self, buf=None):
-        """info(buf=None)
 
-        Concise summary of Process variables and metadata.
+def _make_property_group(var):
+    """Create a read-only property for a group variable."""
 
-        Parameters
-        ----------
-        buf : object, optional
-            Writable buffer (default: sys.stdout).
+    var_name = var.name
 
-        """
-        if buf is None:  # pragma: no cover
-            buf = sys.stdout
+    def getter(self):
+        for key in self.__xsimlab_store_keys__[var_name]:
+            yield self.__xsimlab_store__[key]
 
-        buf.write(process_info(cls_or_self))
+    return property(fget=getter)
 
-    def __repr__(self):
-        cls = "'%s.%s'" % (self.__module__, type(self).__name__)
-        header = "<xsimlab.Process %s>\n" % cls
 
-        return header + process_info(self)
+class _ProcessBuilder(object):
+    """Used to iteratively create a new process class.
+
+    The original class must be already "attr-yfied", i.e.,
+    it must correspond to a class returned by `attr.attrs`.
+
+    """
+    _make_prop_funcs = {
+        AttrType.VARIABLE: _make_property_variable,
+        AttrType.DERIVED: _make_property_derived,
+        AttrType.FOREIGN: _make_property_foreign,
+        AttrType.GROUP: _make_property_group
+    }
+
+    def __init__(self, attr_cls):
+        self._cls = attr_cls
+        self._cls_dict = {}
+
+    def add_properties(self, attr_type):
+        make_prop_func = self._make_prop_funcs[attr_type]
+
+        for var in get_variables(self._cls, attr_type):
+            self._cls_dict[var.name] = make_prop_func(var)
+
+    def render_docstrings(self):
+        self._cls_dict['__doc__'] = "Process-ified class."
+
+    def build_class(self):
+        cls = self._cls
+
+        # Attach properties (and docstrings)
+        for name, value in self._cls_dict.items():
+            setattr(cls, name, value)
+
+        return cls
+
+
+def process(maybe_cls=None, autodoc=False):
+    """Decorator to define a class as a process."""
+
+    def wrap(cls):
+        attr_cls = _attrify_class(cls)
+
+        builder = _ProcessBuilder(attr_cls)
+
+        for attr_type in AttrType:
+            builder.add_properties(attr_type)
+
+        if autodoc:
+            builder.render_docstrings()
+
+        return builder.build_class()
+
+    if maybe_cls is None:
+        return wrap
+    else:
+        return wrap(maybe_cls)
