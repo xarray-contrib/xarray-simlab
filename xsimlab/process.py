@@ -6,6 +6,24 @@ from .variable import AttrType
 
 
 def get_variables(process, attr_type=None):
+    """Helper function that returns variables declared in a process.
+
+    Useful when one wants to access the variables metadata.
+
+    Parameters
+    ----------
+    process : object or class
+        Process class or object.
+    attr_type : {'variable', 'on_demand', 'foreign', 'group'}, optional
+        Only return variables of a given kind (by default, return all
+        variables).
+
+    Returns
+    -------
+    attributes : list
+        A list of :class:`attr.Attribute` objects.
+
+    """
     if not isclass(process):
         process = process.__class__
 
@@ -18,16 +36,17 @@ def get_variables(process, attr_type=None):
 
 
 def _attrify_class(cls):
-    """Return a class as if the input class `cls` was
-    decorated with `attr.s`.
+    """Return a class as if the input class `cls` was decorated with
+    `attr.s`.
 
-    `attr.s` turns `attr.ib` (or derived) class attributes
-    into fields and adds dunder-methods such as `__init__`.
+    `attr.s` turns `attr.ib` (or derived) class attributes into fields
+    and adds dunder-methods such as `__init__`.
 
     """
     def post_init(self):
-        """Init instance attributes that will be used
-        during model creation or simulation runtime.
+        """Init instance attributes that will be used during model creation or
+        simulation runtime.
+
         """
         self.name = None
         self.__xsimlab_store__ = None
@@ -52,22 +71,16 @@ def _make_property_variable(var):
     return property(fget=getter, fset=setter)
 
 
-def _make_property_derived(var):
-    """Create a read-only property for a derived variable."""
-
-    var_name = var.name
+def _make_property_on_demand(var):
+    """Create a read-only property for an on-demand variable."""
 
     if 'compute' not in var.metadata:
-        raise KeyError("no compute method found for derived variable '{name}': "
-                       "a method decorated with '@{name}.compute' is required "
-                       "in the class definition.".format(name=var.name))
+        raise KeyError("no compute method found for on_demand variable "
+                       "'{name}': a method decorated with '@{name}.compute' "
+                       "is required in the class definition."
+                       .format(name=var.name))
 
-    func_compute_value = var.metadata['compute']
-
-    def getter(self):
-        value = func_compute_value(self)
-        self.__xsimlab_store__[(self.name, var_name)] = value
-        return value
+    getter = var.metadata['compute']
 
     return property(fget=getter)
 
@@ -103,13 +116,13 @@ def _make_property_group(var):
 class _ProcessBuilder(object):
     """Used to iteratively create a new process class.
 
-    The original class must be already "attr-yfied", i.e.,
-    it must correspond to a class returned by `attr.attrs`.
+    The original class must be already "attr-yfied", i.e., it must
+    correspond to a class returned by `attr.attrs`.
 
     """
     _make_prop_funcs = {
         AttrType.VARIABLE: _make_property_variable,
-        AttrType.DERIVED: _make_property_derived,
+        AttrType.ON_DEMAND: _make_property_on_demand,
         AttrType.FOREIGN: _make_property_foreign,
         AttrType.GROUP: _make_property_group
     }

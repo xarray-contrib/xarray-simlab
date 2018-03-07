@@ -3,10 +3,8 @@ xarray-simlab.
 
 """
 from .xr_accessor import SimlabAccessor, create_setup
-from .variable.base import (Variable, ForeignVariable, VariableList,
-                            VariableGroup, diagnostic, ValidationError)
-from .variable.custom import NumberVariable, FloatVariable, IntegerVariable
-from .process import Process
+from .variable import variable, on_demand, foreign, group
+from .process import get_variables, process
 from .model import Model
 
 from ._version import get_versions
