@@ -167,8 +167,37 @@ class _ProcessBuilder(object):
 
 
 def process(maybe_cls=None, autodoc=False):
-    """Decorator to define a class as a process."""
+    """A class decorator that adds everything needed to use the class
+    as a process.
 
+    A process represents a logical unit in a computational model.
+
+    A process class usually implements:
+
+    - An interface as a set of variables defined as class attributes
+      (see :func:`variable`, :func:`on_demand`, :func:`foreign` and
+      :func:`group`). This decorator automatically adds properties to
+      get/set values for these variables.
+
+    - One or more methods among `initialize()`, `run_step()`,
+      `finalize_step()` and `finalize()`, which are called at different
+      stages of a simulation and perform some computation based on the
+      variables defined in the process interface.
+
+    - Decorated methods to compute, validate or set a default value for one or
+      more variables.
+
+    Parameters
+    ----------
+    maybe_cls : class, optional
+        Allows to apply this decorator to a class either as `@process` or
+        `@process(*args)`.
+    autodoc : bool, optional
+        If True, render the docstrings given as a template and fill the
+        corresponding sections with metadata found in the class
+        (default: False).
+
+    """
     def wrap(cls):
         attr_cls = _attrify_class(cls)
 
