@@ -59,13 +59,13 @@ def _as_dim_tuple(dims):
 
 
 def _check_intent(intent):
-    if intent not in ('input', 'output'):
+    if intent not in ('in', 'out', 'inout'):
         raise ValueError("invalid intent given for variable: must be "
-                         "either 'input' or 'output', found '{}'"
+                         "either 'in', 'out' or 'inout', found '{}'"
                          .format(intent))
 
 
-def variable(dims=(), intent='input', group=None, default=attr.NOTHING,
+def variable(dims=(), intent='inout', group=None, default=attr.NOTHING,
              validator=None, description='', attrs=None):
     """Create a variable.
 
@@ -88,16 +88,17 @@ def variable(dims=(), intent='input', group=None, default=attr.NOTHING,
         a n-d variable. A list of str or tuple items may also be provided if
         the variable accepts different numbers of dimensions.
         This should not include a time dimension, which may always be added.
-    intent : {'input', 'output'}, optional
-        Defines whether the variable is an input (i.e., a value is needed for
-        the process computation) or an output (i.e., the process provides a
-        value for that variable).
-        (default: 'input').
+    intent : {'in', 'out', 'inout'}, optional
+        Defines whether the variable is an input (i.e., the process needs the
+        variable's value for its computation), an output (i.e., the process
+        computes a value for the variable) or both an input/output (i.e., the
+        process may update the value of the variable).
+        (default: input/output).
     group : str, optional
         Variable group.
     default : any, optional
-        Single default value for the variable, ignored when ``intent='output'``
-        (default: None). A default value may also be set using a decorator.
+        Single default value for the variable, ignored when ``intent='out'``
+        (default: NOTHING). A default value may also be set using a decorator.
     validator : callable or list of callable, optional
         Function that is called at simulation initialization (and possibly at
         other times too) to check the value given for the variable.
@@ -143,8 +144,7 @@ def on_demand(dims=(), group=None, description='', attrs=None):
     (e.g., using `@myvar.compute` if the name of the variable is
     `myvar`).
 
-    An on-demand variable never accepts an input value
-    (i.e., intent='output'), and should never be set/updated (read-only).
+    An on-demand variable is always an output variable (i.e., intent='out').
 
     Its computation usually involves other variables, although this is
     not required.
@@ -174,7 +174,7 @@ def on_demand(dims=(), group=None, description='', attrs=None):
     """
     metadata = {'attr_type': AttrType.ON_DEMAND,
                 'dims': _as_dim_tuple(dims),
-                'intent': 'output',
+                'intent': 'out',
                 'group': group,
                 'attrs': attrs or {},
                 'description': description}
@@ -192,7 +192,7 @@ def on_demand(dims=(), group=None, description='', attrs=None):
     )
 
 
-def foreign(other_process_cls, var_name, intent='input'):
+def foreign(other_process_cls, var_name, intent='inout'):
     """Create a reference to a variable that is defined in another
     process class.
 
@@ -202,11 +202,12 @@ def foreign(other_process_cls, var_name, intent='input'):
         Class in which the variable is defined.
     var_name : str
         Name of the corresponding variable declared in `other_process_cls`.
-    intent : {'input', 'output'}, optional
-        Defines whether the variable is an input (i.e., a value is needed for
-        the process computation) or an output (i.e., the process provides a
-        value for that variable).
-        (default: 'input').
+    intent : {'in', 'out', 'inout'}, optional
+        Defines whether the foreign variable is an input (i.e., the process
+        needs the variable's value for its computation), an output (i.e., the
+        process computes a value for the variable) or both an input/output
+        (i.e., the process may update the value of the variable).
+        (default: input/output).
 
     See Also
     --------
@@ -225,7 +226,7 @@ def group(name):
     """Create a special variable which value returns an iterable of values of
     variables in a model that all belong to the same group.
 
-    Access to these variable values is read-only (i.e., intent='input').
+    Access to the variable values is read-only (i.e., intent='in').
 
     Good examples of using group variables are processes that
     aggregate (e.g., sum, product, mean) the values of variables that
@@ -243,6 +244,6 @@ def group(name):
     """
     metadata = {'attr_type': AttrType.GROUP,
                 'group': group,
-                'intent': 'input'}
+                'intent': 'in'}
 
     return attr.attrib(metadata=metadata, init=False, cmp=False, repr=False)

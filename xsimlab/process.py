@@ -5,7 +5,7 @@ import attr
 from .variable import AttrType
 
 
-def get_variables(process, attr_type=None):
+def get_variables(process, var_type=None, intent=None):
     """Helper function that returns variables declared in a process.
 
     Useful when one wants to access the variables metadata.
@@ -14,9 +14,11 @@ def get_variables(process, attr_type=None):
     ----------
     process : object or class
         Process class or object.
-    attr_type : {'variable', 'on_demand', 'foreign', 'group'}, optional
+    var_type : {'variable', 'on_demand', 'foreign', 'group'}, optional
         Only return variables of a given kind (by default, return all
         variables).
+    intent : {'in', 'out', 'inout'}, optional
+        Only return input, output or input/output variables.
 
     Returns
     -------
@@ -27,12 +29,16 @@ def get_variables(process, attr_type=None):
     if not isclass(process):
         process = process.__class__
 
-    if attr_type is None:
-        return [field for field in attr.fields(process)]
-
+    if var_type is None:
+        fields = [f for f in attr.fields(process)]
     else:
-        return [field for field in attr.fields(process)
-                if field.metadata.get('attr_type') == AttrType(attr_type)]
+        fields = [f for f in attr.fields(process)
+                  if f.metadata.get('attr_type') == AttrType(var_type)]
+
+    if intent is not None:
+        fields = [f for f in fields if f.metadata.get('intent') == intent]
+
+    return fields
 
 
 def _attrify_class(cls):
@@ -59,8 +65,11 @@ def _attrify_class(cls):
 
 
 def _make_property_variable(var):
-    """Create a property for a variable."""
+    """Create a property for a variable.
 
+    The property is read-only if the variable is declared as input.
+
+    """
     var_name = var.name
 
     def getter(self):
@@ -69,7 +78,10 @@ def _make_property_variable(var):
     def setter(self, value):
         self.__xsimlab_store__[(self.__xsimlab_name__, var_name)] = value
 
-    return property(fget=getter, fset=setter)
+    if var.metadata['intent'] == 'in':
+        return property(fget=getter)
+    else:
+        return property(fget=getter, fset=setter)
 
 
 def _make_property_on_demand(var):
@@ -87,8 +99,11 @@ def _make_property_on_demand(var):
 
 
 def _make_property_foreign(var):
-    """Create a property for a foreign variable."""
+    """Create a property for a foreign variable.
 
+    The property is read-only if the variable is declared as input.
+
+    """
     var_name = var.name
 
     def getter(self):
@@ -102,11 +117,13 @@ def _make_property_foreign(var):
 
     def setter(self, value):
         # no fastpath access (prevent setting read-only variables in store)
+        # TODO: not working for setting variables that are declared as input
+        #       in their own process!!!
         o_proc_name, o_var_name = self.__xsimlab_foreign__[var_name]
         model = self.__xsimlab_model__
         return setattr(model._processes[o_proc_name], o_var_name, value)
 
-    if var.metadata['intent'] == 'input':
+    if var.metadata['intent'] == 'in':
         return property(fget=getter)
     else:
         return property(fget=getter, fset=setter)
