@@ -1,5 +1,5 @@
-# coding: utf-8
 from enum import Enum
+import itertools
 
 import attr
 from attr._make import _CountingAttr as CountingAttr_
@@ -21,6 +21,48 @@ class _CountingAttr(CountingAttr_):
         self.metadata['compute'] = method
 
         return method
+
+
+def _as_dim_tuple(dims):
+    """Return a tuple from one or more combination(s) of dimension labels
+    given in `dims` either as a tuple, str or list.
+
+    Also ensure that the number of dimensions for each item in the
+    sequence is unique, e.g., dims=[('x', 'y'), ('y', 'x')] is
+    ambiguous and thus not allowed.
+
+    """
+    if not len(dims):
+        dims = [()]
+    elif isinstance(dims, str):
+        dims = [(dims,)]
+    elif isinstance(dims, list):
+        dims = [tuple([d]) if isinstance(d, str) else tuple(d)
+                for d in dims]
+    else:
+        dims = [dims]
+
+    ndim_groups = [list(g)
+                   for _, g in itertools.groupby(dims, lambda d: len(d))]
+
+    if len(ndim_groups) != len(dims):
+        invalid_dims = [g for g in ndim_groups if len(g) > 1]
+        invalid_msg = ' and '.join(
+            ', '.join(str(d) for d in group) for group in invalid_dims
+        )
+
+        raise ValueError("the following combinations of dimension labels "
+                         "are ambiguous for a variable: {}"
+                         .format(invalid_msg))
+
+    return tuple(dims)
+
+
+def _check_intent(intent):
+    if intent not in ('input', 'output'):
+        raise ValueError("invalid intent given for variable: must be "
+                         "either 'input' or 'output', found '{}'"
+                         .format(intent))
 
 
 def variable(dims=(), intent='input', group=None, default=attr.NOTHING,
@@ -54,9 +96,8 @@ def variable(dims=(), intent='input', group=None, default=attr.NOTHING,
     group : str, optional
         Variable group.
     default : any, optional
-        Single default value for the variable (default: None). It
-        will be automatically broadcasted to all of its dimensions.
-        Ignored when ``intent='output'``.
+        Single default value for the variable, ignored when ``intent='output'``
+        (default: None). A default value may also be set using a decorator.
     validator : callable or list of callable, optional
         Function that is called at simulation initialization (and possibly at
         other times too) to check the value given for the variable.
@@ -79,13 +120,14 @@ def variable(dims=(), intent='input', group=None, default=attr.NOTHING,
 
     """
     metadata = {'attr_type': AttrType.VARIABLE,
-                'dims': dims,
-                'intent': intent,
+                'dims': _as_dim_tuple(dims),
+                'intent': _check_intent(intent),
                 'group': group,
-                'attrs': attrs,
+                'attrs': attrs or {},
                 'description': description}
 
-    return attr.attrib(metadata=metadata, init=False, cmp=False, repr=False)
+    return attr.attrib(metadata=metadata, default=default, validator=validator,
+                       init=False, cmp=False, repr=False)
 
 
 def on_demand(dims=(), group=None, description='', attrs=None):
@@ -131,10 +173,10 @@ def on_demand(dims=(), group=None, description='', attrs=None):
 
     """
     metadata = {'attr_type': AttrType.ON_DEMAND,
-                'dims': dims,
+                'dims': _as_dim_tuple(dims),
                 'intent': 'output',
                 'group': group,
-                'attrs': attrs,
+                'attrs': attrs or {},
                 'description': description}
 
     return _CountingAttr(
@@ -174,7 +216,7 @@ def foreign(other_process_cls, var_name, intent='input'):
     metadata = {'attr_type': AttrType.FOREIGN,
                 'other_process_cls': other_process_cls,
                 'var_name': var_name,
-                'intent': intent}
+                'intent': _check_intent(intent)}
 
     return attr.attrib(metadata=metadata, init=False, cmp=False, repr=False)
 
