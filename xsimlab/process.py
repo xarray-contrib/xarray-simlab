@@ -32,7 +32,7 @@ def get_variables(process, attr_type=None):
 
     else:
         return [field for field in attr.fields(process)
-                if field.metadata['attr_type'] == AttrType(attr_type)]
+                if field.metadata.get('attr_type') == AttrType(attr_type)]
 
 
 def _attrify_class(cls):
