@@ -43,16 +43,17 @@ def _attrify_class(cls):
     and adds dunder-methods such as `__init__`.
 
     """
-    def post_init(self):
-        """Init instance attributes that will be used during model creation or
-        simulation runtime.
+    def add_obj_attrs(self):
+        """Add instance attributes that are needed later during model creation
+        or simulation runtime.
 
         """
-        self.name = None
+        self.__xsimlab_name__ = None
+        self.__xsimlab_model__ = None
         self.__xsimlab_store__ = None
-        self.__xsimlab_store_keys__ = {}
+        self.__xsimlab_foreign__ = {}
 
-    setattr(cls, '__attrs_post_init__', post_init)
+    setattr(cls, '__attrs_post_init__', add_obj_attrs)
 
     return attr.attrs(cls)
 
@@ -63,10 +64,10 @@ def _make_property_variable(var):
     var_name = var.name
 
     def getter(self):
-        return self.__xsimlab_store__[(self.name, var_name)]
+        return self.__xsimlab_store__[(self.__xsimlab_name__, var_name)]
 
     def setter(self, value):
-        self.__xsimlab_store__[(self.name, var_name)] = value
+        self.__xsimlab_store__[(self.__xsimlab_name__, var_name)] = value
 
     return property(fget=getter, fset=setter)
 
@@ -91,14 +92,24 @@ def _make_property_foreign(var):
     var_name = var.name
 
     def getter(self):
-        key = self.__xsimlab_store_keys__[var_name]
-        return self.__xsimlab_store__[key]
+        o_proc_name, o_var_name = self.__xsimlab_foreign__[var_name]
+        try:
+            return self.__xsimlab_store__[(o_proc_name, o_var_name)]
+        except KeyError:
+            # values of on_demand variables are not in the store
+            model = self.__xsimlab_model__
+            return getattr(model._processes[o_proc_name], o_var_name)
 
     def setter(self, value):
-        key = self.__xsimlab_store_keys__[var_name]
-        self.__xsimlab_store__[key] = value
+        # no fastpath access (prevent setting read-only variables in store)
+        o_proc_name, o_var_name = self.__xsimlab_foreign__[var_name]
+        model = self.__xsimlab_model__
+        return setattr(model._processes[o_proc_name], o_var_name, value)
 
-    return property(fget=getter, fset=setter)
+    if var.metadata['intent'] == 'input':
+        return property(fget=getter)
+    else:
+        return property(fget=getter, fset=setter)
 
 
 def _make_property_group(var):
@@ -107,8 +118,13 @@ def _make_property_group(var):
     var_name = var.name
 
     def getter(self):
-        for key in self.__xsimlab_store_keys__[var_name]:
-            yield self.__xsimlab_store__[key]
+        for o_proc_name, o_var_name in self.__xsimlab_foreign__[var_name]:
+            try:
+                yield self.__xsimlab_store__[(o_proc_name, o_var_name)]
+            except KeyError:
+                # values of on_demand variables are not in the store
+                model = self.__xsimlab_model__
+                return getattr(model._processes[o_proc_name], o_var_name)
 
     return property(fget=getter)
 
