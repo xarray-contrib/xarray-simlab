@@ -79,7 +79,7 @@ def variable(dims=(), intent='inout', group=None, default=attr.NOTHING,
     define the interface of each process in a model.
 
     Variables should be declared exclusively as class attributes in
-    process classes (i.e., classes decorated with `:func:process`).
+    process classes (i.e., classes decorated with :func:`process`).
 
     Parameters
     ----------

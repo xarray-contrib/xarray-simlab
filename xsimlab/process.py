@@ -122,8 +122,8 @@ def _make_property_variable(var):
     """Create a property for a variable or a foreign variable.
 
     The property get/set functions either read/write values from/to
-    the simulation data store or compute then get the value of an
-    on-demand variable.
+    the simulation data store or get (and trigger computation of) the
+    value of an on-demand variable.
 
     The property is read-only if `var` is declared as input or if
     `var` is a foreign variable and its target (original) variable is
@@ -225,7 +225,8 @@ class _ProcessBuilder(object):
             self._cls_dict[var_name] = make_prop_func(var)
 
     def render_docstrings(self):
-        self._cls_dict['__doc__'] = "Process-ified class."
+        # self._cls_dict['__doc__'] = "Process-ified class."
+        raise NotImplementedError("autodoc is not yet implemented.")
 
     def build_class(self):
         cls = self._cls
