@@ -5,7 +5,7 @@ import attr
 from attr._make import _CountingAttr as CountingAttr_
 
 
-class AttrType(Enum):
+class VarType(Enum):
     VARIABLE = 'variable'
     ON_DEMAND = 'on_demand'
     FOREIGN = 'foreign'
@@ -64,6 +64,8 @@ def _check_intent(intent):
                          "either 'in', 'out' or 'inout', found '{}'"
                          .format(intent))
 
+    return intent
+
 
 def variable(dims=(), intent='inout', group=None, default=attr.NOTHING,
              validator=None, description='', attrs=None):
@@ -120,7 +122,7 @@ def variable(dims=(), intent='inout', group=None, default=attr.NOTHING,
         units, math_symbol...).
 
     """
-    metadata = {'attr_type': AttrType.VARIABLE,
+    metadata = {'var_type': VarType.VARIABLE,
                 'dims': _as_dim_tuple(dims),
                 'intent': _check_intent(intent),
                 'group': group,
@@ -172,7 +174,7 @@ def on_demand(dims=(), group=None, description='', attrs=None):
     :func:`variable`
 
     """
-    metadata = {'attr_type': AttrType.ON_DEMAND,
+    metadata = {'var_type': VarType.ON_DEMAND,
                 'dims': _as_dim_tuple(dims),
                 'intent': 'out',
                 'group': group,
@@ -214,7 +216,7 @@ def foreign(other_process_cls, var_name, intent='inout'):
     :func:`variable`
 
     """
-    metadata = {'attr_type': AttrType.FOREIGN,
+    metadata = {'var_type': VarType.FOREIGN,
                 'other_process_cls': other_process_cls,
                 'var_name': var_name,
                 'intent': _check_intent(intent)}
@@ -242,7 +244,7 @@ def group(name):
     :func:`variable`
 
     """
-    metadata = {'attr_type': AttrType.GROUP,
+    metadata = {'var_type': VarType.GROUP,
                 'group': group,
                 'intent': 'in'}
 

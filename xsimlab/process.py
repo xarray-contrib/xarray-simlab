@@ -2,43 +2,72 @@ from inspect import isclass
 
 import attr
 
-from .variable import AttrType
+from .variable import VarType
 
 
-def get_variables(process, var_type=None, intent=None):
-    """Helper function that returns variables declared in a process.
-
-    Useful when one wants to access the variables metadata.
+def get_variables(process, var_type=None, intent=None, group=None):
+    """Return (some of) the variables declared in a process.
 
     Parameters
     ----------
     process : object or class
         Process class or object.
     var_type : {'variable', 'on_demand', 'foreign', 'group'}, optional
-        Only return variables of a given kind (by default, return all
-        variables).
+        Return only variables of a specified type.
     intent : {'in', 'out', 'inout'}, optional
-        Only return input, output or input/output variables.
+        Return only input, output or input/output variables.
+    group : str, optional
+        Return only variables that belong to a given group.
 
     Returns
     -------
-    attributes : list
-        A list of :class:`attr.Attribute` objects.
+    attributes : dict
+        A dictionary of variable names as keys and :class:`attr.Attribute`
+        objects as values.
 
     """
     if not isclass(process):
         process = process.__class__
 
-    if var_type is None:
-        fields = [f for f in attr.fields(process)]
-    else:
-        fields = [f for f in attr.fields(process)
-                  if f.metadata.get('attr_type') == AttrType(var_type)]
+    # TODO: use fields_dict instead (attrs 18.1.0)
+    fields = {a.name: a for a in attr.fields(process)}
+
+    if var_type is not None:
+        fields = {k: a for k, a in fields.items()
+                  if a.metadata.get('var_type') == VarType(var_type)}
 
     if intent is not None:
-        fields = [f for f in fields if f.metadata.get('intent') == intent]
+        fields = {k: a for k, a in fields.items()
+                  if a.metadata.get('intent') == intent}
+
+    if group is not None:
+        fields = {k: a for k, a in fields.items()
+                  if a.metadata.get('group') == group}
 
     return fields
+
+
+def _get_original_variable(var):
+    """Return the target, original variable of a given variable and
+    this process class in which the original variable is declared.
+
+    If `var` is not a foreign variable, return itself (and None for
+    the process).
+
+    In case where the foreign variable point to another foreign
+    variable (and so on...), this function follow the links until the
+    original variable is found.
+
+    """
+    orig_process_cls = None
+    orig_var = var
+
+    while orig_var.metadata['var_type'] == VarType.FOREIGN:
+        orig_process_cls = orig_var.metadata['other_process_cls']
+        var_name = orig_var.metadata['var_name']
+        orig_var = get_variables(orig_process_cls)[var_name]
+
+    return orig_process_cls, orig_var
 
 
 def _attrify_class(cls):
@@ -48,85 +77,101 @@ def _attrify_class(cls):
     `attr.s` turns `attr.ib` (or derived) class attributes into fields
     and adds dunder-methods such as `__init__`.
 
+    The following instance attributes are also defined (values will be
+    set later at model creation):
+
+    __xsimlab_name__ : str
+        Name given for this process in a model.
+    __xsimlab_store__ : dict or object
+        Simulation data store.
+    __xsimlab_keys__ : dict
+        Dictionary that maps variable names to their corresponding key
+        (or list of keys for group variables) in the store.
+        Such key consist of pairs like `('foo', 'bar')` where
+        'foo' is the name of any process in the same model and 'bar' is
+        the name of a variable declared in that process.
+    __xsimlab_od_keys__ : dict
+        Dictionary that maps variable names to the location of their target
+        on-demand variable, or None if the target variable is not an on
+        demand variable), or a list of locations for group variables.
+        Location here consists of pairs like `(foo_obj, 'bar')`, where
+        `foo_obj` is any process in the same model 'bar' is the name of a
+        variable declared in that process.
+
     """
-    def add_obj_attrs(self):
-        """Add instance attributes that are needed later during model creation
-        or simulation runtime.
-
-        """
+    def init_process(self):
         self.__xsimlab_name__ = None
-        self.__xsimlab_model__ = None
         self.__xsimlab_store__ = None
-        self.__xsimlab_foreign__ = {}
+        self.__xsimlab_keys__ = {}
+        self.__xsimlab_od_keys__ = {}
 
-    setattr(cls, '__attrs_post_init__', add_obj_attrs)
+    setattr(cls, '__attrs_post_init__', init_process)
 
     return attr.attrs(cls)
 
 
 def _make_property_variable(var):
-    """Create a property for a variable.
+    """Create a property for a variable or a foreign variable.
 
-    The property is read-only if the variable is declared as input.
+    The property get/set functions either read/write values from/to
+    the simulation data store or compute then get the value of an
+    on-demand variable.
+
+    The property is read-only if `var` is declared as input or if
+    `var` is a foreign variable and its target (original) variable is
+    an on-demand variable.
 
     """
     var_name = var.name
 
-    def getter(self):
-        return self.__xsimlab_store__[(self.__xsimlab_name__, var_name)]
+    def get_from_store(self):
+        key = self.__xsimlab_keys__[var_name]
+        return self.__xsimlab_store__[key]
 
-    def setter(self, value):
-        self.__xsimlab_store__[(self.__xsimlab_name__, var_name)] = value
+    def get_on_demand(self):
+        od_key = self.__xsimlab_od_keys__[var_name]
+        return getattr(*od_key)
 
-    if var.metadata['intent'] == 'in':
-        return property(fget=getter)
+    def put_in_store(self, value):
+        key = self.__xsimlab_keys__[var_name]
+        self.__xsimlab_store__[key] = value
+
+    orig_process_cls, orig_var = _get_original_variable(var)
+
+    if orig_var.metadata['var_type'] == VarType.ON_DEMAND:
+        if var.metadata['intent'] != 'in':
+            orig_var_str = '.'.join([orig_process_cls.__name__, orig_var.name])
+
+            raise ValueError(
+                "variable {} has intent '{}' but its target "
+                "variable {} is an on-demand variable (read-only)"
+                .format(var_name, var.metadata['intent'], orig_var_str)
+            )
+
+        return property(fget=get_on_demand)
+
+    elif var.metadata['intent'] == 'in':
+        return property(fget=get_from_store)
+
     else:
-        return property(fget=getter, fset=setter)
+        return property(fget=get_from_store, fset=put_in_store)
 
 
 def _make_property_on_demand(var):
-    """Create a read-only property for an on-demand variable."""
+    """Create a read-only property for an on-demand variable.
 
+    This property is a simple wrapper around the variable's compute method.
+
+    """
     if 'compute' not in var.metadata:
         raise KeyError("no compute method found for on_demand variable "
                        "'{name}': a method decorated with '@{name}.compute' "
                        "is required in the class definition."
                        .format(name=var.name))
 
-    getter = var.metadata['compute']
+    get_method = var.metadata['compute']
 
-    return property(fget=getter)
-
-
-def _make_property_foreign(var):
-    """Create a property for a foreign variable.
-
-    The property is read-only if the variable is declared as input.
-
-    """
-    var_name = var.name
-
-    def getter(self):
-        o_proc_name, o_var_name = self.__xsimlab_foreign__[var_name]
-        try:
-            return self.__xsimlab_store__[(o_proc_name, o_var_name)]
-        except KeyError:
-            # values of on_demand variables are not in the store
-            model = self.__xsimlab_model__
-            return getattr(model._processes[o_proc_name], o_var_name)
-
-    def setter(self, value):
-        # no fastpath access (prevent setting read-only variables in store)
-        # TODO: not working for setting variables that are declared as input
-        #       in their own process!!!
-        o_proc_name, o_var_name = self.__xsimlab_foreign__[var_name]
-        model = self.__xsimlab_model__
-        return setattr(model._processes[o_proc_name], o_var_name, value)
-
-    if var.metadata['intent'] == 'in':
-        return property(fget=getter)
-    else:
-        return property(fget=getter, fset=setter)
+    return property(fget=get_method)
 
 
 def _make_property_group(var):
@@ -134,16 +179,17 @@ def _make_property_group(var):
 
     var_name = var.name
 
-    def getter(self):
-        for o_proc_name, o_var_name in self.__xsimlab_foreign__[var_name]:
-            try:
-                yield self.__xsimlab_store__[(o_proc_name, o_var_name)]
-            except KeyError:
-                # values of on_demand variables are not in the store
-                model = self.__xsimlab_model__
-                return getattr(model._processes[o_proc_name], o_var_name)
+    def getter_store_or_on_demand(self):
+        keys = self.__xsimlab_keys__[var_name]
+        od_keys = self.__xsimlab_od_keys__[var_name]
 
-    return property(fget=getter)
+        for key, od_key in zip(keys, od_keys):
+            if od_key is None:
+                yield self.__xsimlab_store__[key]
+            else:
+                yield getattr(*od_key)
+
+    return property(fget=getter_store_or_on_demand)
 
 
 class _ProcessBuilder(object):
@@ -154,21 +200,21 @@ class _ProcessBuilder(object):
 
     """
     _make_prop_funcs = {
-        AttrType.VARIABLE: _make_property_variable,
-        AttrType.ON_DEMAND: _make_property_on_demand,
-        AttrType.FOREIGN: _make_property_foreign,
-        AttrType.GROUP: _make_property_group
+        VarType.VARIABLE: _make_property_variable,
+        VarType.ON_DEMAND: _make_property_on_demand,
+        VarType.FOREIGN: _make_property_variable,
+        VarType.GROUP: _make_property_group
     }
 
     def __init__(self, attr_cls):
         self._cls = attr_cls
         self._cls_dict = {}
 
-    def add_properties(self, attr_type):
-        make_prop_func = self._make_prop_funcs[attr_type]
+    def add_properties(self, var_type):
+        make_prop_func = self._make_prop_funcs[var_type]
 
-        for var in get_variables(self._cls, attr_type):
-            self._cls_dict[var.name] = make_prop_func(var)
+        for var_name, var in get_variables(self._cls, var_type).items():
+            self._cls_dict[var_name] = make_prop_func(var)
 
     def render_docstrings(self):
         self._cls_dict['__doc__'] = "Process-ified class."
@@ -220,8 +266,8 @@ def process(maybe_cls=None, autodoc=False):
 
         builder = _ProcessBuilder(attr_cls)
 
-        for attr_type in AttrType:
-            builder.add_properties(attr_type)
+        for var_type in VarType:
+            builder.add_properties(var_type)
 
         if autodoc:
             builder.render_docstrings()
