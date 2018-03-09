@@ -3,6 +3,63 @@
 Release Notes
 =============
 
+v0.2.0 (Unreleased)
+-------------------
+
+Highlights
+~~~~~~~~~~
+
+This release includes a major refactoring of both the internals and
+the API on how processes and variables are defined and interact
+between each other in a model. xarray-simlab now uses and extends
+attrs_ (:issue:`33`).
+
+.. _attrs: http://www.attrs.org
+
+Breaking changes
+~~~~~~~~~~~~~~~~
+
+As xarray-simlab is still at an early development stage and hasn't
+been adopted "in production" yet (to our knowledge), we haven't gone
+through any depreciation cycle, which by the way would have been
+almost impossible for such a major refactoring. The following breaking
+changes are effective now!
+
+- ``Variable``, ``ForeignVariable`` and ``VariableGroup`` classes have
+  been replaced by ``variable``, ``foreign`` and ``group`` factory
+  functions (wrappers around ``attr.ib``), respectively.
+- ``VariableList`` has been removed and has not been replaced by
+  anything equivalent.
+- ``DiagnosticVariable`` has been replaced by ``on_demand`` and the
+  ``diagnostic`` decorator has been replaced by the variable's
+  ``compute`` decorator.
+- The ``provided`` (``bool``) argument (variable constructors) has
+  been replaced by ``intent`` (``{'in', 'out', 'inout'}``).
+- The ``allowed_dims`` argument has been renamed to ``dims`` and is
+  now optional (a scalar value is expected by default).
+- The ``validators`` argument has been renamed to ``validator`` to be
+  consistent with ``attr.ib``.
+- The ``optional`` argument has been removed. Variables that don't
+  require an input value may be defined using a special validator
+  function (see ``attrs`` documentation).
+- Variable values are not anymore accessed using three different
+  properties ``state``, ``rate`` and ``change`` (e.g.,
+  ``self.foo.state``). Instead, all variables accept a unique value,
+  which one can get/set by simply using the variable name (e.g.,
+  ``self.foo``). You might want to create different variables to hold
+  different values.
+
+- Process classes are now defined using the ``process`` decorator
+  instead of inheriting from a ``Process`` base class.
+- It is not needed anymore to explicitly define whether or not a
+  process is time dependent (it is now deducted from the methods
+  implemented in the process class).
+- Using ``class Meta`` inside a process class to define some metadata
+  is not used anymore.
+
+Enhancements
+~~~~~~~~~~~~
+
 v0.1.1 (20 November 2017)
 -------------------------
 
