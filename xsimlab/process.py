@@ -5,8 +5,9 @@ import attr
 from .variable import VarType
 
 
-def get_variables(process, var_type=None, intent=None, group=None):
-    """Return (some of) the variables declared in a process.
+def filter_variables(process, var_type=None, intent=None, group=None,
+                     func=None):
+    """Filter the variables declared in a process.
 
     Parameters
     ----------
@@ -18,6 +19,10 @@ def get_variables(process, var_type=None, intent=None, group=None):
         Return only input, output or input/output variables.
     group : str, optional
         Return only variables that belong to a given group.
+    func : callable, optional
+        A callable that takes a variable (i.e., a :class:`attr.Attribute`
+        object) as input and return True or False. Useful for more advanced
+        filtering.
 
     Returns
     -------
@@ -44,6 +49,9 @@ def get_variables(process, var_type=None, intent=None, group=None):
         fields = {k: a for k, a in fields.items()
                   if a.metadata.get('group') == group}
 
+    if func is not None:
+        fields = {k: a for k, a in fields.items() if func(a)}
+
     return fields
 
 
@@ -65,17 +73,17 @@ def _get_original_variable(var):
     while orig_var.metadata['var_type'] == VarType.FOREIGN:
         orig_process_cls = orig_var.metadata['other_process_cls']
         var_name = orig_var.metadata['var_name']
-        orig_var = get_variables(orig_process_cls)[var_name]
+        orig_var = filter_variables(orig_process_cls)[var_name]
 
     return orig_process_cls, orig_var
 
 
 def _attrify_class(cls):
-    """Return a class as if the input class `cls` was decorated with
-    `attr.s`.
+    """Return a `cls` after having passed through :func:`attr.attrs`.
 
-    `attr.s` turns `attr.ib` (or derived) class attributes into fields
-    and adds dunder-methods such as `__init__`.
+    This pulls out and converts `attr.ib` declared as class attributes
+    into :class:`attr.Attribute` objects and it also adds
+    dunder-methods such as `__init__`.
 
     The following instance attributes are also defined (values will be
     set later at model creation):
@@ -213,7 +221,7 @@ class _ProcessBuilder(object):
     def add_properties(self, var_type):
         make_prop_func = self._make_prop_funcs[var_type]
 
-        for var_name, var in get_variables(self._cls, var_type).items():
+        for var_name, var in filter_variables(self._cls, var_type).items():
             self._cls_dict[var_name] = make_prop_func(var)
 
     def render_docstrings(self):
