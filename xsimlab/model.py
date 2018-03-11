@@ -1,5 +1,7 @@
 from collections import OrderedDict
 
+import attr
+
 from .variable import VarIntent, VarType
 from .process import filter_variables, get_target_variable
 from .utils import AttrMapping, ContextMixin
@@ -20,6 +22,8 @@ class _ModelBuilder(object):
         self._processes_obj = {k: cls() for k, cls in processes_cls.items()}
 
         self._reverse_lookup = {cls: k for k, cls in processes_cls.items()}
+
+        self._dep_processes = {k: set() for k in self._processes_obj}
 
         # a cache for group keys
         self._group_keys = {}
@@ -72,20 +76,21 @@ class _ModelBuilder(object):
         return store_key, od_key
 
     def _get_group_var_keys(self, group):
-        """Get store and on-demand keys for a group variable."""
+        """Get all store and on-demand keys related to a group variable."""
         store_keys = []
         od_keys = []
 
         for p_name, p_obj in self.processes_obj.items():
-            var = filter_variables(p_obj, group=group)
-            store_key, od_key = self._get_var_key(p_name, var)
+            for var in filter_variables(p_obj, group=group).values():
+                store_key, od_key = self._get_var_key(p_name, var)
 
-            if store_key is not None:
-                store_keys.append(store_key)
-            if od_key is not None:
-                od_keys.append(od_key)
+                if store_key is not None:
+                    store_keys.append(store_key)
+                if od_key is not None:
+                    od_keys.append(od_key)
 
         group_keys = (store_keys, od_keys)
+
         self._group_keys[group] = group_keys
 
         return group_keys
@@ -100,7 +105,7 @@ class _ModelBuilder(object):
 
         """
         for p_name, p_obj in self.processes_obj.items():
-            for var in filter_variables(p_obj):
+            for var in filter_variables(p_obj).values():
                 store_key, od_key = self._get_var_key(p_name, var)
 
                 if store_key is not None:
@@ -124,6 +129,7 @@ class _ModelBuilder(object):
             var.metadata['var_type'] != VarType.GROUP and
             var.metadata['intent'] in (VarIntent.IN, VarIntent.INOUT)
         )
+        filter_out = lambda var: var.metadata['intent'] == VarIntent.OUT
 
         in_keys = []
         out_keys = []
@@ -131,120 +137,128 @@ class _ModelBuilder(object):
         for p_name, p_obj in self.processes_obj.items():
             in_keys += [
                 p_obj.__xsimlab_store_keys__.get(var.name)
-                for var in filter_variables(p_obj, func=filter_in)
+                for var in filter_variables(p_obj, func=filter_in).values()
             ]
-
             out_keys += [
                 p_obj.__xsimlab_store_keys__.get(var.name)
-                for var in filter_variables(p_obj, intent=VarIntent.OUT)
+                for var in filter_variables(p_obj, intent=filter_out).values()
             ]
 
         return [k for k in set(in_keys) - set(out_keys) if k is not None]
 
+    def _add_dependency(self, p_name, p_obj, var_name, key):
+        # case of group variable
+        if isinstance(key, list):
+            for k in key:
+                self._add_dependency(p_name, p_obj, var_name, k)
 
-def _get_foreign_vars(processes):
-    # type: Dict[str, Process] -> Dict[str, List[ForeignVariable]]
+        else:
+            p_target, _ = key
 
-    foreign_vars = {}
+            if not isinstance(p_target, str):
+                # case of on-demand target variable
+                p_target_name = self._reverse_lookup[type(p_target)]
 
-    for proc_name, proc in processes.items():
-        foreign_vars[proc_name] = []
+                self._dep_processes[p_name].add(p_target_name)
+                return
 
-        for var in proc._variables.values():
-            if isinstance(var, (tuple, list, VariableGroup)):
-                foreign_vars[proc_name] += [
-                    v for v in var if isinstance(v, ForeignVariable)
-                ]
-            elif isinstance(var, ForeignVariable):
-                foreign_vars[proc_name].append(var)
-
-    return foreign_vars
-
-
-def _get_process_dependencies(processes):
-    # type: Dict[str, Process] -> Dict[str, List[Process]]
-
-    dep_processes = {k: set() for k in processes}
-    foreign_vars = _get_foreign_vars(processes)
-
-    for proc_name, variables in foreign_vars.items():
-        for var in variables:
-            if var.provided:
-                dep_processes[var.ref_process.name].add(proc_name)
             else:
-                ref_var = var.ref_var
-                if ref_var.provided or getattr(ref_var, 'optional', False):
-                    dep_processes[proc_name].add(var.ref_process.name)
+                p_target_name = p_target
 
-    return {k: list(v) for k, v in dep_processes.items()}
+                var = attr.fields(type(p_obj))[var_name]
 
+                if var.metadata['intent'] == VarIntent.OUT:
+                    self._dep_processes[p_target_name].add(p_name)
+                else:
+                    self._dep_processes[p_name].add(p_target_name)
 
-def _sort_processes(dep_processes):
-    # type: Dict[str, List[Process]] -> List[str]
-    """Stack-based depth-first search traversal.
+    def get_process_dependencies(self):
+        for p_name, p_obj in self.processes_obj.items():
 
-    This is based on Tarjan's method for topological sorting.
+            store_keys = p_obj.__xsimlab_store_keys__
+            od_keys = p_obj.__xsimlab_od_keys__
 
-    Part of the code below is copied and modified from:
+            for var_name, key in store_keys.items():
+                self._add_dependency(p_name, p_obj, var_name, key)
 
-    - dask 0.14.3 (Copyright (c) 2014-2015, Continuum Analytics, Inc.
-      and contributors)
-      Licensed under the BSD 3 License
-      http://dask.pydata.org
+            for var_name, key in od_keys.items():
+                self._add_dependency(p_name, p_obj, var_name, key)
 
-    """
-    ordered = []
+        self._dep_processes = {k: list(v) for k, v in self._dep_processes}
+        return self._dep_processes
 
-    # Nodes whose descendents have been completely explored.
-    # These nodes are guaranteed to not be part of a cycle.
-    completed = set()
+    def sort_processes(self):
+        # type: Dict[str, List[Process]] -> List[str]
+        """Stack-based depth-first search traversal.
 
-    # All nodes that have been visited in the current traversal.  Because
-    # we are doing depth-first search, going "deeper" should never result
-    # in visiting a node that has already been seen.  The `seen` and
-    # `completed` sets are mutually exclusive; it is okay to visit a node
-    # that has already been added to `completed`.
-    seen = set()
+        This is based on Tarjan's method for topological sorting.
 
-    for key in dep_processes:
-        if key in completed:
-            continue
-        nodes = [key]
-        while nodes:
-            # Keep current node on the stack until all descendants are visited
-            cur = nodes[-1]
-            if cur in completed:
-                # Already fully traversed descendants of cur
-                nodes.pop()
+        Part of the code below is copied and modified from:
+
+        - dask 0.14.3 (Copyright (c) 2014-2015, Continuum Analytics, Inc.
+          and contributors)
+          Licensed under the BSD 3 License
+          http://dask.pydata.org
+
+        """
+        ordered = []
+
+        # Nodes whose descendents have been completely explored.
+        # These nodes are guaranteed to not be part of a cycle.
+        completed = set()
+
+        # All nodes that have been visited in the current traversal.  Because
+        # we are doing depth-first search, going "deeper" should never result
+        # in visiting a node that has already been seen.  The `seen` and
+        # `completed` sets are mutually exclusive; it is okay to visit a node
+        # that has already been added to `completed`.
+        seen = set()
+
+        for key in self._dep_processes:
+            if key in completed:
                 continue
-            seen.add(cur)
+            nodes = [key]
+            while nodes:
+                # Keep current node on the stack until all descendants are
+                # visited
+                cur = nodes[-1]
+                if cur in completed:
+                    # Already fully traversed descendants of cur
+                    nodes.pop()
+                    continue
+                seen.add(cur)
 
-            # Add direct descendants of cur to nodes stack
-            next_nodes = []
-            for nxt in dep_processes[cur]:
-                if nxt not in completed:
-                    if nxt in seen:
-                        # Cycle detected!
-                        cycle = [nxt]
-                        while nodes[-1] != nxt:
+                # Add direct descendants of cur to nodes stack
+                next_nodes = []
+                for nxt in self._dep_processes[cur]:
+                    if nxt not in completed:
+                        if nxt in seen:
+                            # Cycle detected!
+                            cycle = [nxt]
+                            while nodes[-1] != nxt:
+                                cycle.append(nodes.pop())
                             cycle.append(nodes.pop())
-                        cycle.append(nodes.pop())
-                        cycle.reverse()
-                        cycle = '->'.join(cycle)
-                        raise RuntimeError(
-                            "cycle detected in process graph: %s" % cycle
-                        )
-                    next_nodes.append(nxt)
+                            cycle.reverse()
+                            cycle = '->'.join(cycle)
+                            raise RuntimeError(
+                                "Cycle detected in process graph: %s" % cycle
+                            )
+                        next_nodes.append(nxt)
 
-            if next_nodes:
-                nodes.extend(next_nodes)
-            else:
-                # cur has no more descendants to explore, so we're done with it
-                ordered.append(cur)
-                completed.add(cur)
-                seen.remove(cur)
-                nodes.pop()
-    return ordered
+                if next_nodes:
+                    nodes.extend(next_nodes)
+                else:
+                    # cur has no more descendants to explore,
+                    # so we're done with it
+                    ordered.append(cur)
+                    completed.add(cur)
+                    seen.remove(cur)
+                    nodes.pop()
+        return ordered
+
+    def get_processes(self):
+        return OrderedDict((p_name, self._processes_obj[p_name])
+                           for p_name in self.sort_processes())
 
 
 class Model(AttrMapping, ContextMixin):
@@ -271,26 +285,15 @@ class Model(AttrMapping, ContextMixin):
             :func:`process`) as values.
 
         """
-        processes_obj = {}
+        builder = _ModelBuilder(processes)
 
-        for k, cls in processes.items():
-            if getattr(cls, '__xsimlab_name__') is None:
-                raise TypeError("class {} is not a process compatible class: "
-                                "you might want decorate it first using "
-                                "@process".format(cls.__name__))
+        builder.set_process_names()
+        builder.set_process_keys()
 
-            processes_obj[k] = cls()
+        self._input_vars = builder.get_input_variables()
+        self._dep_processes = builder.get_process_dependencies()
+        self._processes = builder.get_processes()
 
-        _set_process_names(processes_obj)
-        _set_group_vars(processes_obj)
-        _link_foreign_vars(processes_obj)
-
-        self._input_vars = _get_input_vars(processes_obj)
-        self._dep_processes = _get_process_dependencies(processes_obj)
-        self._processes = OrderedDict(
-            [(k, processes_obj[k])
-             for k in _sort_processes(self._dep_processes)]
-        )
         self._time_processes = OrderedDict(
             [(k, proc) for k, proc in self._processes.items()
              if proc.meta['time_dependent']]
