@@ -67,7 +67,7 @@ def _check_intent(intent):
     return intent
 
 
-def variable(dims=(), intent='inout', group=None, default=attr.NOTHING,
+def variable(dims=(), intent='in', group=None, default=attr.NOTHING,
              validator=None, description='', attrs=None):
     """Create a variable.
 
@@ -95,7 +95,7 @@ def variable(dims=(), intent='inout', group=None, default=attr.NOTHING,
         variable's value for its computation), an output (i.e., the process
         computes a value for the variable) or both an input/output (i.e., the
         process may update the value of the variable).
-        (default: input/output).
+        (default: input).
     group : str, optional
         Variable group.
     default : any, optional
@@ -194,7 +194,7 @@ def on_demand(dims=(), group=None, description='', attrs=None):
     )
 
 
-def foreign(other_process_cls, var_name, intent='inout'):
+def foreign(other_process_cls, var_name, intent='in'):
     """Create a reference to a variable that is defined in another
     process class.
 
@@ -209,7 +209,7 @@ def foreign(other_process_cls, var_name, intent='inout'):
         needs the variable's value for its computation), an output (i.e., the
         process computes a value for the variable) or both an input/output
         (i.e., the process may update the value of the variable).
-        (default: input/output).
+        (default: input).
 
     See Also
     --------
