@@ -55,27 +55,42 @@ def filter_variables(process, var_type=None, intent=None, group=None,
     return fields
 
 
-def _get_original_variable(var):
-    """Return the target, original variable of a given variable and
-    this process class in which the original variable is declared.
+def get_target_variable(var):
+    """Return the target (original) variable of a given variable and
+    the process class in which the target variable is declared.
 
-    If `var` is not a foreign variable, return itself (and None for
-    the process).
+    If `var` is not a foreign variable, return itself and None instead
+    of a process class.
 
-    In case where the foreign variable point to another foreign
-    variable (and so on...), this function follow the links until the
-    original variable is found.
+    If the target of foreign variable is another foreign variable (and
+    so on...), this function follow the links until the original
+    variable is found. An error is thrown if a cyclic pattern is detected.
 
     """
-    orig_process_cls = None
-    orig_var = var
+    target_process_cls = None
+    target_var = var
 
-    while orig_var.metadata['var_type'] == VarType.FOREIGN:
-        orig_process_cls = orig_var.metadata['other_process_cls']
-        var_name = orig_var.metadata['var_name']
-        orig_var = filter_variables(orig_process_cls)[var_name]
+    visited = []
 
-    return orig_process_cls, orig_var
+    while target_var.metadata['var_type'] == VarType.FOREIGN:
+        visited.append((target_process_cls, target_var))
+
+        target_process_cls = target_var.metadata['other_process_cls']
+        var_name = target_var.metadata['var_name']
+        target_var = filter_variables(target_process_cls)[var_name]
+
+        # TODO: maybe remove this? not even sure such a cycle may happen
+        # unless we allow later providing other values than classes as first
+        # argument of `foreign`
+        if (target_process_cls, target_var) in visited:
+            cycle = '->'.join(['{}.{}'.format(cls.__name__, var.name)
+                               if cls is not None else var.name
+                               for cls, var in visited])
+
+            raise RuntimeError("Cycle detected in process dependencies: {}"
+                               .format(cycle))
+
+    return target_process_cls, target_var
 
 
 def _attrify_class(cls):
