@@ -107,16 +107,15 @@ def _attrify_class(cls):
         Name given for this process in a model.
     __xsimlab_store__ : dict or object
         Simulation data store.
-    __xsimlab_keys__ : dict
+    __xsimlab_store_keys__ : dict
         Dictionary that maps variable names to their corresponding key
         (or list of keys for group variables) in the store.
-        Such key consist of pairs like `('foo', 'bar')` where
+        Such keys consist of pairs like `('foo', 'bar')` where
         'foo' is the name of any process in the same model and 'bar' is
         the name of a variable declared in that process.
     __xsimlab_od_keys__ : dict
         Dictionary that maps variable names to the location of their target
-        on-demand variable, or None if the target variable is not an on
-        demand variable), or a list of locations for group variables.
+        on-demand variable (or a list of locations for group variables).
         Location here consists of pairs like `(foo_obj, 'bar')`, where
         `foo_obj` is any process in the same model 'bar' is the name of a
         variable declared in that process.
@@ -125,7 +124,7 @@ def _attrify_class(cls):
     def init_process(self):
         self.__xsimlab_name__ = None
         self.__xsimlab_store__ = None
-        self.__xsimlab_keys__ = {}
+        self.__xsimlab_store_keys__ = {}
         self.__xsimlab_od_keys__ = {}
 
     setattr(cls, '__attrs_post_init__', init_process)
@@ -147,7 +146,7 @@ def _make_property_variable(var):
     var_name = var.name
 
     def get_from_store(self):
-        key = self.__xsimlab_keys__[var_name]
+        key = self.__xsimlab_store_keys__[var_name]
         return self.__xsimlab_store__[key]
 
     def get_on_demand(self):
@@ -155,7 +154,7 @@ def _make_property_variable(var):
         return getattr(*od_key)
 
     def put_in_store(self, value):
-        key = self.__xsimlab_keys__[var_name]
+        key = self.__xsimlab_store_keys__[var_name]
         self.__xsimlab_store__[key] = value
 
     target_process_cls, target_var = get_target_variable(var)
@@ -215,14 +214,14 @@ def _make_property_group(var):
     var_name = var.name
 
     def getter_store_or_on_demand(self):
-        keys = self.__xsimlab_keys__[var_name]
-        od_keys = self.__xsimlab_od_keys__[var_name]
+        store_keys = self.__xsimlab_store_keys__.get(var_name, [])
+        od_keys = self.__xsimlab_od_keys.get(var_name, [])
 
-        for key, od_key in zip(keys, od_keys):
-            if od_key is None:
-                yield self.__xsimlab_store__[key]
-            else:
-                yield getattr(*od_key)
+        for key in store_keys:
+            yield self.__xsimlab_store__[key]
+
+        for key in od_keys:
+            yield getattr(*key)
 
     return property(fget=getter_store_or_on_demand)
 
