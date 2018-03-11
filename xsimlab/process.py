@@ -134,15 +134,14 @@ def _attrify_class(cls):
 
 
 def _make_property_variable(var):
-    """Create a property for a variable or a foreign variable.
+    """Create a property for a variable or a foreign variable (perform
+    some sanity checks first).
 
     The property get/set functions either read/write values from/to
     the simulation data store or get (and trigger computation of) the
     value of an on-demand variable.
 
-    The property is read-only if `var` is declared as input or if
-    `var` is a foreign variable and its target (original) variable is
-    an on-demand variable.
+    The property is read-only if `var` is declared as input.
 
     """
     var_name = var.name
@@ -159,18 +158,31 @@ def _make_property_variable(var):
         key = self.__xsimlab_keys__[var_name]
         self.__xsimlab_store__[key] = value
 
-    orig_process_cls, orig_var = _get_original_variable(var)
+    target_process_cls, target_var = get_target_variable(var)
+    target_type = target_var.metadata['var_type']
 
-    if orig_var.metadata['var_type'] == VarType.ON_DEMAND:
-        if var.metadata['intent'] != 'in':
-            orig_var_str = '.'.join([orig_process_cls.__name__, orig_var.name])
+    if target_process_cls is not None:
+        target_str = '.'.join([target_process_cls.__name__, target_var.name])
+    else:
+        target_str = target_var.name
 
-            raise ValueError(
-                "variable {} has intent '{}' but its target "
-                "variable {} is an on-demand variable (read-only)"
-                .format(var_name, var.metadata['intent'], orig_var_str)
-            )
+    intent = var.metadata['intent']
+    target_intent = target_var.metadata['intent']
 
+    if target_type == VarType.GROUP:
+        raise ValueError("Variable '{var}' links to group variable '{target}', "
+                         "which is not supported. Declare {var} as a group "
+                         "variable instead."
+                         .format(var=var.name, target=target_str))
+
+    elif (var.metadata['var_type'] == VarType.FOREIGN and
+          (intent == 'out' and target_intent != 'in' or
+           target_intent == 'out' and intent != 'in')):
+        raise ValueError("Incompatible intent given for variables "
+                         "'{}' ('{}') and '{}' ('{}')"
+                         .format(var.name, intent, target_str, target_intent))
+
+    elif target_type == VarType.ON_DEMAND:
         return property(fget=get_on_demand)
 
     elif var.metadata['intent'] == 'in':
@@ -187,8 +199,8 @@ def _make_property_on_demand(var):
 
     """
     if 'compute' not in var.metadata:
-        raise KeyError("no compute method found for on_demand variable "
-                       "'{name}': a method decorated with '@{name}.compute' "
+        raise KeyError("No compute method found for on_demand variable "
+                       "'{name}'. A method decorated with '@{name}.compute' "
                        "is required in the class definition."
                        .format(name=var.name))
 
