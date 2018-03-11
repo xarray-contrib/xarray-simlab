@@ -133,8 +133,8 @@ def _attrify_class(cls):
 
 
 def _make_property_variable(var):
-    """Create a property for a variable or a foreign variable (perform
-    some sanity checks first).
+    """Create a property for a variable or a foreign variable (after
+    some sanity checks).
 
     The property get/set functions either read/write values from/to
     the simulation data store or get (and trigger computation of) the
