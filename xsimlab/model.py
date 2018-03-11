@@ -1,6 +1,6 @@
 from collections import OrderedDict
 
-from .variable import VarType
+from .variable import VarIntent, VarType
 from .process import filter_variables, get_target_variable
 from .utils import AttrMapping, ContextMixin
 from .formatting import _calculate_col_width, pretty_print, maybe_truncate
@@ -112,7 +112,7 @@ class _ModelBuilder(object):
         """Get all input variables in the model as a list of
         `(process_name, var_name)` tuples.
 
-        Model input variables meet the following condition:
+        Model input variables meet the following conditions:
 
         - model-wise (i.e., in all processes), there is no variable with
           intent='out' that targets those variables (in store keys).
@@ -122,18 +122,22 @@ class _ModelBuilder(object):
         """
         filter_in = lambda var: (
             var.metadata['var_type'] != VarType.GROUP and
-            var.metadata['intent'] in ('in', 'inout')
+            var.metadata['intent'] in (VarIntent.IN, VarIntent.INOUT)
         )
 
         in_keys = []
         out_keys = []
 
         for p_name, p_obj in self.processes_obj.items():
-            in_keys += [p_obj.__xsimlab_store_keys__.get(var.name)
-                        for var in filter_variables(p_obj, func=filter_in)]
+            in_keys += [
+                p_obj.__xsimlab_store_keys__.get(var.name)
+                for var in filter_variables(p_obj, func=filter_in)
+            ]
 
-            out_keys += [p_obj.__xsimlab_store_keys__.get(var.name)
-                         for var in filter_variables(p_obj, intent='out')]
+            out_keys += [
+                p_obj.__xsimlab_store_keys__.get(var.name)
+                for var in filter_variables(p_obj, intent=VarIntent.OUT)
+            ]
 
         return [k for k in set(in_keys) - set(out_keys) if k is not None]
 

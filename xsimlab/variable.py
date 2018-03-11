@@ -12,6 +12,12 @@ class VarType(Enum):
     GROUP = 'group'
 
 
+class VarIntent(Enum):
+    IN = 'in'
+    OUT = 'out'
+    INOUT = 'inout'
+
+
 class _CountingAttr(CountingAttr_):
     """A hack to add a custom 'compute' decorator for on-request computation
     of on_demand variables.
@@ -56,15 +62,6 @@ def _as_dim_tuple(dims):
                          .format(invalid_msg))
 
     return tuple(dims)
-
-
-def _check_intent(intent):
-    if intent not in ('in', 'out', 'inout'):
-        raise ValueError("invalid intent given for variable: must be "
-                         "either 'in', 'out' or 'inout', found '{}'"
-                         .format(intent))
-
-    return intent
 
 
 def variable(dims=(), intent='in', group=None, default=attr.NOTHING,
@@ -124,7 +121,7 @@ def variable(dims=(), intent='in', group=None, default=attr.NOTHING,
     """
     metadata = {'var_type': VarType.VARIABLE,
                 'dims': _as_dim_tuple(dims),
-                'intent': _check_intent(intent),
+                'intent': VarIntent(intent),
                 'group': group,
                 'attrs': attrs or {},
                 'description': description}
@@ -176,7 +173,7 @@ def on_demand(dims=(), group=None, description='', attrs=None):
     """
     metadata = {'var_type': VarType.ON_DEMAND,
                 'dims': _as_dim_tuple(dims),
-                'intent': 'out',
+                'intent': VarIntent.OUT,
                 'group': group,
                 'attrs': attrs or {},
                 'description': description}
@@ -219,7 +216,7 @@ def foreign(other_process_cls, var_name, intent='in'):
     metadata = {'var_type': VarType.FOREIGN,
                 'other_process_cls': other_process_cls,
                 'var_name': var_name,
-                'intent': _check_intent(intent)}
+                'intent': VarIntent(intent)}
 
     return attr.attrib(metadata=metadata, init=False, cmp=False, repr=False)
 
@@ -246,6 +243,6 @@ def group(name):
     """
     metadata = {'var_type': VarType.GROUP,
                 'group': group,
-                'intent': 'in'}
+                'intent': VarIntent.IN}
 
     return attr.attrib(metadata=metadata, init=False, cmp=False, repr=False)

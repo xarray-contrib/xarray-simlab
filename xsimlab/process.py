@@ -2,7 +2,7 @@ from inspect import isclass
 
 import attr
 
-from .variable import VarType
+from .variable import VarIntent, VarType
 
 
 def filter_variables(process, var_type=None, intent=None, group=None,
@@ -43,7 +43,7 @@ def filter_variables(process, var_type=None, intent=None, group=None,
 
     if intent is not None:
         fields = {k: a for k, a in fields.items()
-                  if a.metadata.get('intent') == intent}
+                  if a.metadata.get('intent') == VarIntent(intent)}
 
     if group is not None:
         fields = {k: a for k, a in fields.items()
@@ -175,16 +175,17 @@ def _make_property_variable(var):
                          .format(var=var.name, target=target_str))
 
     elif (var.metadata['var_type'] == VarType.FOREIGN and
-          (intent == 'out' and target_intent != 'in' or
-           target_intent == 'out' and intent != 'in')):
+          (intent == VarIntent.OUT and target_intent != VarIntent.IN or
+           target_intent == VarIntent.OUT and intent != VarIntent.IN)):
         raise ValueError("Incompatible intent given for variables "
                          "'{}' ('{}') and '{}' ('{}')"
-                         .format(var.name, intent, target_str, target_intent))
+                         .format(var.name, intent.value,
+                                 target_str, target_intent.value))
 
     elif target_type == VarType.ON_DEMAND:
         return property(fget=get_on_demand)
 
-    elif var.metadata['intent'] == 'in':
+    elif var.metadata['intent'] == VarIntent.IN:
         return property(fget=get_from_store)
 
     else:
