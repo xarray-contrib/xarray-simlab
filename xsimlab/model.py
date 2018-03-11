@@ -1,25 +1,145 @@
 from collections import OrderedDict
 
-from .variable.base import (AbstractVariable, Variable, ForeignVariable,
-                            VariableList, VariableGroup)
-from .process import Process
+from .variable import VarType
+from .process import filter_variables, get_target_variable
 from .utils import AttrMapping, ContextMixin
 from .formatting import _calculate_col_width, pretty_print, maybe_truncate
 
 
-def _set_process_names(processes):
-    # type: Dict[str, Process]
-    """Set process names using keys of the mapping."""
-    for k, p in processes.items():
-        p._name = k
+class _ModelBuilder(object):
+    """Used to iteratively build a new model.
 
+    - Reconstruct process/variable dependencies
+    - Sort processes DAG
+    - Retrieve model inputs
+    - Split time dependent vs. independent processes
 
-def _set_group_vars(processes):
-    """Assign variables that belong to variable groups."""
-    for proc in processes.values():
-        for var in proc._variables.values():
-            if isinstance(var, VariableGroup):
-                var._set_variables(processes)
+    """
+    def __init__(self, processes_cls):
+        self._processes_cls = processes_cls
+        self._processes_obj = {k: cls() for k, cls in processes_cls.items()}
+
+        self._reverse_lookup = {cls: k for k, cls in processes_cls.items()}
+
+        # a cache for group keys
+        self._group_keys = {}
+
+    def set_process_names(self):
+        for p_name, p_obj in self.processes_obj.items():
+            p_obj.__xsimlab_name__ = p_name
+
+    def _get_var_key(self, p_name, var):
+        """Get store and on-demand keys for variable `var` declared in
+        process `p_name`.
+
+        Returned keys are either None (if no key), a tuple or a list
+        of tuples (for group variables).
+
+        A store key tuple looks like `('foo', 'bar')` where 'foo' is
+        the name of any process in the model and 'bar' is the name of
+        a variable declared in that process.
+
+        Similarly, an on-demand key tuple looks like `(foo_obj, 'bar')`,
+        but where `foo_obj` is a process object rather than its name.
+
+        """
+        store_key = None
+        od_key = None
+
+        var_type = var.metadata['var_type']
+
+        if var_type == VarType.VARIABLE:
+            store_key = (p_name, var.name)
+
+        elif var_type == VarType.FOREIGN:
+            target_p_cls, target_var = get_target_variable(var)
+
+            target_p_name = self._reverse_lookup(target_p_cls)
+            target_p_obj = self._processes_obj[target_p_name]
+
+            if target_var.metadata['var_type'] == VarType.ON_DEMAND:
+                od_key = (target_p_obj, target_var.name)
+            else:
+                store_key = (target_p_name, target_var.name)
+
+        elif var_type == VarType.GROUP:
+            group = var.metadata['group']
+
+            store_key, od_key = self._group_keys.get(
+                group, self._get_group_var_keys(group)
+            )
+
+        return store_key, od_key
+
+    def _get_group_var_keys(self, group):
+        """Get store and on-demand keys for a group variable."""
+        store_keys = []
+        od_keys = []
+
+        for p_name, p_obj in self.processes_obj.items():
+            var = filter_variables(p_obj, group=group)
+            store_key, od_key = self._get_var_key(p_name, var)
+
+            if store_key is not None:
+                store_keys.append(store_key)
+            if od_key is not None:
+                od_keys.append(od_key)
+
+        group_keys = (store_keys, od_keys)
+        self._group_keys[group] = group_keys
+
+        return group_keys
+
+    def set_process_keys(self):
+        """Get store and on-demand keys for all variables in a model
+        and add them in their respective process using the following
+        attributes:
+
+        __xsimlab_store_keys__
+        __xsimlab_od_keys__
+
+        """
+        for p_name, p_obj in self.processes_obj.items():
+            for var in filter_variables(p_obj):
+                store_key, od_key = self._get_var_key(p_name, var)
+
+                if store_key is not None:
+                    p_obj.__xsimlab_store_keys__[var.name] = store_key
+                if od_key is not None:
+                    p_obj.__xsimlab_od_keys__[var.name] = od_key
+
+    def get_input_variables(self):
+        """Get all input variables in the model as a list of
+        `(process_name, var_name)` tuples.
+
+        Model input variables meet the following condition:
+
+        - model-wise (i.e., all processes), there is no variable with
+          intent='out' that targets those variables (in store keys).
+        - group variables always have intent='in' but are never model
+          inputs.
+
+        """
+        filter_in = lambda var: (
+            var.metadata['var_type'] != VarType.GROUP and
+            var.metadata['intent'] in ('in', 'inout')
+        )
+        filter_out = lambda var: (
+            var.metadata['var_type'] != VarType.ON_DEMAND and
+            var.metadata['intent'] == 'out'
+        )
+
+        in_keys = []
+        out_keys = []
+
+        for p_name, p_obj in self.processes_obj.items():
+            in_keys += [p_obj.__xsimlab_store_keys__[var.name]
+                        for var in filter_variables(p_obj, func=filter_in)]
+
+            out_keys += [p_obj.__xsimlab_store_keys__[var.name]
+                         for var in filter_variables(p_obj, func=filter_out)]
+
+        return list(set(in_keys) - set(out_keys))
 
 
 def _get_foreign_vars(processes):
@@ -39,38 +159,6 @@ def _get_foreign_vars(processes):
                 foreign_vars[proc_name].append(var)
 
     return foreign_vars
-
-
-def _link_foreign_vars(processes):
-    """Assign process instances to foreign variables."""
-    proc_lookup = {v.__class__: v for v in processes.values()}
-
-    for variables in _get_foreign_vars(processes).values():
-        for var in variables:
-            var._other_process_obj = proc_lookup[var._other_process_cls]
-
-
-def _get_input_vars(processes):
-    # type: Dict[str, Process] -> Dict[str, Dict[str, Variable]]
-
-    input_vars = {}
-
-    for proc_name, proc in processes.items():
-        input_vars[proc_name] = {}
-
-        for k, var in proc._variables.items():
-            if isinstance(var, Variable) and not var.provided:
-                input_vars[proc_name][k] = var
-
-    # case of variables provided by other processes
-    foreign_vars = _get_foreign_vars(processes)
-    for variables in foreign_vars.values():
-        for var in variables:
-            if input_vars[var.ref_process.name].get(var.var_name, False):
-                if var.provided:
-                    del input_vars[var.ref_process.name][var.var_name]
-
-    return {k: v for k, v in input_vars.items() if v}
 
 
 def _get_process_dependencies(processes):
@@ -143,7 +231,7 @@ def _sort_processes(dep_processes):
                         cycle.append(nodes.pop())
                         cycle.reverse()
                         cycle = '->'.join(cycle)
-                        raise ValueError(
+                        raise RuntimeError(
                             "cycle detected in process graph: %s" % cycle
                         )
                     next_nodes.append(nxt)
@@ -160,8 +248,8 @@ def _sort_processes(dep_processes):
 
 
 class Model(AttrMapping, ContextMixin):
-    """An immutable collection (mapping) of process units that together
-    form a computational model.
+    """An immutable collection of process units that together form a
+    computational model.
 
     This collection is ordered such that the computational flow is
     consistent with process inter-dependencies.
@@ -170,7 +258,7 @@ class Model(AttrMapping, ContextMixin):
     computed using the processes interfaces.
 
     Processes interfaces are also used for automatically retrieving
-    the model inputs, i.e., all the variables which require setting a
+    the model inputs, i.e., all the variables that require setting a
     value before running the model.
 
     """
@@ -179,15 +267,18 @@ class Model(AttrMapping, ContextMixin):
         Parameters
         ----------
         processes : dict
-            Dictionnary with process names as keys and subclasses of
-            `Process` as values.
+            Dictionnary with process names as keys and classes (decorated with
+            :func:`process`) as values.
 
         """
         processes_obj = {}
 
         for k, cls in processes.items():
-            if not issubclass(cls, Process) or cls is Process:
-                raise TypeError("%s is not a subclass of Process" % cls)
+            if getattr(cls, '__xsimlab_name__') is None:
+                raise TypeError("class {} is not a process compatible class: "
+                                "you might want decorate it first using "
+                                "@process".format(cls.__name__))
+
             processes_obj[k] = cls()
 
         _set_process_names(processes_obj)
