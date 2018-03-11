@@ -114,32 +114,28 @@ class _ModelBuilder(object):
 
         Model input variables meet the following condition:
 
-        - model-wise (i.e., all processes), there is no variable with
+        - model-wise (i.e., in all processes), there is no variable with
           intent='out' that targets those variables (in store keys).
-        - group variables always have intent='in' but are never model
-          inputs.
+        - although group variables always have intent='in', they are not
+          model inputs.
 
         """
         filter_in = lambda var: (
             var.metadata['var_type'] != VarType.GROUP and
             var.metadata['intent'] in ('in', 'inout')
         )
-        filter_out = lambda var: (
-            var.metadata['var_type'] != VarType.ON_DEMAND and
-            var.metadata['intent'] == 'out'
-        )
 
         in_keys = []
         out_keys = []
 
         for p_name, p_obj in self.processes_obj.items():
-            in_keys += [p_obj.__xsimlab_store_keys__[var.name]
+            in_keys += [p_obj.__xsimlab_store_keys__.get(var.name)
                         for var in filter_variables(p_obj, func=filter_in)]
 
-            out_keys += [p_obj.__xsimlab_store_keys__[var.name]
-                         for var in filter_variables(p_obj, func=filter_out)]
+            out_keys += [p_obj.__xsimlab_store_keys__.get(var.name)
+                         for var in filter_variables(p_obj, intent='out')]
 
-        return list(set(in_keys) - set(out_keys))
+        return [k for k in set(in_keys) - set(out_keys) if k is not None]
 
 
 def _get_foreign_vars(processes):
