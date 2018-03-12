@@ -1,7 +1,5 @@
 from collections import OrderedDict
 
-import attr
-
 from .variable import VarIntent, VarType
 from .process import filter_variables, get_target_variable
 from .utils import AttrMapping, ContextMixin
@@ -11,9 +9,9 @@ from .formatting import _calculate_col_width, pretty_print, maybe_truncate
 class _ModelBuilder(object):
     """Used to iteratively build a new model.
 
-    - Reconstruct process/variable dependencies
-    - Sort processes DAG
+    - Define variable keys in store
     - Retrieve model inputs
+    - Reconstruct process dependencies and sort DAG of processes
     - Split time dependent vs. independent processes
 
     """
@@ -23,20 +21,21 @@ class _ModelBuilder(object):
 
         self._reverse_lookup = {cls: k for k, cls in processes_cls.items()}
 
-        self._dep_processes = {k: set() for k in self._processes_obj}
+        self._dep_processes = None
+        self._sorted_processes = None
 
         # a cache for group keys
         self._group_keys = {}
 
     def set_process_names(self):
-        for p_name, p_obj in self.processes_obj.items():
+        for p_name, p_obj in self._processes_obj.items():
             p_obj.__xsimlab_name__ = p_name
 
     def _get_var_key(self, p_name, var):
-        """Get store and on-demand keys for variable `var` declared in
+        """Get store and/or on-demand keys for variable `var` declared in
         process `p_name`.
 
-        Returned keys are either None (if no key), a tuple or a list
+        Returned key(s) are either None (if no key), a tuple or a list
         of tuples (for group variables).
 
         A store key tuple looks like `('foo', 'bar')` where 'foo' is
@@ -58,7 +57,7 @@ class _ModelBuilder(object):
         elif var_type == VarType.FOREIGN:
             target_p_cls, target_var = get_target_variable(var)
 
-            target_p_name = self._reverse_lookup(target_p_cls)
+            target_p_name = self._reverse_lookup[target_p_cls]
             target_p_obj = self._processes_obj[target_p_name]
 
             if target_var.metadata['var_type'] == VarType.ON_DEMAND:
@@ -67,21 +66,27 @@ class _ModelBuilder(object):
                 store_key = (target_p_name, target_var.name)
 
         elif var_type == VarType.GROUP:
-            group = var.metadata['group']
-
-            store_key, od_key = self._group_keys.get(
-                group, self._get_group_var_keys(group)
-            )
+            var_group = var.metadata['group']
+            store_key, od_key = self._get_group_var_keys(var_group)
 
         return store_key, od_key
 
     def _get_group_var_keys(self, group):
-        """Get all store and on-demand keys related to a group variable."""
+        """Get from cache or find model-wise store and on-demand keys
+        for all variables related to a group (except group variables).
+
+        """
+        if group in self._group_keys:
+            return self._group_keys[group]
+
         store_keys = []
         od_keys = []
 
-        for p_name, p_obj in self.processes_obj.items():
+        for p_name, p_obj in self._processes_obj.items():
             for var in filter_variables(p_obj, group=group).values():
+                if var.metadata['var_type'] == VarType.GROUP:
+                    continue
+
                 store_key, od_key = self._get_var_key(p_name, var)
 
                 if store_key is not None:
@@ -89,22 +94,20 @@ class _ModelBuilder(object):
                 if od_key is not None:
                     od_keys.append(od_key)
 
-        group_keys = (store_keys, od_keys)
+        self._group_keys[group] = store_keys, od_keys
 
-        self._group_keys[group] = group_keys
-
-        return group_keys
+        return store_keys, od_keys
 
     def set_process_keys(self):
-        """Get store and on-demand keys for all variables in a model
-        and add them in their respective process using the following
+        """Find store and/or on-demand keys for all variables in a model and
+        store them in their respective process, i.e., the following
         attributes:
 
-        __xsimlab_store_keys__
-        __xsimlab_od_keys__
+        __xsimlab_store_keys__  (store keys)
+        __xsimlab_od_keys__     (on-demand keys)
 
         """
-        for p_name, p_obj in self.processes_obj.items():
+        for p_name, p_obj in self._processes_obj.items():
             for var in filter_variables(p_obj).values():
                 store_key, od_key = self._get_var_key(p_name, var)
 
@@ -120,7 +123,7 @@ class _ModelBuilder(object):
         Model input variables meet the following conditions:
 
         - model-wise (i.e., in all processes), there is no variable with
-          intent='out' that targets those variables (in store keys).
+          intent='out' targeting those variables (in store keys).
         - although group variables always have intent='in', they are not
           model inputs.
 
@@ -134,62 +137,88 @@ class _ModelBuilder(object):
         in_keys = []
         out_keys = []
 
-        for p_name, p_obj in self.processes_obj.items():
+        for p_name, p_obj in self._processes_obj.items():
             in_keys += [
                 p_obj.__xsimlab_store_keys__.get(var.name)
                 for var in filter_variables(p_obj, func=filter_in).values()
             ]
             out_keys += [
                 p_obj.__xsimlab_store_keys__.get(var.name)
-                for var in filter_variables(p_obj, intent=filter_out).values()
+                for var in filter_variables(p_obj, func=filter_out).values()
             ]
 
         return [k for k in set(in_keys) - set(out_keys) if k is not None]
 
-    def _add_dependency(self, p_name, p_obj, var_name, key):
-        # case of group variable
+    def _maybe_add_dependency(self, p_name, p_obj, var_name, key):
+        """Maybe add a process dependency based on single variable
+        `var_name`, defined in process `p_name`/`p_obj`, with the
+        corresponding `key` (either store or on-demand key).
+
+        A process depends on another process if it has a variable (or
+        foreign) for which the other process declares a foreign (or
+        variable) that provides a value (i.e., intent='out').
+
+        """
         if isinstance(key, list):
+            # group variable
             for k in key:
-                self._add_dependency(p_name, p_obj, var_name, k)
+                self._maybe_add_dependency(p_name, p_obj, var_name, k)
 
         else:
-            p_target, _ = key
+            target_p, target_var_name = key
 
-            if not isinstance(p_target, str):
-                # case of on-demand target variable
-                p_target_name = self._reverse_lookup[type(p_target)]
-
-                self._dep_processes[p_name].add(p_target_name)
-                return
-
+            if not isinstance(target_p, str):
+                # on-demand target variable
+                target_p_name = self._reverse_lookup[type(target_p)]
+                target_p_obj = target_p
             else:
-                p_target_name = p_target
+                target_p_name = target_p
+                target_p_obj = self._processes_obj[target_p_name]
 
-                var = attr.fields(type(p_obj))[var_name]
+            var = filter_variables(p_obj)[var_name]
+            target_var = filter_variables(target_p_obj)[target_var_name]
 
-                if var.metadata['intent'] == VarIntent.OUT:
-                    self._dep_processes[p_target_name].add(p_name)
-                else:
-                    self._dep_processes[p_name].add(p_target_name)
+            if target_p_name == p_name:
+                # not a foreign variable
+                pass
+
+            elif var.metadata['intent'] == VarIntent.OUT:
+                # target process depends on current process
+                self._dep_processes[target_p_name].add(p_name)
+
+            elif target_var.metadata['intent'] == VarIntent.OUT:
+                # current process depends on target process
+                self._dep_processes[p_name].add(target_p_name)
 
     def get_process_dependencies(self):
-        for p_name, p_obj in self.processes_obj.items():
+        """Return a dictionary where keys are each process of the model and
+        values are lists of dependent processes (or empty lists for processes
+        that have no dependencies).
+
+        """
+        self._dep_processes = {k: set() for k in self._processes_obj}
+
+        for p_name, p_obj in self._processes_obj.items():
 
             store_keys = p_obj.__xsimlab_store_keys__
             od_keys = p_obj.__xsimlab_od_keys__
 
             for var_name, key in store_keys.items():
-                self._add_dependency(p_name, p_obj, var_name, key)
+                self._maybe_add_dependency(p_name, p_obj, var_name, key)
 
             for var_name, key in od_keys.items():
-                self._add_dependency(p_name, p_obj, var_name, key)
+                self._maybe_add_dependency(p_name, p_obj, var_name, key)
 
-        self._dep_processes = {k: list(v) for k, v in self._dep_processes}
+        self._dep_processes = {k: list(v)
+                               for k, v in self._dep_processes.items()}
+
         return self._dep_processes
 
-    def sort_processes(self):
-        # type: Dict[str, List[Process]] -> List[str]
-        """Stack-based depth-first search traversal.
+    def _sort_processes(self):
+        """Sort processes based on their dependencies (return a list of sorted
+        process names).
+
+        Stack-based depth-first search traversal.
 
         This is based on Tarjan's method for topological sorting.
 
@@ -256,9 +285,28 @@ class _ModelBuilder(object):
                     nodes.pop()
         return ordered
 
-    def get_processes(self):
-        return OrderedDict((p_name, self._processes_obj[p_name])
-                           for p_name in self.sort_processes())
+    def get_sorted_processes(self):
+        self._sorted_processes = OrderedDict(
+            [(p_name, self._processes_obj[p_name])
+             for p_name in self._sort_processes()]
+        )
+        return self._sorted_processes
+
+    def get_time_processes(self):
+        """Time processes are process classes that implement `run_step`
+        and/or `finalize_step` method(s).
+
+        """
+        has_method = lambda obj, meth: callable(getattr(obj, meth, None))
+
+        is_time_process = lambda obj: (has_method(obj, 'run_step') or
+                                       has_method(obj, 'finalize_step'))
+
+        return OrderedDict([
+            (p_name, p_obj)
+            for p_name, p_obj in self._sorted_processes.items()
+            if is_time_process(p_obj)
+        ])
 
 
 class Model(AttrMapping, ContextMixin):
@@ -292,12 +340,8 @@ class Model(AttrMapping, ContextMixin):
 
         self._input_vars = builder.get_input_variables()
         self._dep_processes = builder.get_process_dependencies()
-        self._processes = builder.get_processes()
-
-        self._time_processes = OrderedDict(
-            [(k, proc) for k, proc in self._processes.items()
-             if proc.meta['time_dependent']]
-        )
+        self._processes = builder.get_sorted_processes()
+        self._time_processes = builder.get_time_processes()
 
         super(Model, self).__init__(self._processes)
         self._initialized = True
@@ -335,15 +379,15 @@ class Model(AttrMapping, ContextMixin):
             True if the variable is a input of Model (otherwise False).
 
         """
-        if isinstance(variable, AbstractVariable):
-            proc_name, var_name = self._get_proc_var_name(variable)
-        elif isinstance(variable, (VariableList, VariableGroup)):
-            proc_name, var_name = None, None   # prevent unpack iterable below
-        else:
-            proc_name, var_name = variable
+        # if isinstance(variable, AbstractVariable):
+        #     proc_name, var_name = self._get_proc_var_name(variable)
+        # elif isinstance(variable, (VariableList, VariableGroup)):
+        #     proc_name, var_name = None, None   # prevent unpack iterable below
+        # else:
+        #     proc_name, var_name = variable
 
-        if self._input_vars.get(proc_name, {}).get(var_name, False):
-            return True
+        # if self._input_vars.get(proc_name, {}).get(var_name, False):
+        #     return True
         return False
 
     def visualize(self, show_only_variable=None, show_inputs=False,
