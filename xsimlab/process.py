@@ -158,15 +158,16 @@ def _make_property_variable(var):
         self.__xsimlab_store__[key] = value
 
     target_process_cls, target_var = get_target_variable(var)
+
+    var_type = var.metadata['var_type']
     target_type = target_var.metadata['var_type']
+    var_intent = var.metadata['intent']
+    target_intent = target_var.metadata['intent']
 
     if target_process_cls is not None:
         target_str = '.'.join([target_process_cls.__name__, target_var.name])
     else:
         target_str = target_var.name
-
-    intent = var.metadata['intent']
-    target_intent = target_var.metadata['intent']
 
     if target_type == VarType.GROUP:
         raise ValueError("Variable '{var}' links to group variable '{target}', "
@@ -174,18 +175,22 @@ def _make_property_variable(var):
                          "variable instead."
                          .format(var=var.name, target=target_str))
 
-    elif (var.metadata['var_type'] == VarType.FOREIGN and
-          (intent == VarIntent.OUT and target_intent != VarIntent.IN or
-           target_intent == VarIntent.OUT and intent != VarIntent.IN)):
+    elif (var_type == VarType.FOREIGN and
+          var_intent == VarIntent.OUT and target_intent == VarIntent.OUT):
         raise ValueError("Incompatible intent given for variables "
                          "'{}' ('{}') and '{}' ('{}')"
-                         .format(var.name, intent.value,
+                         .format(var.name, var_intent.value,
                                  target_str, target_intent.value))
 
     elif target_type == VarType.ON_DEMAND:
+        if var_intent in (VarIntent.OUT, VarIntent.INOUT):
+            raise ValueError("Variable '{}' targeting on-demand variable "
+                             "'{}' should have intent='in' (found '{}')"
+                             .format(var.name, target_str, var_intent.value))
+
         return property(fget=get_on_demand)
 
-    elif var.metadata['intent'] == VarIntent.IN:
+    elif var_type == VarIntent.IN:
         return property(fget=get_from_store)
 
     else:
