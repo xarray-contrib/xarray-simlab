@@ -26,6 +26,8 @@ class _ModelBuilder(object):
 
         self._reverse_lookup = {cls: k for k, cls in processes_cls.items()}
 
+        self._input_vars = None
+
         self._dep_processes = None
         self._sorted_processes = None
 
@@ -136,7 +138,7 @@ class _ModelBuilder(object):
         """
         filter_in = lambda var: (
             var.metadata['var_type'] != VarType.GROUP and
-            var.metadata['intent'] in (VarIntent.IN, VarIntent.INOUT)
+            var.metadata['intent'] != VarIntent.OUT
         )
         filter_out = lambda var: var.metadata['intent'] == VarIntent.OUT
 
@@ -153,17 +155,23 @@ class _ModelBuilder(object):
                 for var in filter_variables(p_obj, func=filter_out).values()
             ]
 
-        return [k for k in set(in_keys) - set(out_keys) if k is not None]
+        self._input_vars = [k for k in set(in_keys) - set(out_keys)
+                            if k is not None]
+
+        return self._input_vars
 
     def _maybe_add_dependency(self, p_name, p_obj, var_name, key):
         """Maybe add a process dependency based on single variable
         ``var_name``, defined in process ``p_name``/``p_obj``, with
         the corresponding ``key`` (either store or on-demand key).
 
-        A process depends on another process if it has a variable
-        (resp. a foreign) for which the other process declares a
-        foreign (resp. a variable) that provides a value (i.e.,
-        intent='out').
+        Process 1 depends on process 2 if:
+
+        - process 2 has a foreign variable with intent='out' targeting
+          a variable declared in process 1 ;
+        - process 1 has a foreign variable with intent!='out' targeting
+          a variable declared in process 2 that is not a model input (i.e.,
+          process 2 or a 3rd process provides a value for that variable).
 
         """
         if isinstance(key, list):
@@ -177,13 +185,10 @@ class _ModelBuilder(object):
             if not isinstance(target_p, str):
                 # on-demand target variable
                 target_p_name = self._reverse_lookup[type(target_p)]
-                target_p_obj = target_p
             else:
                 target_p_name = target_p
-                target_p_obj = self._processes_obj[target_p_name]
 
             var = filter_variables(p_obj)[var_name]
-            target_var = filter_variables(target_p_obj)[target_var_name]
 
             if target_p_name == p_name:
                 # not a foreign variable
@@ -193,7 +198,7 @@ class _ModelBuilder(object):
                 # target process depends on current process
                 self._dep_processes[target_p_name].add(p_name)
 
-            elif target_var.metadata['intent'] == VarIntent.OUT:
+            elif (target_p_name, target_var_name) not in self._input_vars:
                 # current process depends on target process
                 self._dep_processes[p_name].add(target_p_name)
 
