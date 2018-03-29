@@ -57,6 +57,14 @@ changes are effective now!
 - Using ``class Meta`` inside a process class to define some metadata
   is not used anymore.
 
+- ``Model.is_input`` no longer accepts a Variable object as
+  argument. Instead, it accepts two arguments (process name and
+  variable name).
+- ``Model.input_vars`` now returns a list of ``(process_name,
+  variable_name)`` tuples instead of a dict of
+  dicts. ``Model.input_vars_dict`` has been added for convenience
+  (i.e., to get input variables grouped by process as a dictionary).
+
 Enhancements
 ~~~~~~~~~~~~
 

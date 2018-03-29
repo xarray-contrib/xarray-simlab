@@ -1,4 +1,4 @@
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 
 from .variable import VarIntent, VarType
 from .process import filter_variables, get_target_variable
@@ -339,6 +339,8 @@ class Model(AttrMapping, ContextMixin):
         builder.set_process_keys()
 
         self._input_vars = builder.get_input_variables()
+        self._input_vars_dict = None
+
         self._dep_processes = builder.get_process_dependencies()
         self._processes = builder.get_sorted_processes()
         self._time_processes = builder.get_time_processes()
@@ -346,49 +348,54 @@ class Model(AttrMapping, ContextMixin):
         super(Model, self).__init__(self._processes)
         self._initialized = True
 
-    def _get_proc_var_name(self, variable):
-        # type: AbstractVariable -> Union[tuple[str, str], None]
-        for proc_name, variables in self._processes.items():
-            for var_name, var in variables.items():
-                if var is variable:
-                    return proc_name, var_name
-        return None, None
-
     @property
     def input_vars(self):
-        """Returns all variables that require setting a
-        value before running the model.
+        """Returns all variables that require setting a value before running
+        the model.
 
-        These variables are grouped by process name (dict of dicts).
+        A list of `(process_name, var_name)` tuples (or an empty list)
+        is returned.
 
         """
         return self._input_vars
 
-    def is_input(self, variable):
+    @property
+    def input_vars_dict(self):
+        """Returns all variables that require setting a value before running
+        the model.
+
+        Unlike `input_vars` property, a dictionary of lists of variable names
+        grouped by process is returned.
+
+        """
+        if self._input_vars_dict is None:
+            inputs = defaultdict(list)
+
+            for proc_name, var_name in self._input_vars:
+                inputs[proc_name].append(var_name)
+
+            self._input_vars_dict = dict(inputs)
+
+        return self._input_vars_dict
+
+    def is_input(self, proc_name, var_name):
         """Test if a variable is an input of Model.
 
         Parameters
         ----------
-        variable : object or tuple
-            Either a Variable object or a (str, str) tuple
-            corresponding to process name and variable name.
+        proc_name : str
+            Name of a process.
+        var_name : str
+            Name of a variable declared in that process.
 
         Returns
         -------
         is_input : bool
-            True if the variable is a input of Model (otherwise False).
+            True if the variable is a input of Model (otherwise False,
+            even when `(proc_name, var_name)` doesn't exist in Model).
 
         """
-        # if isinstance(variable, AbstractVariable):
-        #     proc_name, var_name = self._get_proc_var_name(variable)
-        # elif isinstance(variable, (VariableList, VariableGroup)):
-        #     proc_name, var_name = None, None   # prevent unpack iterable below
-        # else:
-        #     proc_name, var_name = variable
-
-        # if self._input_vars.get(proc_name, {}).get(var_name, False):
-        #     return True
-        return False
+        return (proc_name, var_name) in self._input_vars
 
     def visualize(self, show_only_variable=None, show_inputs=False,
                   show_variables=False):
@@ -441,11 +448,9 @@ class Model(AttrMapping, ContextMixin):
             proc.finalize()
 
     def clone(self):
-        """Clone the Model.
+        """Clone the Model, i.e., create a new Model instance with the same
+        process classes (but different instances).
 
-        This is equivalent to a deep copy, except that variable data
-        (i.e., `state`, `value`, `change` or `rate` properties) in all
-        processes are not copied.
         """
         processes_cls = {k: type(obj) for k, obj in self._processes.items()}
         return type(self)(processes_cls)
@@ -456,8 +461,8 @@ class Model(AttrMapping, ContextMixin):
         Parameters
         ----------
         processes : dict
-            Dictionnary with process names as keys and subclasses of
-            `Process` as values.
+            Dictionnary with process names as keys and process classes
+            as values.
 
         Returns
         -------
@@ -491,10 +496,8 @@ class Model(AttrMapping, ContextMixin):
         return type(self)(processes_cls)
 
     def __repr__(self):
-        n_inputs = sum([len(v) for v in self._input_vars.values()])
-
         hdr = ("<xsimlab.Model (%d processes, %d inputs)>"
-               % (len(self._processes), n_inputs))
+               % (len(self._processes), len(self._input_vars)))
 
         if not len(self._processes):
             return hdr
