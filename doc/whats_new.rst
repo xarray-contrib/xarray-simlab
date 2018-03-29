@@ -10,8 +10,8 @@ Highlights
 ~~~~~~~~~~
 
 This release includes a major refactoring of both the internals and
-the API on how processes and variables are defined and interact
-between each other in a model. xarray-simlab now uses and extends
+the API on how processes and variables are defined and depends on
+each other in a model. xarray-simlab now uses and extends
 attrs_ (:issue:`33`).
 
 .. _attrs: http://www.attrs.org
@@ -46,8 +46,8 @@ changes are effective now!
   properties ``state``, ``rate`` and ``change`` (e.g.,
   ``self.foo.state``). Instead, all variables accept a unique value,
   which one can get/set by simply using the variable name (e.g.,
-  ``self.foo``). You might want to create different variables to hold
-  different values.
+  ``self.foo``). Now multiple variables have to be declared for
+  holding different values.
 
 - Process classes are now defined using the ``process`` decorator
   instead of inheriting from a ``Process`` base class.
@@ -67,6 +67,15 @@ changes are effective now!
 
 Enhancements
 ~~~~~~~~~~~~
+
+- The major refactoring in this release should reduce the overhead
+  caused by the indirect access to variable values in process objects.
+- By creating read-only properties in specific cases (i.e., when
+  ``intent='in'``), the ``process`` decorator applied on a class adds
+  some safeguards to prevent setting variable values where it is not
+  intended.
+- Some more sanity checks have been added when creating process
+  classes.
 
 v0.1.1 (20 November 2017)
 -------------------------
