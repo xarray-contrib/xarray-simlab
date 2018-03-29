@@ -11,7 +11,7 @@ class _ModelBuilder(object):
 
     This builder implements the following tasks:
 
-    - Assign a name for each process
+    - Assign a given name for each process
     - Define for each variable of the model its corresponding key
       (in store or on-demand)
     - Find variables that are model inputs
@@ -304,21 +304,16 @@ class _ModelBuilder(object):
         )
         return self._sorted_processes
 
-    def get_time_processes(self):
-        """Time processes are process classes that implement ``run_step``
-        and/or ``finalize_step`` method(s).
+    def get_stage_processes(self, stage):
+        """Return a (sorted) list of all process objects that implement the
+        method relative to a given simulation stage {'initialize', 'run_step',
+        'finalize_step', 'finalize'}.
 
         """
         has_method = lambda obj, meth: callable(getattr(obj, meth, None))
 
-        is_time_process = lambda obj: (has_method(obj, 'run_step') or
-                                       has_method(obj, 'finalize_step'))
-
-        return OrderedDict([
-            (p_name, p_obj)
-            for p_name, p_obj in self._sorted_processes.items()
-            if is_time_process(p_obj)
-        ])
+        return [p_obj for p_obj in self._sorted_processes.values()
+                if has_method(p_obj, stage)]
 
 
 class Model(AttrMapping, ContextMixin):
@@ -355,7 +350,11 @@ class Model(AttrMapping, ContextMixin):
 
         self._dep_processes = builder.get_process_dependencies()
         self._processes = builder.get_sorted_processes()
-        self._time_processes = builder.get_time_processes()
+
+        self._p_initialize = builder.get_stage_processes('initialize')
+        self._p_run_step = builder.get_stage_processes('run_step')
+        self._p_finalize_step = builder.get_stage_processes('finalize_step')
+        self._p_finalize = builder.get_stage_processes('finalize')
 
         super(Model, self).__init__(self._processes)
         self._initialized = True
@@ -438,31 +437,28 @@ class Model(AttrMapping, ContextMixin):
                          show_variables=show_variables)
 
     def initialize(self):
-        """Run ``.initialize()`` for each processes in the model."""
-        for proc in self._processes.values():
-            proc.initialize()
+        """Run the 'initialize' stage of a simulation."""
+        for p in self._p_initialize:
+            p.initialize()
 
     def run_step(self, step):
-        """Run ``.run_step()`` for each time dependent processes in the model.
-        """
-        for proc in self._time_processes.values():
-            proc.run_step(step)
+        """Run a single 'run_step()' stage of a simulation."""
+        for p in self._p_run_step:
+            p.run_step(step)
 
     def finalize_step(self):
-        """Run ``.finalize_step()`` for each time dependent processes
-        in the model.
-        """
-        for proc in self._time_processes.values():
-            proc.finalize_step()
+        """Run a single 'finalize_step' stage of a simulation."""
+        for p in self._p_finalize_step:
+            p.finalize_step()
 
     def finalize(self):
-        """Run ``.finalize()`` for each processes in the model."""
-        for proc in self._processes.values():
-            proc.finalize()
+        """Run the 'finalize' stage of a simulation."""
+        for p in self._p_finalize:
+            p.finalize()
 
     def clone(self):
         """Clone the Model, i.e., create a new Model instance with the same
-        process classes (but different instances).
+        process classes but different instances.
 
         """
         processes_cls = {k: type(obj) for k, obj in self._processes.items()}
