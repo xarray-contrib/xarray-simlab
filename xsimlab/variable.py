@@ -242,7 +242,7 @@ def group(name):
 
     """
     metadata = {'var_type': VarType.GROUP,
-                'group': group,
+                'group': name,
                 'intent': VarIntent.IN}
 
     return attr.attrib(metadata=metadata, init=False, cmp=False, repr=False)
