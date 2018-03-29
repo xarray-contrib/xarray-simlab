@@ -9,10 +9,15 @@ from .formatting import _calculate_col_width, pretty_print, maybe_truncate
 class _ModelBuilder(object):
     """Used to iteratively build a new model.
 
-    - Define variable keys in store
-    - Retrieve model inputs
-    - Reconstruct process dependencies and sort DAG of processes
-    - Split time dependent vs. independent processes
+    This builder implements the following tasks:
+
+    - Assign a name for each process
+    - Define for each variable of the model its corresponding key
+      (in store or on-demand)
+    - Find variables that are model inputs
+    - Find process dependencies and sort processes (DAG)
+    - Find the processes that implement the method relative to each
+      step of a simulation
 
     """
     def __init__(self, processes_cls):
@@ -38,12 +43,13 @@ class _ModelBuilder(object):
         Returned key(s) are either None (if no key), a tuple or a list
         of tuples (for group variables).
 
-        A store key tuple looks like `('foo', 'bar')` where 'foo' is
+        A store key tuple looks like ``('foo', 'bar')`` where 'foo' is
         the name of any process in the model and 'bar' is the name of
         a variable declared in that process.
 
-        Similarly, an on-demand key tuple looks like `(foo_obj, 'bar')`,
-        but where `foo_obj` is a process object rather than its name.
+        Similarly, an on-demand key tuple looks like
+        ``(foo_obj, 'bar')``, but where ``foo_obj`` is a process object
+        rather than its name.
 
         """
         store_key = None
@@ -118,7 +124,7 @@ class _ModelBuilder(object):
 
     def get_input_variables(self):
         """Get all input variables in the model as a list of
-        `(process_name, var_name)` tuples.
+        ``(process_name, var_name)`` tuples.
 
         Model input variables meet the following conditions:
 
@@ -151,12 +157,13 @@ class _ModelBuilder(object):
 
     def _maybe_add_dependency(self, p_name, p_obj, var_name, key):
         """Maybe add a process dependency based on single variable
-        `var_name`, defined in process `p_name`/`p_obj`, with the
-        corresponding `key` (either store or on-demand key).
+        ``var_name``, defined in process ``p_name``/``p_obj``, with
+        the corresponding ``key`` (either store or on-demand key).
 
-        A process depends on another process if it has a variable (or
-        foreign) for which the other process declares a foreign (or
-        variable) that provides a value (i.e., intent='out').
+        A process depends on another process if it has a variable
+        (resp. a foreign) for which the other process declares a
+        foreign (resp. a variable) that provides a value (i.e.,
+        intent='out').
 
         """
         if isinstance(key, list):
@@ -293,8 +300,8 @@ class _ModelBuilder(object):
         return self._sorted_processes
 
     def get_time_processes(self):
-        """Time processes are process classes that implement `run_step`
-        and/or `finalize_step` method(s).
+        """Time processes are process classes that implement ``run_step``
+        and/or ``finalize_step`` method(s).
 
         """
         has_method = lambda obj, meth: callable(getattr(obj, meth, None))
@@ -353,7 +360,7 @@ class Model(AttrMapping, ContextMixin):
         """Returns all variables that require setting a value before running
         the model.
 
-        A list of `(process_name, var_name)` tuples (or an empty list)
+        A list of ``(process_name, var_name)`` tuples (or an empty list)
         is returned.
 
         """
@@ -364,8 +371,8 @@ class Model(AttrMapping, ContextMixin):
         """Returns all variables that require setting a value before running
         the model.
 
-        Unlike `input_vars` property, a dictionary of lists of variable names
-        grouped by process is returned.
+        Unlike :attr:`Model.input_vars`, a dictionary of lists of
+        variable names grouped by process is returned.
 
         """
         if self._input_vars_dict is None:
@@ -378,12 +385,12 @@ class Model(AttrMapping, ContextMixin):
 
         return self._input_vars_dict
 
-    def is_input(self, proc_name, var_name):
+    def is_input(self, process_name, var_name):
         """Test if a variable is an input of Model.
 
         Parameters
         ----------
-        proc_name : str
+        process_name : str
             Name of a process.
         var_name : str
             Name of a variable declared in that process.
@@ -392,10 +399,11 @@ class Model(AttrMapping, ContextMixin):
         -------
         is_input : bool
             True if the variable is a input of Model (otherwise False,
-            even when `(proc_name, var_name)` doesn't exist in Model).
+            even when ``(process_name, var_name)`` doesn't refer to any
+            existing variable in Model).
 
         """
-        return (proc_name, var_name) in self._input_vars
+        return (process_name, var_name) in self._input_vars
 
     def visualize(self, show_only_variable=None, show_inputs=False,
                   show_variables=False):
@@ -412,11 +420,11 @@ class Model(AttrMapping, ContextMixin):
             Ignored if `show_only_variable` is not None.
         show_variables : bool, optional
             If True, show also the other variables (default: False).
-            Ignored if `show_only_variable` is not None.
+            Ignored if ``show_only_variable`` is not None.
 
         See Also
         --------
-        dot.dot_graph
+        :func:`dot.dot_graph`
 
         """
         from .dot import dot_graph
@@ -425,25 +433,25 @@ class Model(AttrMapping, ContextMixin):
                          show_variables=show_variables)
 
     def initialize(self):
-        """Run `.initialize()` for each processes in the model."""
+        """Run ``.initialize()`` for each processes in the model."""
         for proc in self._processes.values():
             proc.initialize()
 
     def run_step(self, step):
-        """Run `.run_step()` for each time dependent processes in the model.
+        """Run ``.run_step()`` for each time dependent processes in the model.
         """
         for proc in self._time_processes.values():
             proc.run_step(step)
 
     def finalize_step(self):
-        """Run `.finalize_step()` for each time dependent processes
+        """Run ``.finalize_step()`` for each time dependent processes
         in the model.
         """
         for proc in self._time_processes.values():
             proc.finalize_step()
 
     def finalize(self):
-        """Run `.finalize()` for each processes in the model."""
+        """Run ``.finalize()`` for each processes in the model."""
         for proc in self._processes.values():
             proc.finalize()
 
