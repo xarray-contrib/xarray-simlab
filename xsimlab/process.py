@@ -3,6 +3,8 @@ from inspect import isclass
 import attr
 
 from .variable import VarIntent, VarType
+from .utils import attr_fields_dict
+
 
 class NotAProcessClassError(ValueError):
     """
@@ -40,10 +42,9 @@ def filter_variables(process, var_type=None, intent=None, group=None,
 
     """
     if not isclass(process):
-        process = process.__class__
+        process = type(process)
 
-    # TODO: use fields_dict instead (attrs 18.1.0)
-    fields = {a.name: a for a in attr.fields(process)}
+    fields = attr_fields_dict(process)
 
     if var_type is not None:
         fields = {k: a for k, a in fields.items()

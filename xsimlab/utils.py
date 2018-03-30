@@ -3,10 +3,26 @@ Internal utilties; not for external use.
 
 """
 import threading
-from collections import Mapping, KeysView, ItemsView, ValuesView
+from collections import (Mapping, KeysView, ItemsView, ValuesView,
+                         OrderedDict)
 from functools import wraps
 from contextlib import suppress
 from importlib import import_module
+from inspect import isclass
+
+import attr
+
+
+def attr_fields_dict(cls):
+    # TODO: remove this and use attr.fields_dict instead (18.1.0)
+    if not isclass(cls):
+        raise TypeError("Passed object must be a class.")
+    attrs = getattr(cls, "__attrs_attrs__", None)
+    if attrs is None:
+        raise attr.NotAnAttrsClassError(
+            "{cls!r} is not an attrs-decorated class.".format(cls=cls)
+        )
+    return OrderedDict(((a.name, a) for a in attrs))
 
 
 def import_required(mod_name, error_msg):
