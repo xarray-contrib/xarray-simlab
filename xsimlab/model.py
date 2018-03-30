@@ -64,7 +64,14 @@ class _ModelBuilder(object):
 
         elif var_type == VarType.FOREIGN:
             target_p_cls, target_var = get_target_variable(var)
-            target_p_name = self._reverse_lookup[target_p_cls]
+            target_p_name = self._reverse_lookup.get(target_p_cls, None)
+
+            if target_p_name is None:
+                raise KeyError(
+                    "Process class '{}' missing in Model but required "
+                    "by foreign variable '{}' declared in process '{}'"
+                    .format(target_p_cls.__name__, var.name, p_name)
+                )
 
             if target_var.metadata['var_type'] == VarType.ON_DEMAND:
                 od_key = (target_p_name, target_var.name)
