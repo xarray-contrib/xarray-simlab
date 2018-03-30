@@ -3,6 +3,7 @@ from inspect import isclass
 import attr
 
 from .variable import VarIntent, VarType
+from .formatting import repr_process
 from .utils import attr_fields_dict
 
 
@@ -333,3 +334,22 @@ def process(maybe_cls=None, autodoc=False):
         return wrap
     else:
         return wrap(maybe_cls)
+
+
+def process_info(process):
+    """Equivalent to __repr__ of a process but accepts
+    either an instance or a class.
+
+    """
+    # TODO:
+    raise NotImplementedError()
+
+
+def variable_info(process, var_name):
+    """Get more information about a variable (all metadata).
+
+    ``process`` is either a class or an instance.
+
+    """
+    # TODO:
+    raise NotImplementedError()
