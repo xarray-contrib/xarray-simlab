@@ -1,4 +1,5 @@
 """Formatting utils and functions."""
+from .utils import attr_fields_dict
 
 
 def _calculate_col_width(col_items):
@@ -78,3 +79,46 @@ def process_info(cls_or_obj):
     )
 
     return '\n'.join([var_block, meta_block])
+def repr_model(model):
+    n_processes = len(model)
+
+    hdr = ("<xsimlab.Model ({} processes, {} inputs)>"
+           .format(n_processes, len(model.input_vars)))
+
+    if not n_processes:
+        return hdr
+
+    max_line_length = 70
+    col_width = max([_calculate_col_width(var_name)
+                     for var_name in model.input_vars])
+
+    sections = []
+
+    for p_name, p_obj in model.items():
+        p_section = p_name
+
+        p_input_vars = model.input_vars_dict.get(p_name, [])
+        input_var_lines = []
+
+        for var_name in p_input_vars:
+            var = attr_fields_dict(type(p_obj))[var_name]
+            rcol_items = []
+
+            var_dims = " or ".join([str(d) for d in var.metadata['dims']])
+            if var_dims != "()":
+                rcol_items.append(var_dims)
+
+            rcol_items += ["[{}]".format(var.metadata['intent'].value),
+                           var.metadata['description']]
+
+            line = pretty_print("    {} ".format(var_name), col_width)
+            line += maybe_truncate(' '.join(rcol_items),
+                                   max_line_length - col_width)
+
+            input_var_lines.append(line)
+
+        if input_var_lines:
+            p_section += '\n' + '\n'.join(input_var_lines)
+        sections.append(p_section)
+
+    return hdr + '\n' + '\n'.join(sections)

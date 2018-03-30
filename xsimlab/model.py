@@ -5,7 +5,7 @@ from .variable import VarIntent, VarType
 from .process import (filter_variables, get_target_variable,
                       NotAProcessClassError)
 from .utils import AttrMapping, ContextMixin
-from .formatting import _calculate_col_width, pretty_print, maybe_truncate
+from .formatting import repr_model
 
 
 class _ModelBuilder(object):
@@ -525,30 +525,4 @@ class Model(AttrMapping, ContextMixin):
         return type(self)(processes_cls)
 
     def __repr__(self):
-        hdr = ("<xsimlab.Model (%d processes, %d inputs)>"
-               % (len(self._processes), len(self._input_vars)))
-
-        if not len(self._processes):
-            return hdr
-
-        max_line_length = 70
-        col_width = max([_calculate_col_width(var)
-                         for var in self._input_vars.values()])
-
-        blocks = []
-        for proc_name in self._processes:
-            proc_str = "%s" % proc_name
-
-            inputs = self._input_vars.get(proc_name, {})
-            lines = []
-            for name, var in inputs.items():
-                line = pretty_print("    %s " % name, col_width)
-                line += maybe_truncate("(in) %s" % var.description,
-                                       max_line_length - col_width)
-                lines.append(line)
-
-            if lines:
-                proc_str += '\n' + '\n'.join(lines)
-            blocks.append(proc_str)
-
-        return hdr + '\n' + '\n'.join(blocks)
+        return repr_model(self)
