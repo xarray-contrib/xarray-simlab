@@ -4,6 +4,14 @@ import attr
 
 from .variable import VarIntent, VarType
 
+class NotAProcessClassError(ValueError):
+    """
+    A non-``xsimlab.process`` class has been passed into a ``xsimlab``
+    function.
+
+    """
+    pass
+
 
 def filter_variables(process, var_type=None, intent=None, group=None,
                      func=None):

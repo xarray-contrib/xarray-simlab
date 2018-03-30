@@ -1,7 +1,9 @@
 from collections import OrderedDict, defaultdict
+from inspect import isclass
 
 from .variable import VarIntent, VarType
-from .process import filter_variables, get_target_variable
+from .process import (filter_variables, get_target_variable,
+                      NotAProcessClassError)
 from .utils import AttrMapping, ContextMixin
 from .formatting import _calculate_col_width, pretty_print, maybe_truncate
 
@@ -339,7 +341,25 @@ class Model(AttrMapping, ContextMixin):
             Dictionnary with process names as keys and classes (decorated with
             :func:`process`) as values.
 
+        Raises
+        ------
+        :exc:`TypeError`
+            If values in ``processes`` are not classes.
+        :exc:`NoteAProcessClassError`
+            If values in ``processes`` are not classes decorated with
+            :func:`process`.
+
         """
+        for cls in processes.values():
+            if not isclass(cls):
+                raise TypeError("Dictionary values must be classes, "
+                                "found {}".format(cls))
+
+            if not getattr(cls, "__xsimlab_process__", False):
+                raise NotAProcessClassError(
+                    "{cls!r} is not a process-decorated class.".format(cls=cls)
+                )
+
         builder = _ModelBuilder(processes)
 
         builder.set_process_names()
