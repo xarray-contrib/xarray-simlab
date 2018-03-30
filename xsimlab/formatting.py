@@ -79,6 +79,28 @@ def process_info(cls_or_obj):
     )
 
     return '\n'.join([var_block, meta_block])
+
+
+def repr_process(process):
+    process_cls = type(process)
+
+    hdr = "<{} (xsimlab process)>".format(process_cls.__name__)
+
+    variables = attr_fields_dict(process_cls)
+
+    col_width = _calculate_col_width([k for k in variables])
+    max_line_length = 70
+
+    var_section = "Variables:\n"
+
+    # TODO: if __xsimlab_name__ is set and not None,
+    #       add process name in header
+    # TODO: complete repr with variable list and possibly
+    #       simulation stages implemented
+
+    return hdr
+
+
 def repr_model(model):
     n_processes = len(model)
 

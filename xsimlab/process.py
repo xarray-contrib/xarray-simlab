@@ -257,13 +257,16 @@ class _ProcessBuilder(object):
 
     def __init__(self, attr_cls):
         self._cls = attr_cls
-        self._cls_dict = {}
+        self._cls_dict = {'__xsimlab_process__': True}
 
     def add_properties(self, var_type):
         make_prop_func = self._make_prop_funcs[var_type]
 
         for var_name, var in filter_variables(self._cls, var_type).items():
             self._cls_dict[var_name] = make_prop_func(var)
+
+    def add_repr(self):
+        self._cls_dict['__repr__'] = repr_process
 
     def render_docstrings(self):
         # self._cls_dict['__doc__'] = "Process-ified class."
@@ -321,6 +324,8 @@ def process(maybe_cls=None, autodoc=False):
 
         if autodoc:
             builder.render_docstrings()
+
+        builder.add_repr()
 
         return builder.build_class()
 
