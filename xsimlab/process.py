@@ -110,11 +110,13 @@ def _attrify_class(cls):
     into :class:`attr.Attribute` objects and it also adds
     dunder-methods such as `__init__`.
 
-    The following instance attributes are also defined (values will be
-    set later at model creation):
+    The following instance attributes are also defined with None or
+    empty values (proper values will be set later at model creation):
 
+    __xsimlab_model__ : obj
+        :class:`Model` instance to which the process instance is attached.
     __xsimlab_name__ : str
-        Name given for this process in a model.
+        Name given for this process in the model.
     __xsimlab_store__ : dict or object
         Simulation data store.
     __xsimlab_store_keys__ : dict
@@ -126,12 +128,11 @@ def _attrify_class(cls):
     __xsimlab_od_keys__ : dict
         Dictionary that maps variable names to the location of their target
         on-demand variable (or a list of locations for group variables).
-        Location here consists of pairs like `(foo_obj, 'bar')`, where
-        `foo_obj` is any process in the same model 'bar' is the name of a
-        variable declared in that process.
+        Locations are tuples like store keys.
 
     """
     def init_process(self):
+        self.__xsimlab_model__ = None
         self.__xsimlab_name__ = None
         self.__xsimlab_store__ = None
         self.__xsimlab_store_keys__ = {}
@@ -160,8 +161,9 @@ def _make_property_variable(var):
         return self.__xsimlab_store__[key]
 
     def get_on_demand(self):
-        od_key = self.__xsimlab_od_keys__[var_name]
-        return getattr(*od_key)
+        p_name, v_name = self.__xsimlab_od_keys__[var_name]
+        p_obj = self.__xsimlab_model__._processes[p_name]
+        return getattr(p_obj, v_name)
 
     def put_in_store(self, value):
         key = self.__xsimlab_store_keys__[var_name]
@@ -193,7 +195,7 @@ def _make_property_variable(var):
                                  target_str, target_intent.value))
 
     elif target_type == VarType.ON_DEMAND:
-        if var_intent in (VarIntent.OUT, VarIntent.INOUT):
+        if var_intent != VarIntent.IN:
             raise ValueError("Variable '{}' targeting on-demand variable "
                              "'{}' should have intent='in' (found '{}')"
                              .format(var.name, target_str, var_intent.value))

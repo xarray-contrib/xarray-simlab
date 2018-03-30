@@ -13,7 +13,8 @@ class _ModelBuilder(object):
 
     This builder implements the following tasks:
 
-    - Assign a given name for each process
+    - Attach the model instance to each process and assign their given
+      name in model.
     - Define for each variable of the model its corresponding key
       (in store or on-demand)
     - Find variables that are model inputs
@@ -36,8 +37,9 @@ class _ModelBuilder(object):
         # a cache for group keys
         self._group_keys = {}
 
-    def set_process_names(self):
+    def bind_processes(self, model_obj):
         for p_name, p_obj in self._processes_obj.items():
+            p_obj.__xsimlab_model__ = model_obj
             p_obj.__xsimlab_name__ = p_name
 
     def _get_var_key(self, p_name, var):
@@ -47,13 +49,9 @@ class _ModelBuilder(object):
         Returned key(s) are either None (if no key), a tuple or a list
         of tuples (for group variables).
 
-        A store key tuple looks like ``('foo', 'bar')`` where 'foo' is
-        the name of any process in the model and 'bar' is the name of
-        a variable declared in that process.
-
-        Similarly, an on-demand key tuple looks like
-        ``(foo_obj, 'bar')``, but where ``foo_obj`` is a process object
-        rather than its name.
+        A key tuple looks like ``('foo', 'bar')`` where 'foo' is the
+        name of any process in the model and 'bar' is the name of a
+        variable declared in that process.
 
         """
         store_key = None
@@ -66,12 +64,10 @@ class _ModelBuilder(object):
 
         elif var_type == VarType.FOREIGN:
             target_p_cls, target_var = get_target_variable(var)
-
             target_p_name = self._reverse_lookup[target_p_cls]
-            target_p_obj = self._processes_obj[target_p_name]
 
             if target_var.metadata['var_type'] == VarType.ON_DEMAND:
-                od_key = (target_p_obj, target_var.name)
+                od_key = (target_p_name, target_var.name)
             else:
                 store_key = (target_p_name, target_var.name)
 
@@ -182,13 +178,7 @@ class _ModelBuilder(object):
                 self._maybe_add_dependency(p_name, p_obj, var_name, k)
 
         else:
-            target_p, target_var_name = key
-
-            if not isinstance(target_p, str):
-                # on-demand target variable
-                target_p_name = self._reverse_lookup[type(target_p)]
-            else:
-                target_p_name = target_p
+            target_p_name, target_var_name = key
 
             var = filter_variables(p_obj)[var_name]
 
@@ -362,7 +352,7 @@ class Model(AttrMapping, ContextMixin):
 
         builder = _ModelBuilder(processes)
 
-        builder.set_process_names()
+        builder.bind_processes(self)
         builder.set_process_keys()
 
         self._input_vars = builder.get_input_variables()
