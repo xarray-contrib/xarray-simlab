@@ -82,7 +82,7 @@ def var_details(var):
 
     var_metadata = var.metadata.copy()
 
-    description = textwrap.fill(var_metadata.pop('description'),
+    description = textwrap.fill(var_metadata.pop('description').capitalize(),
                                 width=max_line_length)
 
     detail_items = [('type', var_metadata.pop('var_type').value),

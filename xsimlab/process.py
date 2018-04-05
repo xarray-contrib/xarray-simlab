@@ -206,8 +206,7 @@ def _make_property_variable(var):
     var_intent = var.metadata['intent']
     target_intent = target_var.metadata['intent']
 
-    # TODO: add var description (or possibly more like output of variable_info)
-    #       in properties docstrings
+    var_doc = var_details(var)
 
     if target_process_cls is not None:
         target_str = '.'.join([target_process_cls.__name__, target_var.name])
@@ -233,13 +232,13 @@ def _make_property_variable(var):
                              "'{}' should have intent='in' (found '{}')"
                              .format(var.name, target_str, var_intent.value))
 
-        return property(fget=get_on_demand)
+        return property(fget=get_on_demand, doc=var_doc)
 
     elif var_type == VarIntent.IN:
-        return property(fget=get_from_store)
+        return property(fget=get_from_store, doc=var_doc)
 
     else:
-        return property(fget=get_from_store, fset=put_in_store)
+        return property(fget=get_from_store, fset=put_in_store, doc=var_doc)
 
 
 def _make_property_on_demand(var):
@@ -256,7 +255,7 @@ def _make_property_on_demand(var):
 
     get_method = var.metadata['compute']
 
-    return property(fget=get_method)
+    return property(fget=get_method, doc=var_details(var))
 
 
 def _make_property_group(var):
@@ -274,7 +273,7 @@ def _make_property_group(var):
         for key in od_keys:
             yield getattr(*key)
 
-    return property(fget=getter_store_or_on_demand)
+    return property(fget=getter_store_or_on_demand, doc=var_details(var))
 
 
 class _ProcessBuilder(object):
