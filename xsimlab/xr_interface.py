@@ -82,16 +82,16 @@ class DatasetModelInterface(object):
         """Initialize snapshots for model variables given in attributes of
         Dataset.
         """
-        self.snapshot_vars = self.dataset.xsimlab.snapshot_vars
+        self.output_vars = self.dataset.xsimlab.output_vars
 
         self.snapshot_values = {}
-        for vars in self.snapshot_vars.values():
+        for vars in self.output_vars.values():
             self.snapshot_values.update({v: [] for v in vars})
 
         self.snapshot_save = {
             clock: np.in1d(self.dataset[self.master_clock_dim].values,
                            self.dataset[clock].values)
-            for clock in self.snapshot_vars if clock is not None
+            for clock in self.output_vars if clock is not None
         }
 
     def take_snapshot_var(self, key):
@@ -104,7 +104,7 @@ class DatasetModelInterface(object):
 
     def take_snapshots(self, istep):
         """Take snapshots at a given step index."""
-        for clock, vars in self.snapshot_vars.items():
+        for clock, vars in self.output_vars.items():
             if clock is None:
                 if istep == -1:
                     for key in vars:
@@ -145,7 +145,7 @@ class DatasetModelInterface(object):
 
         xr_variables = {}
 
-        for clock, vars in self.snapshot_vars.items():
+        for clock, vars in self.output_vars.items():
             for key in vars:
                 var_name = '__'.join(key)
                 xr_variables[var_name] = self.snapshot_to_xarray_variable(
@@ -154,12 +154,12 @@ class DatasetModelInterface(object):
 
         out_ds = self.dataset.update(xr_variables, inplace=False)
 
-        for clock in self.snapshot_vars:
+        for clock in self.output_vars:
             if clock is None:
                 attrs = out_ds.attrs
             else:
                 attrs = out_ds[clock].attrs
-            attrs.pop(SimlabAccessor._snapshot_vars_key)
+            attrs.pop(SimlabAccessor._output_vars_key)
 
         return out_ds
 

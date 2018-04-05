@@ -40,7 +40,7 @@ properties listed below. Proper use of this accessor should be like:
 
    Dataset.xsimlab.clock_coords
    Dataset.xsimlab.master_clock_dim
-   Dataset.xsimlab.snapshot_vars
+   Dataset.xsimlab.output_vars
 
 **Methods**
 
