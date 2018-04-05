@@ -70,6 +70,10 @@ Enhancements
 
 - The major refactoring in this release should reduce the overhead
   caused by the indirect access to variable values in process objects.
+- Another benefit of the refactoring is that a process-decorated class
+  may now inherit from other classes (possibly also
+  process-decorated), which allows more flexibility in model
+  customization.
 - By creating read-only properties in specific cases (i.e., when
   ``intent='in'``), the ``process`` decorator applied on a class adds
   some safeguards to prevent setting variable values where it is not
