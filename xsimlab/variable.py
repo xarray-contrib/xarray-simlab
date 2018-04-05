@@ -213,10 +213,15 @@ def foreign(other_process_cls, var_name, intent='in'):
     :func:`variable`
 
     """
+    description = ("Reference to variable {!r} "
+                   "defined in class {!r}"
+                   .format(var_name, other_process_cls.__name__))
+
     metadata = {'var_type': VarType.FOREIGN,
                 'other_process_cls': other_process_cls,
                 'var_name': var_name,
-                'intent': VarIntent(intent)}
+                'intent': VarIntent(intent),
+                'description': description}
 
     return attr.attrib(metadata=metadata, init=False, cmp=False, repr=False)
 
@@ -241,8 +246,12 @@ def group(name):
     :func:`variable`
 
     """
+    description = ("Iterable of all variables that "
+                   "belong to group {!r}".format(name))
+
     metadata = {'var_type': VarType.GROUP,
                 'group': name,
-                'intent': VarIntent.IN}
+                'intent': VarIntent.IN,
+                'description': description}
 
     return attr.attrib(metadata=metadata, init=False, cmp=False, repr=False)
