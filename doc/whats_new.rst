@@ -74,6 +74,10 @@ changes are effective now!
   ``show_variables=True`` now shows all model variables including
   inputs.
 
+- For simplicity, ``Dataset.xsimlab.snapshot_vars`` has been renamed to
+  ``output_vars``. The corresponding arguments in ``create_setup`` and
+  ``Dataset.xsimlab.update_vars`` have been renamed accordingly.
+
 Enhancements
 ~~~~~~~~~~~~
 
@@ -89,8 +93,18 @@ Enhancements
   intended.
 - Some more sanity checks have been added when creating process
   classes.
+- Simulation active and output data r/w access has been refactored
+  internally so that it should be easy to later support alternative
+  data storage backends (e.g., on-disk, distributed).
 - Added ``Model.dependent_processes`` property (so far this was not
-  public API).
+  in public API).
+
+Regressions (will be fixed in future releases)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Although it is possible to set validators, converters and/or default
+  values for variables (this is directly supported by ``attrs``), these
+  are not handled by xarray-simlab yet.
 
 v0.1.1 (20 November 2017)
 -------------------------
