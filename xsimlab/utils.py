@@ -25,6 +25,10 @@ def attr_fields_dict(cls):
     return OrderedDict(((a.name, a) for a in attrs))
 
 
+def has_method(obj, meth):
+    return callable(getattr(obj, meth, False))
+
+
 def import_required(mod_name, error_msg):
     """Attempt to import a required dependency.
     Raises a RuntimeError if the requested module is not available.

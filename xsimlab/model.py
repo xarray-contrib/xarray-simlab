@@ -2,9 +2,8 @@ from collections import OrderedDict, defaultdict
 from inspect import isclass
 
 from .variable import VarIntent, VarType
-from .process import (filter_variables, get_target_variable,
-                      NotAProcessClassError)
-from .utils import AttrMapping, ContextMixin
+from .process import ensure_process, filter_variables, get_target_variable
+from .utils import AttrMapping, ContextMixin, has_method
 from .formatting import repr_model
 
 
@@ -186,7 +185,6 @@ class _ModelBuilder(object):
 
         else:
             target_p_name, target_var_name = key
-
             var = filter_variables(p_obj)[var_name]
 
             if target_p_name == p_name:
@@ -210,7 +208,6 @@ class _ModelBuilder(object):
         self._dep_processes = {k: set() for k in self._processes_obj}
 
         for p_name, p_obj in self._processes_obj.items():
-
             store_keys = p_obj.__xsimlab_store_keys__
             od_keys = p_obj.__xsimlab_od_keys__
 
@@ -309,8 +306,6 @@ class _ModelBuilder(object):
         'finalize_step', 'finalize'}.
 
         """
-        has_method = lambda obj, meth: callable(getattr(obj, meth, None))
-
         return [p_obj for p_obj in self._sorted_processes.values()
                 if has_method(p_obj, stage)]
 
@@ -351,11 +346,7 @@ class Model(AttrMapping, ContextMixin):
             if not isclass(cls):
                 raise TypeError("Dictionary values must be classes, "
                                 "found {}".format(cls))
-
-            if not getattr(cls, "__xsimlab_process__", False):
-                raise NotAProcessClassError(
-                    "{cls!r} is not a process-decorated class.".format(cls=cls)
-                )
+            ensure_process(cls)
 
         builder = _ModelBuilder(processes)
 

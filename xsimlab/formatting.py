@@ -1,5 +1,6 @@
 """Formatting utils and functions."""
-from .utils import attr_fields_dict
+from .utils import attr_fields_dict, has_method
+from .variable import VarIntent, VarType
 
 
 def _calculate_col_width(col_items):
@@ -31,88 +32,100 @@ def wrap_indent(text, start='', length=None):
     return start + indent.join(x for x in text.splitlines())
 
 
-def _summarize_var(name, var, col_width, marker=' '):
+def _summarize_var(var, process, col_width):
     max_line_length = 70
 
-    first_col = pretty_print("  %s %s" % (marker, name), col_width)
+    var_name = var.name
+    var_type = var.metadata['var_type']
+    var_intent = var.metadata['intent']
 
-    if isinstance(var, tuple):
-        var_repr = "VariableList"
+    if var_intent == VarIntent.IN:
+        link_symbol = '<---'
+    elif var_intent == VarIntent.OUT:
+        link_symbol = '--->'
+
+    if var_type == VarType.GROUP:
+        var_info = '{} group {!r}'.format(link_symbol, var.metadata['group'])
+
+    elif var_type == VarType.FOREIGN:
+        key = process.__xsimlab_store_keys__.get(var_name)
+        if key is None:
+            key = process.__xsimlab_od_keys__.get(var_name)
+        if key is None:
+            key = (var.metadata['other_process_cls'].__name__,
+                   var.metadata['var_name'])
+
+        var_info = '{} {}.{}'.format(link_symbol, *key)
+
     else:
-        var_repr = str(var).strip('<>').replace('xsimlab.', '')
-        var_repr = maybe_truncate(var_repr, max_line_length - col_width)
+        var_dims = " or ".join([str(d) for d in var.metadata['dims']])
 
-    return first_col + var_repr
-
-
-def _summarize_var_list(name, var, col_width):
-    vars_lines = '\n'.join([_summarize_var('- ', v, col_width)
-                            for v in var])
-    return '\n'.join([_summarize_var(name, var, col_width), vars_lines])
-
-
-def process_info(cls_or_obj):
-    col_width = _calculate_col_width(cls_or_obj._variables)
-    max_line_length = 70
-
-    var_block = "Variables:\n"
-
-    lines = []
-    for name, var in cls_or_obj._variables.items():
-        if isinstance(var, (tuple, list)):
-            line = _summarize_var_list(name, var, col_width)
+        if var_dims != "()":
+            var_info = " ".join([var_dims, var.metadata['description']])
         else:
-            marker = '*' if var.provided else ' '
-            line = _summarize_var(name, var, col_width,
-                                  marker=marker)
-        lines.append(line)
+            var_info = var.metadata['description']
 
-    if not lines:
-        var_block += "    *empty*"
-    else:
-        var_block += '\n'.join(lines)
+    left_col = pretty_print("    {}".format(var.name), col_width)
 
-    meta_block = "Meta:\n"
-    meta_block += '\n'.join(
-        [maybe_truncate("    %s: %s" % (k, v), max_line_length)
-         for k, v in cls_or_obj._meta.items()]
+    right_col = maybe_truncate(
+        "[{}] {}".format(var_intent.value, var_info),
+        max_line_length - col_width
     )
 
-    return '\n'.join([var_block, meta_block])
+    return left_col + right_col
 
 
 def repr_process(process):
     process_cls = type(process)
 
-    hdr = "<{} (xsimlab process)>".format(process_cls.__name__)
+    if process.__xsimlab_name__ is not None:
+        process_name = '{!r}'.format(process.__xsimlab_name__)
+    else:
+        process_name = ''
+
+    header = "<{} {} (xsimlab process)>".format(process_cls.__name__,
+                                                process_name)
 
     variables = attr_fields_dict(process_cls)
 
-    col_width = _calculate_col_width([k for k in variables])
-    max_line_length = 70
+    col_width = _calculate_col_width(variables)
 
-    var_section = "Variables:\n"
+    var_section_summary = "Variables:"
+    var_section_details = "\n".join(
+        [_summarize_var(var, process, col_width) for var in variables.values()]
+    )
 
-    # TODO: if __xsimlab_name__ is set and not None,
-    #       add process name in header
-    # TODO: complete repr with variable list and possibly
-    #       simulation stages implemented
+    stages_implemented = [
+        "    {}".format(m)
+        for m in ['initialize', 'run_step', 'finalize_step', 'finalize']
+        if has_method(process, m)
+    ]
 
-    return hdr
+    stages_section_summary = "Simulation stages:"
+    if stages_implemented:
+        stages_section_details = "\n".join(stages_implemented)
+    else:
+        stages_section_details = "    *no stage implemented*"
+
+    return "\n".join([header,
+                      var_section_summary,
+                      var_section_details,
+                      stages_section_summary,
+                      stages_section_details])
 
 
 def repr_model(model):
     n_processes = len(model)
 
-    hdr = ("<xsimlab.Model ({} processes, {} inputs)>"
-           .format(n_processes, len(model.input_vars)))
+    header = ("<xsimlab.Model ({} processes, {} inputs)>"
+              .format(n_processes, len(model.input_vars)))
 
     if not n_processes:
-        return hdr
+        return header
 
-    max_line_length = 70
-    col_width = max([_calculate_col_width(var_name)
-                     for var_name in model.input_vars])
+    col_width = _calculate_col_width(
+        [var_name for _, var_name in model.input_vars]
+    )
 
     sections = []
 
@@ -124,23 +137,11 @@ def repr_model(model):
 
         for var_name in p_input_vars:
             var = attr_fields_dict(type(p_obj))[var_name]
-            rcol_items = []
-
-            var_dims = " or ".join([str(d) for d in var.metadata['dims']])
-            if var_dims != "()":
-                rcol_items.append(var_dims)
-
-            rcol_items += ["[{}]".format(var.metadata['intent'].value),
-                           var.metadata['description']]
-
-            line = pretty_print("    {} ".format(var_name), col_width)
-            line += maybe_truncate(' '.join(rcol_items),
-                                   max_line_length - col_width)
-
-            input_var_lines.append(line)
+            input_var_lines.append(_summarize_var(var, p_obj, col_width))
 
         if input_var_lines:
             p_section += '\n' + '\n'.join(input_var_lines)
+
         sections.append(p_section)
 
-    return hdr + '\n' + '\n'.join(sections)
+    return header + '\n' + '\n'.join(sections)

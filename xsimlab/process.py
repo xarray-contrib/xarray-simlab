@@ -1,4 +1,5 @@
 from inspect import isclass
+import sys
 
 import attr
 
@@ -14,6 +15,13 @@ class NotAProcessClassError(ValueError):
 
     """
     pass
+
+
+def ensure_process(cls):
+    if not getattr(cls, "__xsimlab_process__", False):
+        raise NotAProcessClassError(
+            "{cls!r} is not a process-decorated class.".format(cls=cls)
+        )
 
 
 def filter_variables(process, var_type=None, intent=None, group=None,
@@ -175,6 +183,9 @@ def _make_property_variable(var):
     target_type = target_var.metadata['var_type']
     var_intent = var.metadata['intent']
     target_intent = target_var.metadata['intent']
+
+    # TODO: add var description (or possibly more like output of variable_info)
+    #       in properties docstrings
 
     if target_process_cls is not None:
         target_str = '.'.join([target_process_cls.__name__, target_var.name])
@@ -338,13 +349,29 @@ def process(maybe_cls=None, autodoc=False):
         return wrap(maybe_cls)
 
 
-def process_info(process):
-    """Equivalent to __repr__ of a process but accepts
-    either an instance or a class.
+def process_info(process, buf=None):
+    """Concise summary of process variables and simulation stages
+    implemented.
+
+    Equivalent to __repr__ of a process but accepts either an instance
+    or a class.
+
+    Parameters
+    ----------
+    process : object or class
+        Process class or object.
+    buf : object, optional
+        Writable buffer (default: sys.stdout).
 
     """
-    # TODO:
-    raise NotImplementedError()
+    if isclass(process):
+        ensure_process(process)
+        process = process()
+
+    if buf is None:  # pragma: no cover
+        buf = sys.stdout
+
+    buf.write(repr_process(process))
 
 
 def variable_info(process, var_name):
