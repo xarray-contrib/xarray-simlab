@@ -86,7 +86,6 @@ access is also supported).
    :toctree: _api_generated/
 
    Model.input_vars
-   Model.is_input
    Model.visualize
 
 Running a model

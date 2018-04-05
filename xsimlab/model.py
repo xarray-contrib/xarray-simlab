@@ -397,26 +397,6 @@ class Model(AttrMapping, ContextMixin):
 
         return self._input_vars_dict
 
-    def is_input(self, process_name, var_name):
-        """Test if a variable is an input of Model.
-
-        Parameters
-        ----------
-        process_name : str
-            Name of a process.
-        var_name : str
-            Name of a variable declared in that process.
-
-        Returns
-        -------
-        is_input : bool
-            True if the variable is a input of Model (otherwise False,
-            even when ``(process_name, var_name)`` doesn't refer to any
-            existing variable in Model).
-
-        """
-        return (process_name, var_name) in self._input_vars
-
     def visualize(self, show_only_variable=None, show_inputs=False,
                   show_variables=False):
         """Render the model as a graph using dot (require graphviz).
