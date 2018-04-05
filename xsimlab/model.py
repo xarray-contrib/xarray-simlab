@@ -412,10 +412,10 @@ class Model(AttrMapping, ContextMixin):
 
         Parameters
         ----------
-        show_only_variable : object or tuple, optional
-            Show only a variable (and all other linked variables) given either
-            as a Variable object or a tuple corresponding to process name and
-            variable name. Deactivated by default.
+        show_only_variable : tuple, optional
+            Show only a variable (and all other variables sharing the
+            same value) given as a tuple ``(process_name, variable_name)``.
+            Deactivated by default.
         show_inputs : bool, optional
             If True, show all input variables in the graph (default: False).
             Ignored if `show_only_variable` is not None.

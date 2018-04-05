@@ -70,6 +70,10 @@ changes are effective now!
   function. Another helper function ``variable_info()`` has been
   added.
 
+- In ``Model.visualize()`` and ``xsimlab.dot.dot_graph()``,
+  ``show_variables=True`` now shows all model variables including
+  inputs.
+
 Enhancements
 ~~~~~~~~~~~~
 

@@ -29,6 +29,10 @@ def has_method(obj, meth):
     return callable(getattr(obj, meth, False))
 
 
+def maybe_to_list(obj):
+    return obj if isinstance(obj, list) else [obj]
+
+
 def import_required(mod_name, error_msg):
     """Attempt to import a required dependency.
     Raises a RuntimeError if the requested module is not available.
