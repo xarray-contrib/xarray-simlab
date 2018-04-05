@@ -85,6 +85,8 @@ Enhancements
   intended.
 - Some more sanity checks have been added when creating process
   classes.
+- Added ``Model.dependent_processes`` property (so far this was not
+  public API).
 
 v0.1.1 (20 November 2017)
 -------------------------

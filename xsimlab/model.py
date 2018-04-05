@@ -398,6 +398,14 @@ class Model(AttrMapping, ContextMixin):
 
         return self._input_vars_dict
 
+    @property
+    def dependent_processes(self):
+        """Returns a dictionary where keys are process names and values are
+        lists of the names of dependent processes.
+
+        """
+        return self._dep_processes
+
     def visualize(self, show_only_variable=None, show_inputs=False,
                   show_variables=False):
         """Render the model as a graph using dot (require graphviz).
