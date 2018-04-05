@@ -49,8 +49,8 @@ class SimlabAccessor(object):
     _master_clock_key = '_xsimlab_master_clock'
     _output_vars_key = '_xsimlab_output_vars'
 
-    def __init__(self, xarray_obj):
-        self._obj = xarray_obj
+    def __init__(self, ds):
+        self._ds = ds
         self._master_clock_dim = None
 
     @property
@@ -58,7 +58,7 @@ class SimlabAccessor(object):
         """Dictionary of :class:`xarray.DataArray` objects corresponding to
         clock coordinates.
         """
-        return {k: coord for k, coord in self._obj.coords.items()
+        return {k: coord for k, coord in self._ds.coords.items()
                 if self._clock_key in coord.attrs}
 
     @property
@@ -74,7 +74,7 @@ class SimlabAccessor(object):
         if self._master_clock_dim is not None:
             return self._master_clock_dim
         else:
-            for c in self._obj.coords.values():
+            for c in self._ds.coords.values():
                 if c.attrs.get(self._master_clock_key, False):
                     dim = c.dims[0]
                     self._master_clock_dim = dim
@@ -82,17 +82,17 @@ class SimlabAccessor(object):
             return None
 
     def _set_master_clock_dim(self, dim):
-        if dim not in self._obj.coords:
+        if dim not in self._ds.coords:
             raise KeyError("Dataset has no %r dimension coordinate. "
                            "To create a new master clock dimension, "
                            "use Dataset.xsimlab.update_clock."
                            % dim)
 
         if self.master_clock_dim is not None:
-            self._obj[self.master_clock_dim].attrs.pop(self._master_clock_key)
+            self._ds[self.master_clock_dim].attrs.pop(self._master_clock_key)
 
-        self._obj[dim].attrs[self._clock_key] = np.uint8(True)
-        self._obj[dim].attrs[self._master_clock_key] = np.uint8(True)
+        self._ds[dim].attrs[self._clock_key] = np.uint8(True)
+        self._ds[dim].attrs[self._master_clock_key] = np.uint8(True)
         self._master_clock_dim = dim
 
     def _set_clock_data(self, dim, data, start, end, step, nsteps):
@@ -123,15 +123,15 @@ class SimlabAccessor(object):
 
     def _set_master_clock(self, dim, data=None, start=0., end=None,
                           step=None, nsteps=None, units=None, calendar=None):
-        if dim in self._obj.dims:
+        if dim in self._ds.dims:
             raise ValueError("dimension %r already exists" % dim)
 
-        self._obj[dim] = self._set_clock_data(dim, data, start, end,
+        self._ds[dim] = self._set_clock_data(dim, data, start, end,
                                               step, nsteps)
         if units is not None:
-            self._obj[dim].attrs['units'] = units
+            self._ds[dim].attrs['units'] = units
         if calendar is not None:
-            self._obj[dim].attrs['calendar'] = calendar
+            self._ds[dim].attrs['calendar'] = calendar
 
         self._set_master_clock_dim(dim)
 
@@ -144,7 +144,7 @@ class SimlabAccessor(object):
 
         clock_data = self._set_clock_data(dim, data, start, end, step, nsteps)
 
-        da_master_clock = self._obj[self.master_clock_dim]
+        da_master_clock = self._ds[self.master_clock_dim]
 
         if auto_adjust:
             kwargs = {'method': 'nearest'}
@@ -155,14 +155,14 @@ class SimlabAccessor(object):
         kwargs.update(indexer)
         da_snapshot_clock = da_master_clock.sel(**kwargs)
 
-        self._obj[dim] = da_snapshot_clock.rename({self.master_clock_dim: dim})
+        self._ds[dim] = da_snapshot_clock.rename({self.master_clock_dim: dim})
         # .sel copies variable attributes
-        self._obj[dim].attrs.pop(self._master_clock_key)
+        self._ds[dim].attrs.pop(self._master_clock_key)
 
         for attr_name in ('units', 'calendar'):
             attr_value = da_master_clock.attrs.get(attr_name)
             if attr_value is not None:
-                self._obj[dim].attrs[attr_name] = attr_value
+                self._ds[dim].attrs[attr_name] = attr_value
 
     def _set_input_vars(self, model, process, **inputs):
         if isinstance(process, Process):
@@ -211,7 +211,7 @@ class SimlabAccessor(object):
             rename_dict = {'this_variable': xr_var_name}
             dims = tuple(rename_dict.get(dim, dim) for dim in xr_var.dims)
             xr_var.dims = dims
-            self._obj[xr_var_name] = xr_var
+            self._ds[xr_var_name] = xr_var
 
     def _set_output_vars(self, model, clock_dim, **process_vars):
         xr_vars_list = []
@@ -232,7 +232,7 @@ class SimlabAccessor(object):
         output_vars = ','.join(xr_vars_list)
 
         if clock_dim is None:
-            self._obj.attrs[self._output_vars_key] = output_vars
+            self._ds.attrs[self._output_vars_key] = output_vars
         else:
             if clock_dim not in self.clock_coords:
                 raise ValueError("%r coordinate is not a valid clock "
@@ -255,9 +255,9 @@ class SimlabAccessor(object):
         tuples - as values.
         """
         output_vars = {}
-        for cname, coord in self._obj.coords.items():
+        for cname, coord in self._ds.coords.items():
             output_vars.update(self._get_output_vars(cname, coord))
-        output_vars.update(self._get_output_vars(None, self._obj))
+        output_vars.update(self._get_output_vars(None, self._ds))
         return output_vars
 
     def update_clocks(self, model=None, clocks=None, master_clock=None):
@@ -292,7 +292,7 @@ class SimlabAccessor(object):
         """
         model = _maybe_get_model_from_context(model)
 
-        ds = self._obj.drop(self.clock_coords)
+        ds = self._ds.drop(self.clock_coords)
 
         attrs_master_clock = {}
 
@@ -364,7 +364,7 @@ class SimlabAccessor(object):
         """
         model = _maybe_get_model_from_context(model)
 
-        ds = self._obj.copy()
+        ds = self._ds.copy()
 
         if input_vars is not None:
             for proc_name, vars in input_vars.items():
@@ -404,7 +404,7 @@ class SimlabAccessor(object):
 
         drop_variables = []
 
-        for xr_var_name in self._obj:
+        for xr_var_name in self._ds:
             if xr_var_name in self.clock_coords:
                 continue
             try:
@@ -415,7 +415,7 @@ class SimlabAccessor(object):
             if not model.is_input((proc_name, var_name)):
                 drop_variables.append(xr_var_name)
 
-        ds = self._obj.drop(drop_variables)
+        ds = self._ds.drop(drop_variables)
 
         for dim, var_list in self.output_vars.items():
             var_dict = defaultdict(list)
@@ -450,7 +450,7 @@ class SimlabAccessor(object):
         if safe_mode:
             model = model.clone()
 
-        ds_model_interface = DatasetModelInterface(model, self._obj)
+        ds_model_interface = DatasetModelInterface(model, self._ds)
         out_ds = ds_model_interface.run_model()
         return out_ds
 
