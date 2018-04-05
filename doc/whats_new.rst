@@ -64,6 +64,12 @@ changes are effective now!
 - ``Model.is_input`` has been removed. Use ``Model.input_vars``
   instead to check if a variable is a model input.
 
+- ``__repr__`` has slightly changed for variables, processes and
+  models.  Process classes don't have an ``.info()`` method anymore,
+  which has been replaced by the ``process_info()`` top-level
+  function. Another helper function ``variable_info()`` has been
+  added.
+
 Enhancements
 ~~~~~~~~~~~~
 
