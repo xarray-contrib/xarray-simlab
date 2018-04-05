@@ -4,7 +4,7 @@ import sys
 import attr
 
 from .variable import VarIntent, VarType
-from .formatting import repr_process
+from .formatting import repr_process, var_details
 from .utils import attr_fields_dict
 
 
@@ -17,11 +17,34 @@ class NotAProcessClassError(ValueError):
     pass
 
 
-def ensure_process(cls):
+def ensure_process_decorated(cls):
     if not getattr(cls, "__xsimlab_process__", False):
-        raise NotAProcessClassError(
-            "{cls!r} is not a process-decorated class.".format(cls=cls)
-        )
+        raise NotAProcessClassError("{cls!r} is not a "
+                                    "process-decorated class.".format(cls=cls))
+
+
+def get_process_cls(obj_or_cls):
+    if not isclass(obj_or_cls):
+        cls = type(obj_or_cls)
+    else:
+        cls = obj_or_cls
+
+    ensure_process_decorated(cls)
+
+    return cls
+
+
+def get_process_obj(obj_or_cls):
+    if isclass(obj_or_cls):
+        cls = obj_or_cls
+        obj = cls()
+    else:
+        cls = type(obj_or_cls)
+        obj = obj_or_cls
+
+    ensure_process_decorated(cls)
+
+    return obj
 
 
 def filter_variables(process, var_type=None, intent=None, group=None,
@@ -50,8 +73,7 @@ def filter_variables(process, var_type=None, intent=None, group=None,
         objects as values.
 
     """
-    if not isclass(process):
-        process = type(process)
+    process = get_process_cls(process)
 
     fields = attr_fields_dict(process)
 
@@ -271,7 +293,8 @@ class _ProcessBuilder(object):
 
     def __init__(self, attr_cls):
         self._cls = attr_cls
-        self._cls_dict = {'__xsimlab_process__': True}
+        self._cls.__xsimlab_process__ = True
+        self._cls_dict = {}
 
     def add_properties(self, var_type):
         make_prop_func = self._make_prop_funcs[var_type]
@@ -364,21 +387,31 @@ def process_info(process, buf=None):
         Writable buffer (default: sys.stdout).
 
     """
-    if isclass(process):
-        ensure_process(process)
-        process = process()
-
     if buf is None:  # pragma: no cover
         buf = sys.stdout
+
+    process = get_process_obj(process)
 
     buf.write(repr_process(process))
 
 
-def variable_info(process, var_name):
-    """Get more information about a variable (all metadata).
+def variable_info(process, var_name, buf=None):
+    """Get detailed information about a variable.
 
-    ``process`` is either a class or an instance.
+    Parameters
+    ----------
+    process : object or class
+        Process class or object.
+    var_name : str
+        Variable name.
+    buf : object, optional
+        Writable buffer (default: sys.stdout).
 
     """
-    # TODO:
-    raise NotImplementedError()
+    if buf is None:  # pragma: no cover
+        buf = sys.stdout
+
+    process = get_process_cls(process)
+    var = attr_fields_dict(process)[var_name]
+
+    buf.write(var_details(var))

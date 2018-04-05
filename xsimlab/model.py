@@ -2,7 +2,8 @@ from collections import OrderedDict, defaultdict
 from inspect import isclass
 
 from .variable import VarIntent, VarType
-from .process import ensure_process, filter_variables, get_target_variable
+from .process import (ensure_process_decorated, filter_variables,
+                      get_target_variable)
 from .utils import AttrMapping, ContextMixin, has_method
 from .formatting import repr_model
 
@@ -346,7 +347,7 @@ class Model(AttrMapping, ContextMixin):
             if not isclass(cls):
                 raise TypeError("Dictionary values must be classes, "
                                 "found {}".format(cls))
-            ensure_process(cls)
+            ensure_process_decorated(cls)
 
         builder = _ModelBuilder(processes)
 

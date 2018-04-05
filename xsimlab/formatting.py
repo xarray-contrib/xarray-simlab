@@ -1,4 +1,6 @@
 """Formatting utils and functions."""
+import textwrap
+
 from .utils import attr_fields_dict, has_method
 from .variable import VarIntent, VarType
 
@@ -73,6 +75,23 @@ def _summarize_var(var, process, col_width):
     )
 
     return left_col + right_col
+
+
+def var_details(var):
+    max_line_length = 70
+
+    var_metadata = var.metadata.copy()
+
+    description = textwrap.fill(var_metadata.pop('description'),
+                                width=max_line_length)
+
+    detail_items = [('type', var_metadata.pop('var_type').value),
+                    ('intent', var_metadata.pop('intent').value)]
+    detail_items += list(var_metadata.items())
+
+    details = "\n".join(["- {} : {}".format(k, v) for k, v in detail_items])
+
+    return description + "\n\n" + details
 
 
 def repr_process(process):
