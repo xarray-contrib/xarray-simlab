@@ -8,7 +8,7 @@ import numpy as np
 from xarray import Dataset, register_dataset_accessor
 
 from .model import Model
-from .xr_interface import XarraySimulationDriver
+from .drivers import XarraySimulationDriver
 
 
 @register_dataset_accessor('filter')
