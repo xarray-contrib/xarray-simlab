@@ -454,7 +454,7 @@ class SimlabAccessor(object):
         output_store = defaultdict(list)
 
         sim_driver = XarraySimulationDriver(model, self._ds,
-                                             store, output_store)
+                                            store, output_store)
 
         out_ds = sim_driver.run_model()
 

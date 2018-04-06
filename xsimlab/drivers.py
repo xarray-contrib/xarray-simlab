@@ -1,18 +1,6 @@
 import copy
 
 import numpy as np
-import xarray as xr
-
-from .utils import attr_fields_dict
-
-
-def _get_dims_from_variable(array, variable):
-    """Given an array of values (snapshot) and a (xarray-simlab) Variable
-    object, Return dimension labels for the array."""
-    for dims in variable.allowed_dims:
-        if len(dims) == array.ndim:
-            return dims
-    return tuple()
 
 
 class BaseSimulationDriver(object):
@@ -93,7 +81,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
         self.model = model
 
         super(XarraySimulationDriver, self).__init__(model, store,
-                                                      output_store)
+                                                     output_store)
 
         self.output_vars = dataset.xsimlab.output_vars
         self.output_save_steps = self._get_output_save_steps()
@@ -160,57 +148,6 @@ class XarraySimulationDriver(BaseSimulationDriver):
                 if clock is None and self.snapshot_save[clock][istep]:
                     self.update_output_store(var_keys)
 
-    def snapshot_to_xarray_variable(self, key, clock=None):
-        """Convert snapshots taken for a specific model variable to an
-        xarray.Variable object.
-        """
-        p_name, var_name = key
-        p_obj = self.model[p_name]
-        variable = attr_fields_dict(p_obj)[var_name]
-
-        array_list = self.output_store[key]
-        first_array = array_list[0]
-
-        if len(array_list) == 1:
-            data = first_array
-        else:
-            data = np.stack(array_list)
-
-        dims = _get_dims_from_variable(first_array, variable)
-        if clock is not None and len(array_list) > 1:
-            dims = (clock,) + dims
-
-        attrs = variable.attrs.copy()
-        attrs['description'] = variable.description
-
-        return xr.Variable(dims, data, attrs=attrs)
-
-    def create_output_dataset(self):
-        """Build a new output Dataset from the input Dataset and
-        all snapshots taken during a model run.
-        """
-        from .xr_accessor import SimlabAccessor
-
-        xr_variables = {}
-
-        for clock, vars in self.output_vars.items():
-            for key in vars:
-                var_name = '__'.join(key)
-                xr_variables[var_name] = self.snapshot_to_xarray_variable(
-                    key, clock=clock
-                )
-
-        out_ds = self.dataset.update(xr_variables, inplace=False)
-
-        for clock in self.output_vars:
-            if clock is None:
-                attrs = out_ds.attrs
-            else:
-                attrs = out_ds[clock].attrs
-            attrs.pop(SimlabAccessor._output_vars_key)
-
-        return out_ds
-
     def run_model(self):
         """Run the model and return a new Dataset with all the simulation
         inputs and outputs.
@@ -246,4 +183,4 @@ class XarraySimulationDriver(BaseSimulationDriver):
         self._maybe_save_output_vars(-1)
         self.model.finalize()
 
-        return self.create_output_dataset()
+        return self.output_store.to_dataset()
