@@ -8,7 +8,7 @@ import numpy as np
 from xarray import Dataset, register_dataset_accessor
 
 from .model import Model
-from .xr_interface import DatasetModelInterface
+from .xr_interface import XarraySimulationDriver
 
 
 @register_dataset_accessor('filter')
@@ -127,7 +127,7 @@ class SimlabAccessor(object):
             raise ValueError("dimension %r already exists" % dim)
 
         self._ds[dim] = self._set_clock_data(dim, data, start, end,
-                                              step, nsteps)
+                                             step, nsteps)
         if units is not None:
             self._ds[dim].attrs['units'] = units
         if calendar is not None:
@@ -450,8 +450,14 @@ class SimlabAccessor(object):
         if safe_mode:
             model = model.clone()
 
-        ds_model_interface = DatasetModelInterface(model, self._ds)
-        out_ds = ds_model_interface.run_model()
+        store = {}
+        output_store = defaultdict(list)
+
+        sim_driver = XarraySimulationDriver(model, self._ds,
+                                             store, output_store)
+
+        out_ds = sim_driver.run_model()
+
         return out_ds
 
     def run_multi(self):

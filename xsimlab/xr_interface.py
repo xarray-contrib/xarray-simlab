@@ -1,5 +1,9 @@
+import copy
+
 import numpy as np
 import xarray as xr
+
+from .utils import attr_fields_dict
 
 
 def _get_dims_from_variable(array, variable):
@@ -11,116 +15,160 @@ def _get_dims_from_variable(array, variable):
     return tuple()
 
 
-class DatasetModelInterface(object):
-    """Interface between xarray.Dataset and Model.
+class BaseSimulationDriver(object):
+    """Base class that provides a minimal interface for creating
+    simulation drivers (should be inherited).
 
-    It is used to:
-
-    - set model inputs using the variables of a Dataset object,
-    - run model simulation stages,
-    - take snapshots for given model variables (defined in attributes of
-      Dataset) following one or several clocks (i.e., Dataset coordinates),
-    - convert the snapshots back into xarray.Variable objects and return a
-      new xarray.Dataset object.
+    It also implements methods for binding a simulation data store to
+    a model and for updating both this active data store and the
+    simulation output store.
 
     """
-    def __init__(self, model, dataset):
+
+    def __init__(self, model, store, output_store):
         self.model = model
-        self.dataset = dataset
+        self.store = store
+        self.output_store = output_store
+
+        self._bind_store_to_model()
+
+    def _bind_store_to_model(self):
+        """Bind the simulation active data store to each process in the
+        model.
+        """
+        for p_obj in self.model.values():
+            p_obj.__xsimlab_store__ = self.store
+
+    def update_store(self, input_vars):
+        """Update the simulation active data store with input variable
+        values.
+
+        ``input_vars`` is a dictionary where keys are store keys, i.e.,
+        ``(process_name, var_name)`` tuples, and values are the input
+        values to set in the store.
+
+        Values are first copied from ``input_vars`` before being put in
+        the store to prevent weird behavior (as model processes might
+        update in-place the values in the store).
+
+        Entries of ``input_vars`` that doesn't correspond to model
+        inputs are silently ignored.
+
+        """
+        for key in self.model.input_vars:
+            value = input_vars.get(key)
+
+            if value is not None:
+                self.store[key] = copy(value)
+
+    def update_output_store(self, output_var_keys):
+        """Update the simulation output store (i.e., append new values to the
+        store) from snapshots of variables given in ``output_var_keys`` list.
+        """
+        for key in output_var_keys:
+            p_name, var_name = key
+            p_obj = self.model._processes[p_name]
+            value = getattr(p_obj, var_name)
+
+            self.output_store.append(key, value)
+
+    def run_model(self):
+        """Main function of the driver used to run a simulation (must be
+        implemented in subclasses).
+        """
+        raise NotImplementedError()
+
+
+class XarraySimulationDriver(BaseSimulationDriver):
+    """Simulation driver using xarray.Dataset objects as I/O.
+
+    - Performs some sanity checks on the content of the given input Dataset.
+    - Sets model inputs from the input Dataset.
+    - Saves model outputs for given model variables (defined in attributes of
+      Dataset) following one or several clocks (i.e., Dataset coordinates).
+    - Gets simulation results as a new xarray.Dataset object.
+
+    """
+    def __init__(self, dataset, model, store, output_store):
+        self.model = model
+
+        super(XarraySimulationDriver, self).__init__(model, store,
+                                                      output_store)
+
+        self.output_vars = dataset.xsimlab.output_vars
+        self.output_save_steps = self._get_output_save_steps()
 
         self.master_clock_dim = dataset.xsimlab.master_clock_dim
         if self.master_clock_dim is None:
-            raise ValueError("missing master clock dimension / coordinate ")
+            raise ValueError("Missing master clock dimension / coordinate")
 
-        self.check_model_inputs_in_dataset()
+        self._check_missing_model_inputs()
 
-    def check_model_inputs_in_dataset(self):
+    def _check_missing_model_inputs(self):
         """Check if all model inputs have their corresponding data variables
-        in Dataset.
+        in the input Dataset.
         """
         missing_data_vars = []
 
-        for proc_name, vars in self.model.input_vars.items():
-            for var_name, var in vars.items():
-                xr_var_name = proc_name + '__' + var_name
-                if xr_var_name not in self.dataset.data_vars:
-                    missing_data_vars.append(xr_var_name)
+        for p_name, var_name in self.model.input_vars:
+            xr_var_name = p_name + '__' + var_name
+
+            if xr_var_name not in self.dataset.data_vars:
+                missing_data_vars.append(xr_var_name)
 
         if missing_data_vars:
-            raise KeyError("missing data variables %s in Dataset"
+            raise KeyError("Missing data variables %s in Dataset"
                            % missing_data_vars)
 
-    def set_model_inputs(self, dataset):
-        """Set model inputs values from a given Dataset object (may be a subset
-        of self.dataset)."""
-        for proc_name, vars in self.model.input_vars.items():
-            for var_name, var in vars.items():
-                xr_var_name = proc_name + '__' + var_name
-                xr_var = dataset.get(xr_var_name)
-                if xr_var is not None:
-                    var.value = xr_var.values.copy()
-
-    def split_data_vars_clock(self):
-        """Separate in Dataset between data variables that have the master clock
-        dimension and those that don't.
+    def _get_output_save_steps(self):
+        """Returns a dictionary where keys are names of clock coordinates and
+        values are numpy boolean arrays that specify whether or not to
+        save outputs at every step of a simulation.
         """
-        ds_clock = self.dataset.filter(
-            lambda v: self.master_clock_dim in v.dims
-        )
-        ds_no_clock = self.dataset.filter(
-            lambda v: self.master_clock_dim not in v.dims
-        )
-        return ds_clock, ds_no_clock
+        save_steps = {}
 
-    @property
-    def time_step_lengths(self):
-        """Return a DataArray with time-step durations."""
-        clock_coord = self.dataset[self.master_clock_dim]
-        return clock_coord.diff(self.master_clock_dim).values
-
-    def init_snapshots(self):
-        """Initialize snapshots for model variables given in attributes of
-        Dataset.
-        """
-        self.output_vars = self.dataset.xsimlab.output_vars
-
-        self.snapshot_values = {}
-        for vars in self.output_vars.values():
-            self.snapshot_values.update({v: [] for v in vars})
-
-        self.snapshot_save = {
-            clock: np.in1d(self.dataset[self.master_clock_dim].values,
-                           self.dataset[clock].values)
-            for clock in self.output_vars if clock is not None
-        }
-
-    def take_snapshot_var(self, key):
-        """Take a snapshot of a given model variable (i.e., a copy of the value
-        of its `state` property).
-        """
-        proc_name, var_name = key
-        model_var = self.model._processes[proc_name]._variables[var_name]
-        self.snapshot_values[key].append(np.array(model_var.state))
-
-    def take_snapshots(self, istep):
-        """Take snapshots at a given step index."""
-        for clock, vars in self.output_vars.items():
+        for clock in self.output_vars:
             if clock is None:
-                if istep == -1:
-                    for key in vars:
-                        self.take_snapshot_var(key)
-            elif self.snapshot_save[clock][istep]:
-                for key in vars:
-                    self.take_snapshot_var(key)
+                continue
+
+            elif clock == self.master_clock_dim:
+                save_steps[clock] = np.ones_like(
+                    self.dataset[self.master_clock_dim].values, dtype=bool)
+
+            else:
+                save_steps[clock] = np.in1d(
+                    self.dataset[self.master_clock_dim].values,
+                    self.dataset[clock].values)
+
+        return save_steps
+
+    def _set_input_vars(self, dataset):
+        for p_name, var_name in self.model.input_vars:
+            xr_var_name = p_name + '__' + var_name
+            xr_var = dataset.get(xr_var_name)
+
+            if xr_var is not None:
+                self.store[(p_name, var_name)] = xr_var.data.copy()
+
+    def _maybe_save_output_vars(self, istep):
+        if istep == -1:
+            var_keys = self.output_vars.get(None, [])
+            self.update_output_store(var_keys)
+
+        else:
+            for clock, var_keys in self.output_vars.items():
+                if clock is None and self.snapshot_save[clock][istep]:
+                    self.update_output_store(var_keys)
 
     def snapshot_to_xarray_variable(self, key, clock=None):
         """Convert snapshots taken for a specific model variable to an
         xarray.Variable object.
         """
-        proc_name, var_name = key
-        variable = self.model._processes[proc_name]._variables[var_name]
+        p_name, var_name = key
+        p_obj = self.model[p_name]
+        variable = attr_fields_dict(p_obj)[var_name]
 
-        array_list = self.snapshot_values[key]
+        array_list = self.output_store[key]
         first_array = array_list[0]
 
         if len(array_list) == 1:
@@ -137,7 +185,7 @@ class DatasetModelInterface(object):
 
         return xr.Variable(dims, data, attrs=attrs)
 
-    def get_output_dataset(self):
+    def create_output_dataset(self):
         """Build a new output Dataset from the input Dataset and
         all snapshots taken during a model run.
         """
@@ -164,34 +212,38 @@ class DatasetModelInterface(object):
         return out_ds
 
     def run_model(self):
-        """Run the model.
+        """Run the model and return a new Dataset with all the simulation
+        inputs and outputs.
 
-        The is the main function of the interface. It set model inputs
-        from the input Dataset, run the simulation stages one after
-        each other, possibly sets time-dependent values provided for
-        model inputs (if any) before each time step, take snaphots
-        between the 'run_step' and the 'finalize_step' stages, and
-        finally returns a new Dataset with all the inputs and the
-        snapshots.
+        - Set model inputs from the input Dataset (update
+          time-dependent model inputs -- if any -- before each time step).
+        - Save outputs (snapshots) between the 'run_step' and the
+          'finalize_step' stages or at the end of the simulation.
 
         """
-        ds_clock, ds_no_clock = self.split_data_vars_clock()
-        ds_clock_any = bool(ds_clock.data_vars)
+        ds_in = self.dataset.filter(
+            lambda var: self.master_clock_dim not in var.dims)
+        ds_in_clock = self.dataset.filter(
+            lambda var: self.master_clock_dim in var.dims)
 
-        self.init_snapshots()
-        self.set_model_inputs(ds_no_clock)
+        has_clock_inputs = bool(ds_in_clock.data_vars)
+
+        mclock = self.dataset[self.master_clock_dim]
+        da_dt = mclock.diff(self.master_clock_dim)
+
+        self._set_input_vars(ds_in)
         self.model.initialize()
 
-        for istep, dt in enumerate(self.time_step_lengths):
-            if ds_clock_any:
-                ds_step = ds_clock.isel(**{self.master_clock_dim: istep})
-                self.set_model_inputs(ds_step)
+        for istep, dt in enumerate(da_dt):
+            if has_clock_inputs:
+                ds_in_step = ds_in_clock.isel(**{self.master_clock_dim: istep})
+                self._set_input_vars(ds_in_step)
 
             self.model.run_step(dt)
-            self.take_snapshots(istep)
+            self._maybe_save_output_vars(istep)
             self.model.finalize_step()
 
-        self.take_snapshots(-1)
+        self._maybe_save_output_vars(-1)
         self.model.finalize()
 
-        return self.get_output_dataset()
+        return self.create_output_dataset()
