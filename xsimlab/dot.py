@@ -32,67 +32,10 @@ VAR_NODE_ATTRS = {'shape': 'box', 'color': '#555555', 'fontcolor': '#555555'}
 VAR_EDGE_ATTRS = {'arrowhead': 'none', 'color': '#555555'}
 
 
-def hash_variable(var):
+def _hash_variable(var):
     # issue with variables with the same name declared in different processes
     # return str(hash(var))
     return str(id(var))
-
-
-def _add_processes(g, model):
-    seen = set()
-
-    for p_name, p_obj in model._processes.items():
-        if p_name not in seen:
-            seen.add(p_name)
-            g.node(p_name, label=p_name, **PROC_NODE_ATTRS)
-
-        for dep_p_name in model.dependent_processes[p_name]:
-            g.edge(dep_p_name, p_name, **PROC_EDGE_ATTRS)
-
-
-def _add_var(g, model, var, p_name):
-    node_attrs = VAR_NODE_ATTRS.copy()
-    edge_attrs = VAR_EDGE_ATTRS.copy()
-
-    var_key = hash_variable(var)
-    var_intent = var.metadata['intent']
-    var_type = var.metadata['var_type']
-
-    if (p_name, var.name) in model._input_vars:
-        node_attrs = INPUT_NODE_ATTRS.copy()
-        edge_attrs = INPUT_EDGE_ATTRS.copy()
-    elif var_type == VarType.ON_DEMAND:
-        node_attrs['style'] = 'diagonals'
-    elif var_type == VarType.FOREIGN:
-        node_attrs['style'] = 'dashed'
-        edge_attrs['style'] = 'dashed'
-    elif var_type == VarType.GROUP:
-        node_attrs['shape'] = 'box3d'
-
-    if var_intent == VarIntent.OUT:
-        edge_attrs.update({'arrowhead': 'empty'})
-        edge_ends = p_name, var_key
-    else:
-        edge_ends = var_key, p_name
-
-    g.node(var_key, label=var.name, **node_attrs)
-    g.edge(*edge_ends, weight='200', **edge_attrs)
-
-
-def _add_inputs(g, model):
-    for p_name, var_name in model._input_vars:
-        p_cls = type(model[p_name])
-        var = attr_fields_dict(p_cls)[var_name]
-
-        _add_var(g, model, var, p_name)
-
-
-def _add_variables(g, model):
-    for p_name, p_obj in model._processes.items():
-        p_cls = type(p_obj)
-
-        for var_name, var in attr_fields_dict(p_cls).items():
-            _add_var(g, model, var, p_name)
 
 
 def _get_target_keys(p_obj, var_name):
@@ -102,22 +45,87 @@ def _get_target_keys(p_obj, var_name):
     )
 
 
-def _add_var_and_targets(g, model, p_name, var_name):
-    this_p_name = p_name
-    this_var_name = var_name
+class _GraphBuilder(object):
 
-    this_p_obj = model._processes[this_p_name]
-    this_target_keys = _get_target_keys(this_p_obj, this_var_name)
+    def __init__(self, model, graph_attr):
+        self.model = model
+        self.g = graphviz.Digraph(graph_attr=graph_attr)
 
-    for p_name, p_obj in model._processes.items():
-        p_cls = type(p_obj)
+    def add_processes(self):
+        seen = set()
 
-        for var_name, var in attr_fields_dict(p_cls).items():
-            target_keys = _get_target_keys(p_obj, var_name)
+        for p_name, p_obj in self.model._processes.items():
+            if p_name not in seen:
+                seen.add(p_name)
+                self.g.node(p_name, label=p_name, **PROC_NODE_ATTRS)
 
-            if ((p_name, var_name) == (this_p_name, this_var_name) or
-                    len(set(target_keys) & set(this_target_keys))):
-                _add_var(g, model, var, p_name)
+            for dep_p_name in self.model.dependent_processes[p_name]:
+                self.g.edge(dep_p_name, p_name, **PROC_EDGE_ATTRS)
+
+    def _add_var(self, var, p_name):
+        if (p_name, var.name) in self.model._input_vars:
+            node_attrs = INPUT_NODE_ATTRS.copy()
+            edge_attrs = INPUT_EDGE_ATTRS.copy()
+        else:
+            node_attrs = VAR_NODE_ATTRS.copy()
+            edge_attrs = VAR_EDGE_ATTRS.copy()
+
+        var_key = _hash_variable(var)
+        var_intent = var.metadata['intent']
+        var_type = var.metadata['var_type']
+
+        if var_type == VarType.ON_DEMAND:
+            node_attrs['style'] = 'diagonals'
+
+        elif var_type == VarType.FOREIGN:
+            node_attrs['style'] = 'dashed'
+            edge_attrs['style'] = 'dashed'
+
+        elif var_type == VarType.GROUP:
+            node_attrs['shape'] = 'box3d'
+
+        if var_intent == VarIntent.OUT:
+            edge_attrs.update({'arrowhead': 'empty'})
+            edge_ends = p_name, var_key
+        else:
+            edge_ends = var_key, p_name
+
+        self.g.node(var_key, label=var.name, **node_attrs)
+        self.g.edge(*edge_ends, weight='200', **edge_attrs)
+
+    def add_inputs(self):
+        for p_name, var_name in self.model._input_vars:
+            p_cls = type(self.model[p_name])
+            var = attr_fields_dict(p_cls)[var_name]
+
+            self._add_var(var, p_name)
+
+    def add_variables(self):
+        for p_name, p_obj in self.model._processes.items():
+            p_cls = type(p_obj)
+
+            for var_name, var in attr_fields_dict(p_cls).items():
+                self._add_var(var, p_name)
+
+    def add_var_and_targets(self, p_name, var_name):
+        this_p_name = p_name
+        this_var_name = var_name
+
+        this_p_obj = self.model._processes[this_p_name]
+        this_target_keys = _get_target_keys(this_p_obj, this_var_name)
+
+        for p_name, p_obj in self.model._processes.items():
+            p_cls = type(p_obj)
+
+            for var_name, var in attr_fields_dict(p_cls).items():
+                target_keys = _get_target_keys(p_obj, var_name)
+
+                if ((p_name, var_name) == (this_p_name, this_var_name) or
+                        len(set(target_keys) & set(this_target_keys))):
+                    self._add_var(var, p_name)
+
+    def get_graph(self):
+        return self.g
 
 
 def to_graphviz(model, rankdir='LR', show_only_variable=None,
@@ -126,21 +134,22 @@ def to_graphviz(model, rankdir='LR', show_only_variable=None,
     graph_attr = graph_attr or {}
     graph_attr['rankdir'] = rankdir
     graph_attr.update(kwargs)
-    g = graphviz.Digraph(graph_attr=graph_attr)
 
-    _add_processes(g, model)
+    builder = _GraphBuilder(model, graph_attr)
+
+    builder.add_processes()
 
     if show_only_variable is not None:
         p_name, var_name = show_only_variable
-        _add_var_and_targets(g, model, p_name, var_name)
+        builder.add_var_and_targets(p_name, var_name)
 
-    else:
-        if show_variables:
-            _add_variables(g, model)
-        elif show_inputs:
-            _add_inputs(g, model)
+    elif show_variables:
+        builder.add_variables()
 
-    return g
+    elif show_inputs:
+        builder.add_inputs()
+
+    return builder.get_graph()
 
 
 IPYTHON_IMAGE_FORMATS = frozenset(['jpeg', 'png'])
