@@ -77,6 +77,10 @@ changes are effective now!
 - For simplicity, ``Dataset.xsimlab.snapshot_vars`` has been renamed to
   ``output_vars``. The corresponding arguments in ``create_setup`` and
   ``Dataset.xsimlab.update_vars`` have been renamed accordingly.
+- Values for all model inputs must be provided when creating or
+  updating a setup using ``create_setup`` or
+  ``Dataset.xsimlab.update_vars``. this is a regression that will be
+  fixed in the next releases.
 
 Enhancements
 ~~~~~~~~~~~~
@@ -101,6 +105,8 @@ Enhancements
 - Added ``Model.all_vars`` and ``Model.all_vars_dict`` properties that
   are similar to ``Model.input_vars`` and ``Model.input_vars_dict``
   but return all variable names in the model.
+- ``input_vars`` and ``output_vars`` arguments of ``create_setup`` and
+  ``Dataset.xsimlab.update_vars`` now accepts different formats.
 
 Regressions (will be fixed in future releases)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
