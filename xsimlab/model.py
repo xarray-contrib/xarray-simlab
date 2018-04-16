@@ -4,7 +4,7 @@ from inspect import isclass
 from .variable import VarIntent, VarType
 from .process import (ensure_process_decorated, filter_variables,
                       get_target_variable)
-from .utils import AttrMapping, ContextMixin, has_method
+from .utils import AttrMapping, ContextMixin, has_method, attr_fields_dict
 from .formatting import repr_model
 
 
@@ -128,6 +128,19 @@ class _ModelBuilder(object):
                     p_obj.__xsimlab_store_keys__[var.name] = store_key
                 if od_key is not None:
                     p_obj.__xsimlab_od_keys__[var.name] = od_key
+
+    def get_all_variables(self):
+        """Get all variables in the model as a list of
+        ``(process_name, var_name)`` tuples.
+
+        """
+        all_keys = []
+
+        for p_name, p_cls in self._processes_cls.items():
+            all_keys += [(p_name, var_name)
+                         for var_name in attr_fields_dict(p_cls)]
+
+        return all_keys
 
     def get_input_variables(self):
         """Get all input variables in the model as a list of
@@ -354,6 +367,9 @@ class Model(AttrMapping, ContextMixin):
         builder.bind_processes(self)
         builder.set_process_keys()
 
+        self._all_vars = builder.get_all_variables()
+        self._all_vars_dict = None
+
         self._input_vars = builder.get_input_variables()
         self._input_vars_dict = None
 
@@ -367,6 +383,30 @@ class Model(AttrMapping, ContextMixin):
 
         super(Model, self).__init__(self._processes)
         self._initialized = True
+
+    @property
+    def all_vars(self):
+        """Returns all variables in the model as a list of
+        ``(process_name, var_name)`` tuples (or an empty list).
+
+        """
+        return self._all_vars
+
+    @property
+    def all_vars_dict(self):
+        """Returns all variables in the model as a dictionary of lists of
+        variable names grouped by process.
+
+        """
+        if self._all_vars_dict is None:
+            inputs = defaultdict(list)
+
+            for p_name, var_name in self._all_vars:
+                inputs[p_name].append(var_name)
+
+            self._all_vars_dict = dict(inputs)
+
+        return self._all_vars_dict
 
     @property
     def input_vars(self):
@@ -391,8 +431,8 @@ class Model(AttrMapping, ContextMixin):
         if self._input_vars_dict is None:
             inputs = defaultdict(list)
 
-            for proc_name, var_name in self._input_vars:
-                inputs[proc_name].append(var_name)
+            for p_name, var_name in self._input_vars:
+                inputs[p_name].append(var_name)
 
             self._input_vars_dict = dict(inputs)
 

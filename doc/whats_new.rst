@@ -98,6 +98,9 @@ Enhancements
   data storage backends (e.g., on-disk, distributed).
 - Added ``Model.dependent_processes`` property (so far this was not
   in public API).
+- Added ``Model.all_vars`` and ``Model.all_vars_dict`` properties that
+  are similar to ``Model.input_vars`` and ``Model.input_vars_dict``
+  but return all variable names in the model.
 
 Regressions (will be fixed in future releases)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
