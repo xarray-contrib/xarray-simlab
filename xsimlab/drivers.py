@@ -168,7 +168,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
         """Convert an output variable to a xarray.Variable object."""
         p_name, var_name = key
         p_obj = self.model[p_name]
-        var = attr_fields_dict(p_obj)[var_name]
+        var = attr_fields_dict(type(p_obj))[var_name]
 
         data = self.output_store[key]
         if clock is None:

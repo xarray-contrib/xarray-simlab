@@ -5,7 +5,6 @@ Internal utilties; not for external use.
 import threading
 from collections import (Mapping, KeysView, ItemsView, ValuesView,
                          OrderedDict)
-from functools import wraps
 from contextlib import suppress
 from importlib import import_module
 from inspect import isclass
