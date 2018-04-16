@@ -9,6 +9,7 @@ from xarray import as_variable, Dataset, register_dataset_accessor
 
 from .drivers import XarraySimulationDriver
 from .model import Model
+from .stores import InMemoryOutputStore
 from .utils import attr_fields_dict
 
 
@@ -520,7 +521,7 @@ class SimlabAccessor(object):
             model = model.clone()
 
         store = {}
-        output_store = defaultdict(list)
+        output_store = InMemoryOutputStore()
 
         driver = XarraySimulationDriver(model, self._ds, store, output_store)
 
