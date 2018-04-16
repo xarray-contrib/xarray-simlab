@@ -45,9 +45,9 @@ def _maybe_get_model_from_context(model):
 class SimlabAccessor(object):
     """simlab extension to :class:`xarray.Dataset`."""
 
-    _clock_key = '_xsimlab_snapshot_clock'
-    _master_clock_key = '_xsimlab_master_clock'
-    _output_vars_key = '_xsimlab_output_vars'
+    _clock_key = '__xsimlab_snapshot_clock__'
+    _master_clock_key = '__xsimlab_master_clock__'
+    _output_vars_key = '__xsimlab_output_vars__'
 
     def __init__(self, ds):
         self._ds = ds
@@ -255,9 +255,11 @@ class SimlabAccessor(object):
         tuples - as values.
         """
         output_vars = {}
+
         for cname, coord in self._ds.coords.items():
             output_vars.update(self._get_output_vars(cname, coord))
         output_vars.update(self._get_output_vars(None, self._ds))
+
         return output_vars
 
     def update_clocks(self, model=None, clocks=None, master_clock=None):
@@ -427,6 +429,20 @@ class SimlabAccessor(object):
 
         return ds
 
+    def _clean_output_dataset(self, ds):
+        """Return a new dataset after having removed unnecessary attributes."""
+        clean_ds = ds.copy()
+
+        for clock in clean_ds.output_vars:
+            if clock is None:
+                attrs = clean_ds.attrs
+            else:
+                attrs = clean_ds[clock].attrs
+
+            attrs.pop(self._output_vars_key)
+
+        return clean_ds
+
     def run(self, model=None, safe_mode=True):
         """Run the model.
 
@@ -453,10 +469,9 @@ class SimlabAccessor(object):
         store = {}
         output_store = defaultdict(list)
 
-        sim_driver = XarraySimulationDriver(model, self._ds,
-                                            store, output_store)
+        driver = XarraySimulationDriver(model, self._ds, store, output_store)
 
-        out_ds = sim_driver.run_model()
+        out_ds = driver.run_model().pipe(self._clean_output_dataset)
 
         return out_ds
 

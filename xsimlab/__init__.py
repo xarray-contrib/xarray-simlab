@@ -2,7 +2,7 @@
 xarray-simlab.
 
 """
-#from .xr_accessor import SimlabAccessor, create_setup
+from .xr_accessor import SimlabAccessor, create_setup
 from .variable import variable, on_demand, foreign, group
 from .process import filter_variables, process, process_info, variable_info
 from .model import Model
