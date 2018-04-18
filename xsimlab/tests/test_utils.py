@@ -1,6 +1,25 @@
+import attr
 import pytest
 
 from xsimlab import utils
+from xsimlab.tests.conftest import ExampleProcess
+
+
+def test_variables_dict():
+    assert all([isinstance(var, attr.Attribute)
+                for var in utils.variables_dict(ExampleProcess).values()])
+
+    assert 'other_attrib' not in utils.variables_dict(ExampleProcess)
+
+
+def test_has_method():
+    assert utils.has_method(ExampleProcess(), 'compute_od_var')
+    assert not utils.has_method(ExampleProcess(), 'invalid_meth')
+
+
+def test_maybe_to_list():
+    assert utils.maybe_to_list([1]) == [1]
+    assert utils.maybe_to_list(1) == [1]
 
 
 def test_import_required():
