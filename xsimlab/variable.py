@@ -203,18 +203,28 @@ def foreign(other_process_cls, var_name, intent='in'):
         Class in which the variable is defined.
     var_name : str
         Name of the corresponding variable declared in `other_process_cls`.
-    intent : {'in', 'out', 'inout'}, optional
+    intent : {'in', 'out'}, optional
         Defines whether the foreign variable is an input (i.e., the process
         needs the variable's value for its computation), an output (i.e., the
-        process computes a value for the variable) or both an input/output
-        (i.e., the process may update the value of the variable).
+        process computes a value for the variable).
         (default: input).
 
     See Also
     --------
     :func:`variable`
 
+    Notes
+    -----
+    Unlike for :func:`variable`, ``intent='inout'`` is not supported
+    here (i.e., the process may not update the value of a foreign
+    variable) as it would result in ambiguous process ordering in a
+    model.
+
     """
+    if intent == 'inout':
+        raise ValueError("intent='inout' is not supported for "
+                         "foreign variables")
+
     description = ("Reference to variable {!r} "
                    "defined in class {!r}"
                    .format(var_name, other_process_cls.__name__))
