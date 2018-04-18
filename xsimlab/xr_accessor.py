@@ -10,7 +10,7 @@ from xarray import as_variable, Dataset, register_dataset_accessor
 from .drivers import XarraySimulationDriver
 from .model import Model
 from .stores import InMemoryOutputStore
-from .utils import attr_fields_dict
+from .utils import variables_dict
 
 
 @register_dataset_accessor('filter')
@@ -262,7 +262,7 @@ class SimlabAccessor(object):
 
         for (p_name, var_name), data in input_vars.items():
             p_obj = model[p_name]
-            var = attr_fields_dict(type(p_obj))[var_name]
+            var = variables_dict(type(p_obj))[var_name]
 
             xr_var_name = p_name + '__' + var_name
             xr_var = as_variable(data)

@@ -24,6 +24,16 @@ def attr_fields_dict(cls):
     return OrderedDict(((a.name, a) for a in attrs))
 
 
+def variables_dict(process_cls):
+    """Get all xsimlab variables declared in a process."""
+
+    # exclude attr.Attribute objects that are not xsimlab-specific
+    vars = OrderedDict((k, v)
+                       for k, v in attr_fields_dict(process_cls).items()
+                       if 'var_type' in v.metadata)
+    return vars
+
+
 def has_method(obj, meth):
     return callable(getattr(obj, meth, False))
 

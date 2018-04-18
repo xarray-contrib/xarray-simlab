@@ -4,7 +4,7 @@ from inspect import isclass
 from .variable import VarIntent, VarType
 from .process import (ensure_process_decorated, filter_variables,
                       get_target_variable)
-from .utils import AttrMapping, ContextMixin, has_method, attr_fields_dict
+from .utils import AttrMapping, ContextMixin, has_method, variables_dict
 from .formatting import repr_model
 
 
@@ -138,7 +138,7 @@ class _ModelBuilder(object):
 
         for p_name, p_cls in self._processes_cls.items():
             all_keys += [(p_name, var_name)
-                         for var_name in attr_fields_dict(p_cls)]
+                         for var_name in variables_dict(p_cls)]
 
         return all_keys
 

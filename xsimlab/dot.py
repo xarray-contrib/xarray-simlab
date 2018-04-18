@@ -12,7 +12,7 @@ Part of the code below is copied and modified from:
 import os
 from functools import partial
 
-from .utils import attr_fields_dict, import_required, maybe_to_list
+from .utils import variables_dict, import_required, maybe_to_list
 from .variable import VarIntent, VarType
 
 
@@ -96,7 +96,7 @@ class _GraphBuilder(object):
     def add_inputs(self):
         for p_name, var_name in self.model._input_vars:
             p_cls = type(self.model[p_name])
-            var = attr_fields_dict(p_cls)[var_name]
+            var = variables_dict(p_cls)[var_name]
 
             self._add_var(var, p_name)
 
@@ -104,7 +104,7 @@ class _GraphBuilder(object):
         for p_name, p_obj in self.model._processes.items():
             p_cls = type(p_obj)
 
-            for var_name, var in attr_fields_dict(p_cls).items():
+            for var_name, var in variables_dict(p_cls).items():
                 self._add_var(var, p_name)
 
     def add_var_and_targets(self, p_name, var_name):
@@ -117,7 +117,7 @@ class _GraphBuilder(object):
         for p_name, p_obj in self.model._processes.items():
             p_cls = type(p_obj)
 
-            for var_name, var in attr_fields_dict(p_cls).items():
+            for var_name, var in variables_dict(p_cls).items():
                 target_keys = _get_target_keys(p_obj, var_name)
 
                 if ((p_name, var_name) == (this_p_name, this_var_name) or

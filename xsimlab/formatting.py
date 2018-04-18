@@ -1,7 +1,7 @@
 """Formatting utils and functions."""
 import textwrap
 
-from .utils import attr_fields_dict, has_method
+from .utils import variables_dict, has_method
 from .variable import VarIntent, VarType
 
 
@@ -105,7 +105,7 @@ def repr_process(process):
     header = "<{} {} (xsimlab process)>".format(process_cls.__name__,
                                                 process_name)
 
-    variables = attr_fields_dict(process_cls)
+    variables = variables_dict(process_cls)
 
     col_width = _calculate_col_width(variables)
 
@@ -155,7 +155,7 @@ def repr_model(model):
         input_var_lines = []
 
         for var_name in p_input_vars:
-            var = attr_fields_dict(type(p_obj))[var_name]
+            var = variables_dict(type(p_obj))[var_name]
             input_var_lines.append(_summarize_var(var, p_obj, col_width))
 
         if input_var_lines:

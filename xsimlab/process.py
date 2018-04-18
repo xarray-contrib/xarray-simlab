@@ -5,7 +5,7 @@ import attr
 
 from .variable import VarIntent, VarType
 from .formatting import repr_process, var_details
-from .utils import attr_fields_dict
+from .utils import variables_dict
 
 
 class NotAProcessClassError(ValueError):
@@ -73,26 +73,27 @@ def filter_variables(process, var_type=None, intent=None, group=None,
         objects as values.
 
     """
-    process = get_process_cls(process)
+    process_cls = get_process_cls(process)
 
-    fields = attr_fields_dict(process)
+    # be consistent and always return a dict (not OrderedDict) when no filter
+    vars = dict(variables_dict(process_cls))
 
     if var_type is not None:
-        fields = {k: a for k, a in fields.items()
-                  if a.metadata.get('var_type') == VarType(var_type)}
+        vars = {k: v for k, v in vars.items()
+                if v.metadata.get('var_type') == VarType(var_type)}
 
     if intent is not None:
-        fields = {k: a for k, a in fields.items()
-                  if a.metadata.get('intent') == VarIntent(intent)}
+        vars = {k: v for k, v in vars.items()
+                if v.metadata.get('intent') == VarIntent(intent)}
 
     if group is not None:
-        fields = {k: a for k, a in fields.items()
-                  if a.metadata.get('group') == group}
+        vars = {k: v for k, v in vars.items()
+                if v.metadata.get('group') == group}
 
     if func is not None:
-        fields = {k: a for k, a in fields.items() if func(a)}
+        vars = {k: v for k, v in vars.items() if func(v)}
 
-    return fields
+    return vars
 
 
 def get_target_variable(var):
@@ -410,6 +411,6 @@ def variable_info(process, var_name, buf=None):
         buf = sys.stdout
 
     process = get_process_cls(process)
-    var = attr_fields_dict(process)[var_name]
+    var = variables_dict(process)[var_name]
 
     buf.write(var_details(var))
