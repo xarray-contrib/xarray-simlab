@@ -214,22 +214,21 @@ def _make_property_variable(var):
         target_str = target_var.name
 
     if target_type == VarType.GROUP:
-        raise ValueError("Variable '{var}' links to group variable '{target}', "
-                         "which is not supported. Declare {var} as a group "
+        raise ValueError("Variable {var!r} links to group variable {target!r}, "
+                         "which is not supported. Declare {var!r} as a group "
                          "variable instead."
                          .format(var=var.name, target=target_str))
 
     elif (var_type == VarType.FOREIGN and
           var_intent == VarIntent.OUT and target_intent == VarIntent.OUT):
-        raise ValueError("Incompatible intent given for variables "
-                         "'{}' ('{}') and '{}' ('{}')"
-                         .format(var.name, var_intent.value,
-                                 target_str, target_intent.value))
+        raise ValueError("Conflict between foreign variable {!r} and its "
+                         "target variable {!r}, both have intent 'out'."
+                         .format(var.name, target_str))
 
     elif target_type == VarType.ON_DEMAND:
         if var_intent != VarIntent.IN:
-            raise ValueError("Variable '{}' targeting on-demand variable "
-                             "'{}' should have intent='in' (found '{}')"
+            raise ValueError("Variable {!r} targeting on-demand variable "
+                             "{!r} should have intent='in' (found {!r})"
                              .format(var.name, target_str, var_intent.value))
 
         return property(fget=get_on_demand, doc=var_doc)
