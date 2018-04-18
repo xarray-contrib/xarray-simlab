@@ -48,15 +48,17 @@ def _as_dim_tuple(dims):
     else:
         dims = [dims]
 
+    # check ndim uniqueness could be simpler but provides detailed error msg
+    fget_ndim = lambda dims: len(dims)
+    dims_sorted = sorted(dims, key=fget_ndim)
     ndim_groups = [list(g)
-                   for _, g in itertools.groupby(dims, lambda d: len(d))]
+                   for _, g in itertools.groupby(dims_sorted, fget_ndim)]
 
     if len(ndim_groups) != len(dims):
         invalid_dims = [g for g in ndim_groups if len(g) > 1]
         invalid_msg = ' and '.join(
             ', '.join(str(d) for d in group) for group in invalid_dims
         )
-
         raise ValueError("the following combinations of dimension labels "
                          "are ambiguous for a variable: {}"
                          .format(invalid_msg))
