@@ -3,6 +3,7 @@ channels:
   - conda-forge
   - defaults
 dependencies:
+  - attrs
   - python=3.5
   - numpy=1.12
   - pandas=0.22

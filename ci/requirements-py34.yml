@@ -2,6 +2,7 @@ name: test_env_py34
 channels:
   - conda-forge
 dependencies:
+  - attrs
   - python=3.4
   - pytest
   - numpy
