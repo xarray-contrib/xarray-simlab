@@ -123,7 +123,7 @@ def get_target_variable(var):
         # TODO: maybe remove this? not even sure such a cycle may happen
         # unless we allow later providing other values than classes as first
         # argument of `foreign`
-        if (target_process_cls, target_var) in visited:
+        if (target_process_cls, target_var) in visited:  # pragma: no cover
             cycle = '->'.join(['{}.{}'.format(cls.__name__, var.name)
                                if cls is not None else var.name
                                for cls, var in visited])
@@ -234,7 +234,7 @@ def _make_property_variable(var):
 
         return property(fget=get_on_demand, doc=var_doc)
 
-    elif var_type == VarIntent.IN:
+    elif var_intent == VarIntent.IN:
         return property(fget=get_from_store, doc=var_doc)
 
     else:
