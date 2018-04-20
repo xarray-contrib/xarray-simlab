@@ -5,13 +5,24 @@ import attr
 import pytest
 
 from xsimlab.variable import VarIntent, VarType
-from xsimlab.process import (filter_variables, get_process_cls, get_process_obj,
-                             NotAProcessClassError)
-from xsimlab.tests.conftest import ExampleProcess
+from xsimlab.process import (ensure_process_decorated, filter_variables,
+                             get_process_cls, get_process_obj,
+                             get_target_variable, NotAProcessClassError)
+from xsimlab.utils import variables_dict
+from xsimlab.tests.conftest import ExampleProcess, SomeProcess
 
 # from xsimlab.variable.base import Variable
 # from xsimlab.process import Process
 # from xsimlab.tests.conftest import ExampleProcess
+
+
+def test_ensure_process_decorated():
+    class NotAProcess(object):
+        pass
+
+    with pytest.raises(NotAProcessClassError) as excinfo:
+        ensure_process_decorated(NotAProcess)
+    assert "is not a process-decorated class" in str(excinfo.value)
 
 
 def test_get_process_cls(example_process_obj):
@@ -24,42 +35,44 @@ def test_get_process_obj(example_process_obj):
     assert type(get_process_obj(ExampleProcess)) is ExampleProcess
 
 
-def test_get_process_invalid():
-    class NotAProcess(object):
-        pass
-
-    with pytest.raises(NotAProcessClassError) as excinfo:
-        get_process_cls(NotAProcess)
-        get_process_obj(NotAProcess)
-    assert "is not a process-decorated class" in str(excinfo.value)
-
-
-def test_filter_variables():
-    func = lambda kw: set(filter_variables(ExampleProcess, **kw).keys())
-
-    expected = {'in_var', 'out_var', 'inout_var',
-                'in_foreign_var', 'out_foreign_var',
-                'group_var', 'od_var'}
-    assert func({}) == expected
-
-    expected = {'in_var', 'out_var', 'inout_var'}
-    assert func({'var_type': 'variable'}) == expected
-
-    expected = {'in_var', 'in_foreign_var', 'group_var'}
-    assert func({'intent': 'in'})
-
-    expected = {'out_var', 'out_foreign_var', 'od_var'}
-    assert func({'intent': 'out'})
-
-    expected = {'out_var'}
-    assert func({'group': 'group1'})
-
-    expected = {'in_var', 'inout_var', 'in_foreign_var', 'od_var'}
-    ff = lambda var: (
+@pytest.mark.parametrize('kwargs,expected', [
+    ({}, {'in_var', 'out_var', 'inout_var', 'in_foreign_var',
+          'in_foreign_var2', 'out_foreign_var', 'group_var', 'od_var'}),
+    ({'var_type': 'variable'}, {'in_var', 'out_var', 'inout_var'}),
+    ({'intent': 'in'}, {'in_var', 'in_foreign_var', 'in_foreign_var2',
+                        'group_var'}),
+    ({'intent': 'out'}, {'out_var', 'out_foreign_var', 'od_var'}),
+    ({'group': 'example_group'}, {'out_var'}),
+    ({'func': lambda var: (
         var.metadata['var_type'] != VarType.GROUP and
-        var.metadata['intent'] != VarIntent.OUT
-    )
-    assert func({'func': ff})
+        var.metadata['intent'] != VarIntent.OUT)},
+     {'in_var', 'inout_var', 'in_foreign_var', 'in_foreign_var2'})
+])
+def test_filter_variables(kwargs, expected):
+    assert set(filter_variables(ExampleProcess, **kwargs)) == expected
+
+
+@pytest.mark.parametrize('var_name,expected_p_cls,expected_var_name', [
+    ('in_var', ExampleProcess, 'in_var'),
+    ('in_foreign_var', SomeProcess, 'some_var'),
+    ('in_foreign_var2', SomeProcess, 'some_var')  # test foreign of foreign
+])
+def test_get_target_variable(var_name, expected_p_cls, expected_var_name):
+    var = variables_dict(ExampleProcess)[var_name]
+    expected_var = variables_dict(expected_p_cls)[expected_var_name]
+
+    actual_p_cls, actual_var = get_target_variable(var)
+
+    if expected_p_cls is ExampleProcess:
+        assert actual_p_cls is None
+    else:
+        assert actual_p_cls is expected_p_cls
+
+    assert actual_var is expected_var
+
+
+def test_process_properties(example_processes_with_store):
+    pass
 
 
 # class TestProcessBase(object):

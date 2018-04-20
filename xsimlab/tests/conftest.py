@@ -10,25 +10,32 @@ import xsimlab as xs
 
 @xs.process
 class SomeProcess(object):
-    """Just used for foreign variable in ExampleProcess."""
-    ref_var = xs.variable()
+    """Just used for foreign variables in ExampleProcess."""
+    some_var = xs.variable(group='some_group')
+    some_od_var = xs.on_demand(group='some_group')
+
+    @some_od_var.compute
+    def compute_some_od_var(self):
+        return 0
 
 
 @xs.process
-class OtherProcess(object):
-    """Just used for foreign variable in ExampleProcess."""
-    ref_var = xs.variable()
+class AnotherProcess(object):
+    """Just used for foreign variables in ExampleProcess."""
+    another_var = xs.variable()
+    some_var = xs.foreign(SomeProcess, 'some_var')
 
 
 @xs.process
 class ExampleProcess(object):
     """A process with complete interface for testing."""
     in_var = xs.variable()
-    out_var = xs.variable(group='group1', intent='out')
+    out_var = xs.variable(group='example_group', intent='out')
     inout_var = xs.variable(intent='inout')
-    in_foreign_var = xs.foreign(SomeProcess, 'ref_var')
-    out_foreign_var = xs.foreign(OtherProcess, 'ref_var', intent='out')
-    group_var = xs.group('group2')
+    in_foreign_var = xs.foreign(SomeProcess, 'some_var')
+    in_foreign_var2 = xs.foreign(AnotherProcess, 'some_var')
+    out_foreign_var = xs.foreign(AnotherProcess, 'another_var', intent='out')
+    group_var = xs.group('some_group')
     od_var = xs.on_demand()
 
     other_attrib = attr.attrib(init=False, cmp=False, repr=False)
@@ -42,3 +49,40 @@ class ExampleProcess(object):
 @pytest.fixture
 def example_process_obj():
     return ExampleProcess()
+
+
+def _init_process(p_cls, p_name, store, store_keys=None, od_keys=None):
+    p_obj = p_cls()
+    p_obj.__xsimlab_name__ = p_name
+    p_obj.__xsimlab_store__ = store
+    p_obj.__xsimlab_store_keys__ = store_keys or {}
+    p_obj.__xsimlab_od_keys__ = od_keys or {}
+    return p_obj
+
+
+@pytest.fixture
+def example_processes_with_store():
+    store = {}
+
+    some_process = _init_process(
+        SomeProcess, 'some_process', store,
+        store_keys={'some_var': ('some_process', 'some_var')}
+    )
+    another_process = _init_process(
+        AnotherProcess, 'another_process', store,
+        store_keys={'another_var': ('another_process', 'another_var'),
+                    'some_var': ('some_process', 'some_var')}
+    )
+    example_process = _init_process(
+        ExampleProcess, 'example_process', store,
+        store_keys={'in_var': ('example_process', 'in_var'),
+                    'out_var': ('example_process', 'out_var'),
+                    'inout_var': ('example_process', 'inout_var'),
+                    'in_foreign_var': ('some_process', 'some_var'),
+                    'in_foreign_var2': ('some_process', 'some_var'),
+                    'out_foreign_var': ('another_process', 'another_var'),
+                    'group_var': [('some_process', 'some_var')]},
+        od_keys={'group_var': [('some_process', 'some_od_var')]}
+    )
+
+    return some_process, another_process, example_process
