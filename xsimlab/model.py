@@ -8,6 +8,18 @@ from .utils import AttrMapping, ContextMixin, has_method, variables_dict
 from .formatting import repr_model
 
 
+def _flatten_keys(key_seq):
+    flat_keys = []
+
+    for k in key_seq:
+        if not isinstance(k, tuple):
+            flat_keys += _flatten_keys(k)
+        else:
+            flat_keys.append(k)
+
+    return flat_keys
+
+
 class _ModelBuilder(object):
     """Used to iteratively build a new model.
 
@@ -221,19 +233,38 @@ class _ModelBuilder(object):
         """
         self._dep_processes = {k: set() for k in self._processes_obj}
 
+        flat_keys = {}
+
         for p_name, p_obj in self._processes_obj.items():
-            store_keys = p_obj.__xsimlab_store_keys__
-            od_keys = p_obj.__xsimlab_od_keys__
+            flat_keys[p_name] = _flatten_keys([
+                p_obj.__xsimlab_store_keys__.values(),
+                p_obj.__xsimlab_od_keys__.values()
+            ])
 
-            for var_name, key in store_keys.items():
-                self._maybe_add_dependency(p_name, p_obj, var_name, key)
+        for p_name, p_obj in self._processes_obj.items():
+            out_vars = filter_variables(p_obj, intent=VarIntent.OUT)
 
-            for var_name, key in od_keys.items():
-                self._maybe_add_dependency(p_name, p_obj, var_name, key)
+            for var in out_vars.values():
+                if var.metadata['var_type'] == VarType.ON_DEMAND:
+                    key = p_obj.__xsimlab_od_keys__[var.name]
+                else:
+                    key = p_obj.__xsimlab_store_keys__[var.name]
+
+                for pn in self._processes_obj:
+                    if pn != p_name and key in flat_keys[pn]:
+                        self._dep_processes[pn].add(p_name)
+
+            # store_keys = p_obj.__xsimlab_store_keys__
+            # od_keys = p_obj.__xsimlab_od_keys__
+
+            # for var_name, key in store_keys.items():
+            #     self._maybe_add_dependency(p_name, p_obj, var_name, key)
+
+            # for var_name, key in od_keys.items():
+            #     self._maybe_add_dependency(p_name, p_obj, var_name, key)
 
         self._dep_processes = {k: list(v)
                                for k, v in self._dep_processes.items()}
-
         return self._dep_processes
 
     def _sort_processes(self):
