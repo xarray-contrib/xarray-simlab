@@ -62,6 +62,9 @@ class _ModelBuilder(object):
         if var_type == VarType.VARIABLE:
             store_key = (p_name, var.name)
 
+        elif var_type == VarType.ON_DEMAND:
+            od_key = (p_name, var.name)
+
         elif var_type == VarType.FOREIGN:
             target_p_cls, target_var = get_target_variable(var)
             target_p_name = self._reverse_lookup.get(target_p_cls, None)
@@ -73,10 +76,7 @@ class _ModelBuilder(object):
                     .format(target_p_cls.__name__, var.name, p_name)
                 )
 
-            if target_var.metadata['var_type'] == VarType.ON_DEMAND:
-                od_key = (target_p_name, target_var.name)
-            else:
-                store_key = (target_p_name, target_var.name)
+            store_key, od_key = self._get_var_key(target_p_name, target_var)
 
         elif var_type == VarType.GROUP:
             var_group = var.metadata['group']
