@@ -1,4 +1,5 @@
 import numpy as np
+from numpy.testing import assert_array_equal
 
 from xsimlab.stores import InMemoryOutputStore
 
@@ -15,4 +16,4 @@ def test_in_memory_output_store():
     expected = np.array([[1, 2, 3],
                          [4, 5, 6]])
 
-    assert np.all(out_store[key] == expected)
+    assert_array_equal(out_store[key], expected)

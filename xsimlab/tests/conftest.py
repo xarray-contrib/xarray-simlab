@@ -6,6 +6,7 @@ from textwrap import dedent
 
 import attr
 import pytest
+import numpy as np
 
 import xsimlab as xs
 
@@ -150,3 +151,90 @@ def example_process_in_model_repr():
         group_var             [in] <--- group 'some_group'
     Simulation stages:
         *no stage implemented*""")
+
+
+@xs.process
+class Profile(object):
+    u = xs.variable(dims='x', description='quantity u', intent='inout')
+    u_diffs = xs.group('diff')
+    u_opp = xs.on_demand(dims='x')
+
+    def initialize(self):
+        self.u_change = np.zeros_like(self.u)
+
+    def run_step(self, *args):
+        self.u_change[:] = np.sum((d for d in self.u_diffs))
+
+    def finalize_step(self):
+        self.u += self.u_change
+
+    def finalize(self):
+        self.u[:] = 0.
+
+    @u_opp.compute
+    def _get_u_opposite(self):
+        return -self.u
+
+
+@xs.process
+class InitProfile(object):
+    n_points = xs.variable(description='nb. of profile points')
+    position = xs.variable()
+    u_init = xs.foreign(Profile, 'u', intent='out')
+
+    def initialize(self):
+        self.u_init = np.zeros(self.n_points)
+        self.u_init[self.position] = 1.
+
+
+@xs.process
+class Roll(object):
+    shift = xs.variable(description=('number of places by which elements'
+                                     'of profile u are shifted at each '
+                                     'time step'))
+    u = xs.foreign(Profile, 'u')
+    u_diff = xs.variable(dims='x', group='diff', intent='out')
+
+    def run_step(self, *args):
+        self.u_diff = np.roll(self.u, self.shift) - self.u
+
+
+@xs.process
+class Add(object):
+    offset = xs.variable(description=('offset * dt added every time step '
+                                      'to profile u'))
+    u_diff = xs.variable(dims='x', group='diff', intent='out')
+
+    def run_step(self, dt):
+        self.u_diff = self.offset * dt
+
+
+@xs.process
+class AddOnDemand(object):
+    offset = xs.variable(description='offset added to profile u')
+    u_diff = xs.on_demand(group='diff')
+
+    @u_diff.compute
+    def _compute_u_diff(self):
+        self.u_diff = self.offset
+
+
+@pytest.fixture
+def model():
+    return xs.Model({'roll': Roll,
+                     'add': Add,
+                     'profile': Profile})
+
+
+@pytest.fixture
+def alternative_model():
+    return xs.Model({'roll': Roll,
+                     'add': AddOnDemand,
+                     'profile': Profile,
+                     'init_profile': InitProfile})
+
+
+@pytest.fixture
+def simple_model():
+    return xs.Model({'roll': Roll,
+                     'profile': Profile})
