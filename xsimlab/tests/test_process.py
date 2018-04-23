@@ -4,6 +4,7 @@ from io import StringIO
 import attr
 import pytest
 
+import xsimlab as xs
 from xsimlab.variable import VarIntent, VarType
 from xsimlab.process import (ensure_process_decorated, filter_variables,
                              get_process_cls, get_process_obj,
@@ -37,16 +38,18 @@ def test_get_process_obj(example_process_obj):
 
 @pytest.mark.parametrize('kwargs,expected', [
     ({}, {'in_var', 'out_var', 'inout_var', 'in_foreign_var',
-          'in_foreign_var2', 'out_foreign_var', 'group_var', 'od_var'}),
+          'in_foreign_var2', 'out_foreign_var', 'in_foreign_od_var',
+          'group_var', 'od_var'}),
     ({'var_type': 'variable'}, {'in_var', 'out_var', 'inout_var'}),
     ({'intent': 'in'}, {'in_var', 'in_foreign_var', 'in_foreign_var2',
-                        'group_var'}),
+                        'in_foreign_od_var', 'group_var'}),
     ({'intent': 'out'}, {'out_var', 'out_foreign_var', 'od_var'}),
     ({'group': 'example_group'}, {'out_var'}),
     ({'func': lambda var: (
         var.metadata['var_type'] != VarType.GROUP and
         var.metadata['intent'] != VarIntent.OUT)},
-     {'in_var', 'inout_var', 'in_foreign_var', 'in_foreign_var2'})
+     {'in_var', 'inout_var', 'in_foreign_var', 'in_foreign_var2',
+      'in_foreign_od_var'})
 ])
 def test_filter_variables(kwargs, expected):
     assert set(filter_variables(ExampleProcess, **kwargs)) == expected
@@ -71,8 +74,63 @@ def test_get_target_variable(var_name, expected_p_cls, expected_var_name):
     assert actual_var is expected_var
 
 
-def test_process_properties(example_processes_with_store):
-    pass
+@pytest.mark.parametrize('p_cls,var_name,prop_is_read_only', [
+    (ExampleProcess, 'in_var', True),
+    (ExampleProcess, 'in_foreign_var', True),
+    (ExampleProcess, 'group_var', True),
+    (ExampleProcess, 'od_var', True),
+    (ExampleProcess, 'inout_var', False),
+    (ExampleProcess, 'out_var', False),
+    (ExampleProcess, 'out_foreign_var', False)
+])
+def test_process_properties_readonly(p_cls, var_name, prop_is_read_only):
+    if prop_is_read_only:
+        assert getattr(p_cls, var_name).fset is None
+    else:
+        assert getattr(p_cls, var_name).fset is not None
+
+
+def test_process_properties_errors():
+    with pytest.raises(ValueError) as excinfo:
+        @xs.process
+        class Process1(object):
+            invalid_var = xs.foreign(ExampleProcess, 'group_var')
+
+    assert "links to group variable" in str(excinfo.value)
+
+    with pytest.raises(ValueError) as excinfo:
+        @xs.process
+        class Process2(object):
+            invalid_var = xs.foreign(ExampleProcess, 'out_var', intent='out')
+
+    assert "both have intent='out'" in str(excinfo.value)
+
+    with pytest.raises(KeyError) as excinfo:
+        @xs.process
+        class Process2(object):
+            invalid_var = xs.on_demand()
+
+    assert "No compute method found" in str(excinfo.value)
+
+
+def test_process_properties_values(processes_with_store):
+    some_process, another_process, example_process = processes_with_store
+
+    assert example_process.od_var == 0
+    assert example_process.in_foreign_od_var == 1
+
+    example_process.inout_var = 2
+    assert example_process.inout_var == 2
+
+    example_process.out_foreign_var = 3
+    assert another_process.another_var == 3
+
+    some_process.some_var = 4
+    assert another_process.some_var == 4
+    assert example_process.in_foreign_var == 4
+    assert example_process.in_foreign_var2 == 4
+
+    assert set(example_process.group_var) == {1, 4}
 
 
 # class TestProcessBase(object):

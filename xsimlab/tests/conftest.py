@@ -11,12 +11,12 @@ import xsimlab as xs
 @xs.process
 class SomeProcess(object):
     """Just used for foreign variables in ExampleProcess."""
-    some_var = xs.variable(group='some_group')
+    some_var = xs.variable(group='some_group', intent='out')
     some_od_var = xs.on_demand(group='some_group')
 
     @some_od_var.compute
     def compute_some_od_var(self):
-        return 0
+        return 1
 
 
 @xs.process
@@ -32,18 +32,21 @@ class ExampleProcess(object):
     in_var = xs.variable()
     out_var = xs.variable(group='example_group', intent='out')
     inout_var = xs.variable(intent='inout')
+    od_var = xs.on_demand()
+
     in_foreign_var = xs.foreign(SomeProcess, 'some_var')
     in_foreign_var2 = xs.foreign(AnotherProcess, 'some_var')
     out_foreign_var = xs.foreign(AnotherProcess, 'another_var', intent='out')
+    in_foreign_od_var = xs.foreign(SomeProcess, 'some_od_var')
+
     group_var = xs.group('some_group')
-    od_var = xs.on_demand()
 
     other_attrib = attr.attrib(init=False, cmp=False, repr=False)
     other_attr = "this is not a xsimlab variable attribute"
 
     @od_var.compute
     def compute_od_var(self):
-        return 1
+        return 0
 
 
 @pytest.fixture
@@ -51,9 +54,10 @@ def example_process_obj():
     return ExampleProcess()
 
 
-def _init_process(p_cls, p_name, store, store_keys=None, od_keys=None):
+def _init_process(p_cls, p_name, model, store, store_keys=None, od_keys=None):
     p_obj = p_cls()
     p_obj.__xsimlab_name__ = p_name
+    p_obj.__xsimlab_model__ = model
     p_obj.__xsimlab_store__ = store
     p_obj.__xsimlab_store_keys__ = store_keys or {}
     p_obj.__xsimlab_od_keys__ = od_keys or {}
@@ -61,20 +65,25 @@ def _init_process(p_cls, p_name, store, store_keys=None, od_keys=None):
 
 
 @pytest.fixture
-def example_processes_with_store():
+def processes_with_store():
+    class FakeModel(object):
+        def __init__(self):
+            self._processes = {}
+
+    model = FakeModel()
     store = {}
 
     some_process = _init_process(
-        SomeProcess, 'some_process', store,
+        SomeProcess, 'some_process', model, store,
         store_keys={'some_var': ('some_process', 'some_var')}
     )
     another_process = _init_process(
-        AnotherProcess, 'another_process', store,
+        AnotherProcess, 'another_process', model, store,
         store_keys={'another_var': ('another_process', 'another_var'),
                     'some_var': ('some_process', 'some_var')}
     )
     example_process = _init_process(
-        ExampleProcess, 'example_process', store,
+        ExampleProcess, 'example_process', model, store,
         store_keys={'in_var': ('example_process', 'in_var'),
                     'out_var': ('example_process', 'out_var'),
                     'inout_var': ('example_process', 'inout_var'),
@@ -82,7 +91,12 @@ def example_processes_with_store():
                     'in_foreign_var2': ('some_process', 'some_var'),
                     'out_foreign_var': ('another_process', 'another_var'),
                     'group_var': [('some_process', 'some_var')]},
-        od_keys={'group_var': [('some_process', 'some_od_var')]}
+        od_keys={'in_foreign_od_var': ('some_process', 'some_od_var'),
+                 'group_var': [('some_process', 'some_od_var')]}
     )
+
+    model._processes.update({'some_process': some_process,
+                             'another_process': another_process,
+                             'example_process': example_process})
 
     return some_process, another_process, example_process

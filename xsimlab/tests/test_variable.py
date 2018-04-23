@@ -1,6 +1,7 @@
 import pytest
 
-from xsimlab.variable import _as_dim_tuple
+from xsimlab.tests.conftest import ExampleProcess
+from xsimlab.variable import _as_dim_tuple, foreign
 
 
 @pytest.mark.parametrize("dims,expected", [
@@ -24,3 +25,10 @@ def test_as_dim_tuple_invalid():
         _as_dim_tuple(invalid_dims)
     assert "following combinations" in str(excinfo)
     assert "('x',), ('y',) and ('x', 'y'), ('y', 'x')" in str(excinfo)
+
+
+def test_foreign():
+    with pytest.raises(ValueError) as excinfo:
+        foreign(ExampleProcess, 'some_var', intent='inout')
+
+    assert "intent='inout' is not supported" in str(excinfo.value)
