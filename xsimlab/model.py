@@ -9,13 +9,16 @@ from .formatting import repr_model
 
 
 def _flatten_keys(key_seq):
+    """Given a nested list of keys, i.e., ``('p_name', 'var_name')``
+    tuples, returns a flat list of all keys.
+    """
     flat_keys = []
 
-    for k in key_seq:
-        if not isinstance(k, tuple):
-            flat_keys += _flatten_keys(k)
+    for key in key_seq:
+        if not isinstance(key, tuple):
+            flat_keys += _flatten_keys(key)
         else:
-            flat_keys.append(k)
+            flat_keys.append(key)
 
     return flat_keys
 
@@ -107,11 +110,11 @@ class _ModelBuilder(object):
         store_keys = []
         od_keys = []
 
-        for p_name, p_obj in self._processes_obj.items():
-            for var in filter_variables(p_obj, group=group).values():
-                if var.metadata['var_type'] == VarType.GROUP:
-                    continue
+        filter_group = lambda var: (var.metadata.get('group') == group and
+                                    var.metadata['var_type'] != VarType.GROUP)
 
+        for p_name, p_obj in self._processes_obj.items():
+            for var in filter_variables(p_obj, func=filter_group).values():
                 store_key, od_key = self._get_var_key(p_name, var)
 
                 if store_key is not None:
@@ -190,78 +193,36 @@ class _ModelBuilder(object):
 
         return self._input_vars
 
-    def _maybe_add_dependency(self, p_name, p_obj, var_name, key):
-        """Maybe add a process dependency based on single variable
-        ``var_name``, defined in process ``p_name``/``p_obj``, with
-        the corresponding ``key`` (either store or on-demand key).
-
-        Process 1 depends on process 2 if:
-
-        - process 2 has a foreign variable with intent='out' targeting
-          a variable declared in process 1 ;
-        - process 1 has a foreign variable with intent!='out' targeting
-          a variable declared in process 2 that is not a model input (i.e.,
-          process 2 or a 3rd process provides a value for that variable).
-
-        """
-        if isinstance(key, list):
-            # group variable
-            for k in key:
-                self._maybe_add_dependency(p_name, p_obj, var_name, k)
-
-        else:
-            target_p_name, target_var_name = key
-            var = filter_variables(p_obj)[var_name]
-
-            if target_p_name == p_name:
-                # not a foreign variable
-                pass
-
-            elif var.metadata['intent'] == VarIntent.OUT:
-                # target process depends on current process
-                self._dep_processes[target_p_name].add(p_name)
-
-            elif (target_p_name, target_var_name) not in self._input_vars:
-                # current process depends on target process
-                self._dep_processes[p_name].add(target_p_name)
-
     def get_process_dependencies(self):
         """Return a dictionary where keys are each process of the model and
-        values are lists of dependent processes (or empty lists for processes
-        that have no dependencies).
+        values are lists of the names of dependent processes (or empty
+        lists for processes that have no dependencies).
+
+        Process 1 depends on process 2 if the later declares a
+        variable (resp. a foreign variable) with intent='out' that
+        itself (resp. its target variable) is needed in process 1.
 
         """
         self._dep_processes = {k: set() for k in self._processes_obj}
 
-        flat_keys = {}
+        d_keys = {}   # all store/on-demand keys for each process
 
         for p_name, p_obj in self._processes_obj.items():
-            flat_keys[p_name] = _flatten_keys([
+            d_keys[p_name] = _flatten_keys([
                 p_obj.__xsimlab_store_keys__.values(),
                 p_obj.__xsimlab_od_keys__.values()
             ])
 
         for p_name, p_obj in self._processes_obj.items():
-            out_vars = filter_variables(p_obj, intent=VarIntent.OUT)
-
-            for var in out_vars.values():
+            for var in filter_variables(p_obj, intent=VarIntent.OUT).values():
                 if var.metadata['var_type'] == VarType.ON_DEMAND:
                     key = p_obj.__xsimlab_od_keys__[var.name]
                 else:
                     key = p_obj.__xsimlab_store_keys__[var.name]
 
                 for pn in self._processes_obj:
-                    if pn != p_name and key in flat_keys[pn]:
+                    if pn != p_name and key in d_keys[pn]:
                         self._dep_processes[pn].add(p_name)
-
-            # store_keys = p_obj.__xsimlab_store_keys__
-            # od_keys = p_obj.__xsimlab_od_keys__
-
-            # for var_name, key in store_keys.items():
-            #     self._maybe_add_dependency(p_name, p_obj, var_name, key)
-
-            # for var_name, key in od_keys.items():
-            #     self._maybe_add_dependency(p_name, p_obj, var_name, key)
 
         self._dep_processes = {k: list(v)
                                for k, v in self._dep_processes.items()}
