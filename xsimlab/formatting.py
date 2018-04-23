@@ -43,8 +43,12 @@ def _summarize_var(var, process, col_width):
 
     if var_intent == VarIntent.IN:
         link_symbol = '<---'
+        var_intent_str = '   [in]'
     elif var_intent == VarIntent.OUT:
         link_symbol = '--->'
+        var_intent_str = '  [out]'
+    else:
+        var_intent_str = '[inout]'
 
     if var_type == VarType.GROUP:
         var_info = '{} group {!r}'.format(link_symbol, var.metadata['group'])
@@ -69,10 +73,10 @@ def _summarize_var(var, process, col_width):
 
     left_col = pretty_print("    {}".format(var.name), col_width)
 
-    right_col = maybe_truncate(
-        "[{}] {}".format(var_intent.value, var_info),
-        max_line_length - col_width
-    )
+    right_col = var_intent_str
+    if var_info:
+        right_col += maybe_truncate(' ' + var_info,
+                                    max_line_length - col_width - 7)
 
     return left_col + right_col
 
@@ -113,6 +117,8 @@ def repr_process(process):
     var_section_details = "\n".join(
         [_summarize_var(var, process, col_width) for var in variables.values()]
     )
+    if not var_section_details:
+        var_section_details = "    *empty*"
 
     stages_implemented = [
         "    {}".format(m)

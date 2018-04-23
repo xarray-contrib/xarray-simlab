@@ -2,6 +2,8 @@
 fixtures that are used across the tests.
 
 """
+from textwrap import dedent
+
 import attr
 import pytest
 
@@ -29,7 +31,7 @@ class AnotherProcess(object):
 @xs.process
 class ExampleProcess(object):
     """A process with complete interface for testing."""
-    in_var = xs.variable()
+    in_var = xs.variable(dims=['x', ('x', 'y')], description='input variable')
     out_var = xs.variable(group='example_group', intent='out')
     inout_var = xs.variable(intent='inout')
     od_var = xs.on_demand()
@@ -52,6 +54,36 @@ class ExampleProcess(object):
 @pytest.fixture
 def example_process_obj():
     return ExampleProcess()
+
+
+@pytest.fixture(scope='session')
+def example_process_repr():
+    return dedent("""\
+    <ExampleProcess  (xsimlab process)>
+    Variables:
+        in_var                [in] ('x',) or ('x', 'y') input variable
+        out_var              [out]
+        inout_var          [inout]
+        od_var               [out]
+        in_foreign_var        [in] <--- SomeProcess.some_var
+        in_foreign_var2       [in] <--- AnotherProcess.some_var
+        out_foreign_var      [out] ---> AnotherProcess.another_var
+        in_foreign_od_var     [in] <--- SomeProcess.some_od_var
+        group_var             [in] <--- group 'some_group'
+    Simulation stages:
+        *no stage implemented*""")
+
+
+@pytest.fixture(scope='session')
+def in_var_details():
+    return dedent("""\
+    Input variable
+
+    - type : variable
+    - intent : in
+    - dims : (('x',), ('x', 'y'))
+    - group : None
+    - attrs : {}""")
 
 
 def _init_process(p_cls, p_name, model, store, store_keys=None, od_keys=None):
@@ -100,3 +132,21 @@ def processes_with_store():
                              'example_process': example_process})
 
     return some_process, another_process, example_process
+
+
+@pytest.fixture(scope='session')
+def example_process_in_model_repr():
+    return dedent("""\
+    <ExampleProcess 'example_process' (xsimlab process)>
+    Variables:
+        in_var                [in] ('x',) or ('x', 'y') input variable
+        out_var              [out]
+        inout_var          [inout]
+        od_var               [out]
+        in_foreign_var        [in] <--- some_process.some_var
+        in_foreign_var2       [in] <--- some_process.some_var
+        out_foreign_var      [out] ---> another_process.another_var
+        in_foreign_od_var     [in] <--- some_process.some_od_var
+        group_var             [in] <--- group 'some_group'
+    Simulation stages:
+        *no stage implemented*""")
