@@ -227,11 +227,6 @@ def _make_property_variable(var):
                          .format(var.name, target_str))
 
     elif target_type == VarType.ON_DEMAND:
-        if var_intent != VarIntent.IN:
-            raise ValueError("Variable {!r} targeting on-demand variable "
-                             "{!r} should have intent='in' (found {!r})"
-                             .format(var.name, target_str, var_intent.value))
-
         return property(fget=get_on_demand, doc=var_doc)
 
     elif var_intent == VarIntent.IN:
