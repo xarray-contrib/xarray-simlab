@@ -223,7 +223,7 @@ def _make_property_variable(var):
     elif (var_type == VarType.FOREIGN and
           var_intent == VarIntent.OUT and target_intent == VarIntent.OUT):
         raise ValueError("Conflict between foreign variable {!r} and its "
-                         "target variable {!r}, both have intent 'out'."
+                         "target variable {!r}, both have intent='out'."
                          .format(var.name, target_str))
 
     elif target_type == VarType.ON_DEMAND:
@@ -264,14 +264,17 @@ def _make_property_group(var):
     var_name = var.name
 
     def getter_store_or_on_demand(self):
+        model = self.__xsimlab_model__
         store_keys = self.__xsimlab_store_keys__.get(var_name, [])
-        od_keys = self.__xsimlab_od_keys.get(var_name, [])
+        od_keys = self.__xsimlab_od_keys__.get(var_name, [])
 
         for key in store_keys:
             yield self.__xsimlab_store__[key]
 
         for key in od_keys:
-            yield getattr(*key)
+            p_name, v_name = key
+            p_obj = model._processes[p_name]
+            yield getattr(p_obj, v_name)
 
     return property(fget=getter_store_or_on_demand, doc=var_details(var))
 
