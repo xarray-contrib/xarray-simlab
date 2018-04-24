@@ -2,7 +2,8 @@ from textwrap import dedent
 
 import xsimlab as xs
 from xsimlab.formatting import (maybe_truncate, pretty_print,
-                                repr_process, var_details, wrap_indent)
+                                repr_process, repr_model,
+                                var_details, wrap_indent)
 
 
 def test_maybe_truncate():
@@ -63,3 +64,10 @@ def test_process_repr(example_process_obj, processes_with_store,
         run_step""")
 
     assert repr_process(Dummy()) == expected
+
+
+def test_model_repr(model, model_repr):
+    assert repr_model(model) == model_repr
+
+    expected = "<xsimlab.Model (0 processes, 0 inputs)>"
+    assert repr(xs.Model({})) == expected

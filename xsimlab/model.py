@@ -9,8 +9,9 @@ from .formatting import repr_model
 
 
 def _flatten_keys(key_seq):
-    """Given a nested list of keys, i.e., ``('p_name', 'var_name')``
-    tuples, returns a flat list of all keys.
+    """returns a flat list of keys, i.e., ``('foo', 'bar')`` tuples, from
+    a nested sequence.
+
     """
     flat_keys = []
 
@@ -226,6 +227,7 @@ class _ModelBuilder(object):
 
         self._dep_processes = {k: list(v)
                                for k, v in self._dep_processes.items()}
+
         return self._dep_processes
 
     def _sort_processes(self):
@@ -391,12 +393,12 @@ class Model(AttrMapping, ContextMixin):
 
         """
         if self._all_vars_dict is None:
-            inputs = defaultdict(list)
+            all_vars = defaultdict(list)
 
             for p_name, var_name in self._all_vars:
-                inputs[p_name].append(var_name)
+                all_vars[p_name].append(var_name)
 
-            self._all_vars_dict = dict(inputs)
+            self._all_vars_dict = dict(all_vars)
 
         return self._all_vars_dict
 

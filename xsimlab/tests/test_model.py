@@ -1,9 +1,7 @@
 import pytest
-import numpy as np
-from numpy.testing import assert_array_equal
 
-from xsimlab.model import Model
-from xsimlab.tests.conftest import AddOnDemand, InitProfile
+import xsimlab as xs
+from xsimlab.tests.fixture_model import AddOnDemand, InitProfile
 
 
 class TestModelBuilder(object):
@@ -14,9 +12,7 @@ class TestModelBuilder(object):
 
     @pytest.mark.parametrize('p_name,expected_store_keys,expected_od_keys', [
         ('init_profile',
-         {'n_points': ('init_profile', 'n_points'),
-          'position': ('init_profile', 'position'),
-          'u_init': ('profile', 'u')},
+         {'n_points': ('init_profile', 'n_points'), 'u': ('profile', 'u')},
          {}
          ),
         ('profile',
@@ -34,9 +30,9 @@ class TestModelBuilder(object):
          {'u_diff': ('add', 'u_diff')}
          )
     ])
-    def test_set_process_keys(self, alternative_model, p_name,
+    def test_set_process_keys(self, model, p_name,
                               expected_store_keys, expected_od_keys):
-        p_obj = alternative_model._processes[p_name]
+        p_obj = model._processes[p_name]
         actual_store_keys = p_obj.__xsimlab_store_keys__
         actual_od_keys = p_obj.__xsimlab_od_keys__
 
@@ -51,168 +47,120 @@ class TestModelBuilder(object):
         assert actual_store_keys == expected_store_keys
         assert actual_od_keys == expected_od_keys
 
+    def test_get_all_variables(self, model):
+        assert all([len(t) == 2 for t in model.all_vars])
+        assert all([p_name in model for p_name, _ in model.all_vars])
+        assert ('profile', 'u') in model.all_vars
+
+    def test_get_input_variables(self, model):
+        expected = {('init_profile', 'n_points'),
+                    ('roll', 'shift'),
+                    ('add', 'offset')}
+
+        assert set(model.input_vars) == expected
+
+    def test_get_process_dependencies(self, model):
+        expected = {'init_profile': [],
+                    'profile': ['init_profile', 'add', 'roll'],
+                    'roll': ['init_profile'],
+                    'add': []}
+
+        actual = model.dependent_processes
+
+        for p_name in expected:
+            # order of dependencies is not ensured
+            assert set(actual[p_name]) == set(expected[p_name])
+
+    @pytest.mark.parametrize('p_name,dep_p_name', [
+        ('profile', 'init_profile'),
+        ('profile', 'add'),
+        ('profile', 'roll'),
+        ('roll', 'init_profile')
+    ])
+    def test_sort_processes(self, model, p_name, dep_p_name):
+        p_ordered = list(model)
+        assert p_ordered.index(p_name) > p_ordered.index(dep_p_name)
+
+    def test_sort_processes_cycle(self, model):
+        @xs.process
+        class Foo(object):
+            in_var = xs.variable()
+            out_var = xs.variable(intent='out')
+
+        @xs.process
+        class Bar(object):
+            in_foreign = xs.foreign(Foo, 'out_var')
+            out_foreign = xs.foreign(Foo, 'in_var', intent='out')
+
+        with pytest.raises(RuntimeError) as excinfo:
+            xs.Model({'foo': Foo, 'bar': Bar})
+        assert "Cycle detected" in str(excinfo.value)
+
+    def test_get_stage_processes(self, model):
+        expected = [model['roll'], model['profile']]
+        assert model._p_run_step == expected
+
 
 class TestModel(object):
 
-    def test_update_processes(self, model, alternative_model):
-        a_model = model.update_processes({'add': AddOnDemand,
-                                          'init_profile': InitProfile})
-        assert a_model == alternative_model
+    def test_constructor(self):
+        with pytest.raises(TypeError) as excinfo:
+            xs.Model({'init_profile': InitProfile()})
+        assert "values must be classes" in str(excinfo.value)
+
+        # test empty model
+        assert len(xs.Model({})) == 0
+
+    def test_process_dict_vs_attr_access(self, model):
+        assert model['profile'] is model.profile
+
+    def all_vars_dict(self, model):
+        assert all([p_name in model for p_name in model.all_vars_dict])
+        assert all([isinstance(p_vars, list)
+                    for p_vars in model.all_vars_dict])
+        assert 'u' in model.all_vars_dict['profile']
+
+    def input_vars_dict(self, model):
+        assert all([p_name in model for p_name in model.input_vars_dict])
+        assert all([isinstance(p_vars, list)
+                    for p_vars in model.input_vars_dict])
+        assert 'u' in model.input_vars_dict['init_profile']
+
+    def test_clone(self, model):
+        cloned = model.clone()
+
+        zprocesses = zip(cloned.items(), model.items())
+
+        for (c_p_name, c_p_obj), (p_name, p_obj) in zprocesses:
+            assert c_p_name == p_name
+            assert c_p_obj is not p_obj
+
+    def test_update_processes(self, no_init_model, model):
+        m = no_init_model.update_processes({'add': AddOnDemand,
+                                            'init_profile': InitProfile})
+        assert m == model
 
     @pytest.mark.parametrize('p_names', ['add', ['add']])
-    def test_drop_processes(self, model, simple_model, p_names):
-        s_model = model.drop_processes(p_names)
-        assert s_model == simple_model
+    def test_drop_processes(self, no_init_model, simple_model, p_names):
+        m = no_init_model.drop_processes(p_names)
+        assert m == simple_model
 
+    def test_visualize(self, model):
+        pytest.importorskip('graphviz')
+        ipydisp = pytest.importorskip('IPython.display')
 
+        result = model.visualize()
+        assert isinstance(result, ipydisp.Image)
 
-# @pytest.fixture
-# def model(model):
-#     """Override fixture defined in conftest.py, return a model
-#     with values set for some of its variables.
-#     """
-#     model.grid.x_size.value = 10
-#     model.quantity.quantity.state = np.zeros(10)
-#     model.some_process.some_param.value = 1
+        result = model.visualize(show_inputs=True)
+        assert isinstance(result, ipydisp.Image)
 
-#     return model
+        result = model.visualize(show_variables=True)
+        assert isinstance(result, ipydisp.Image)
 
+        result = model.visualize(
+            show_only_variable=('profile', 'u'))
+        assert isinstance(result, ipydisp.Image)
 
-# class TestModel(object):
-
-#     def test_constructor(self, model):
-#         # test invalid processes
-#         with pytest.raises(TypeError):
-#             Model({'not_a_class': Grid()})
-
-#         class OtherClass(object):
-#             pass
-
-#         with pytest.raises(TypeError) as excinfo:
-#             Model({'invalid_class': Process})
-#         assert "is not a subclass" in str(excinfo.value)
-
-#         with pytest.raises(TypeError) as excinfo:
-#             Model({'invalid_class': OtherClass})
-#         assert "is not a subclass" in str(excinfo.value)
-
-#         # test process ordering
-#         expected = ['grid', 'some_process', 'other_process', 'quantity']
-#         assert list(model) == expected
-
-#         # test dict-like vs. attribute access
-#         assert model['grid'] is model.grid
-
-#         # test cyclic process dependencies
-#         class CyclicProcess(Process):
-#             some_param = ForeignVariable(SomeProcess, 'some_param',
-#                                          provided=True)
-#             some_effect = ForeignVariable(SomeProcess, 'some_effect')
-
-#         processes = {k: type(v) for k, v in model.items()}
-#         processes.update({'cyclic': CyclicProcess})
-
-#         with pytest.raises(ValueError) as excinfo:
-#             Model(processes)
-#         assert "cycle detected" in str(excinfo.value)
-
-#     def test_input_vars(self, model):
-#         expected = {'grid': ['x_size'],
-#                     'some_process': ['some_param'],
-#                     'other_process': ['other_param'],
-#                     'quantity': ['quantity']}
-#         actual = {k: list(v.keys()) for k, v in model.input_vars.items()}
-#         assert expected == actual
-
-#     def test_is_input(self, model):
-#         assert model.is_input(model.grid.x_size) is True
-#         assert model.is_input(('grid', 'x_size')) is True
-#         assert model.is_input(model.quantity.all_effects) is False
-#         assert model.is_input(('other_process', 'copy_param')) is False
-
-#         external_variable = Variable(())
-#         assert model.is_input(external_variable) is False
-
-#         var_list = [Variable(()), Variable(()), Variable(())]
-#         variable_list = VariableList(var_list)
-#         assert model.is_input(variable_list) is False
-
-#         variable_group = VariableGroup('group')
-#         variable_group._set_variables({})
-#         assert model.is_input(variable_group) is False
-
-#     def test_visualize(self, model):
-#         pytest.importorskip('graphviz')
-#         ipydisp = pytest.importorskip('IPython.display')
-
-#         result = model.visualize()
-#         assert isinstance(result, ipydisp.Image)
-
-#         result = model.visualize(show_inputs=True)
-#         assert isinstance(result, ipydisp.Image)
-
-#         result = model.visualize(show_variables=True)
-#         assert isinstance(result, ipydisp.Image)
-
-#         result = model.visualize(
-#             show_only_variable=('quantity', 'quantity'))
-#         assert isinstance(result, ipydisp.Image)
-
-#     def test_initialize(self, model):
-#         model.initialize()
-#         expected = np.arange(10)
-#         assert_array_equal(model.grid.x.value, expected)
-
-#     def test_run_step(self, model):
-#         model.initialize()
-#         model.run_step(100)
-
-#         expected = model.grid.x.value * 2
-#         assert_array_equal(model.quantity.quantity.change, expected)
-
-#     def test_finalize_step(self, model):
-#         model.initialize()
-#         model.run_step(100)
-#         model.finalize_step()
-
-#         expected = model.grid.x.value * 2
-#         assert_array_equal(model.quantity.quantity.state, expected)
-
-#     def test_finalize(self, model):
-#         model.finalize()
-#         assert model.some_process.some_effect.rate == 0
-
-#     def test_clone(self, model):
-#         cloned = model.clone()
-
-#         for (ck, cp), (k, p) in zip(cloned.items(), model.items()):
-#             assert ck == k
-#             assert cp is not p
-
-#     def test_update_processes(self, model):
-#         expected = Model({'grid': Grid,
-#                           'plug_process': PlugProcess,
-#                           'some_process': SomeProcess,
-#                           'other_process': OtherProcess,
-#                           'quantity': Quantity})
-#         actual = model.update_processes({'plug_process': PlugProcess})
-#         assert list(actual) == list(expected)
-
-#     def test_drop_processes(self, model):
-
-#         expected = Model({'grid': Grid,
-#                           'some_process': SomeProcess,
-#                           'quantity': Quantity})
-#         actual = model.drop_processes('other_process')
-#         assert list(actual) == list(expected)
-
-#         expected = Model({'grid': Grid,
-#                           'quantity': Quantity})
-#         actual = model.drop_processes(['some_process', 'other_process'])
-#         assert list(actual) == list(expected)
-
-#     def test_repr(self, model, model_repr):
-#         assert repr(model) == model_repr
-
-#         expected = "<xsimlab.Model (0 processes, 0 inputs)>"
-#         assert repr(Model({})) == expected
+    def test_repr(self, model, model_repr):
+        assert repr(model) == model_repr

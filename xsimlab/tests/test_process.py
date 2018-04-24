@@ -9,7 +9,7 @@ from xsimlab.process import (ensure_process_decorated, filter_variables,
                              get_target_variable, NotAProcessClassError,
                              process_info, variable_info)
 from xsimlab.utils import variables_dict
-from xsimlab.tests.conftest import ExampleProcess, SomeProcess
+from xsimlab.tests.fixture_process import ExampleProcess, SomeProcess
 
 
 def test_ensure_process_decorated():
