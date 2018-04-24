@@ -72,7 +72,9 @@ changes are effective now!
 
 - In ``Model.visualize()`` and ``xsimlab.dot.dot_graph()``,
   ``show_variables=True`` now shows all model variables including
-  inputs.
+  inputs. Items of group variables are not shown anymore as nodes.
+- ``Model.visualize()`` and ``xsimlab.dot.dot_graph()`` now only
+  accept tuples for ``show_only_variable``.
 
 - For simplicity, ``Dataset.xsimlab.snapshot_vars`` has been renamed to
   ``output_vars``. The corresponding arguments in ``create_setup`` and
