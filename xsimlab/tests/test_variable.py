@@ -1,6 +1,6 @@
 import pytest
 
-from xsimlab.tests.conftest import ExampleProcess
+from xsimlab.tests.fixture_process import ExampleProcess
 from xsimlab.variable import _as_dim_tuple, foreign
 
 

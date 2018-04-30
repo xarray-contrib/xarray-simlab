@@ -6,10 +6,6 @@ import pytest
 import xsimlab as xs
 
 
-__all__ = ['Profile', 'InitProfile', 'Roll', 'Add', 'AddOnDemand',
-           'model', 'no_init_model', 'simple_model']
-
-
 @xs.process
 class Profile(object):
     u = xs.variable(dims='x', description='quantity u', intent='inout')

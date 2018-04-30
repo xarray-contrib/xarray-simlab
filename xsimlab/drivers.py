@@ -49,7 +49,7 @@ class BaseSimulationDriver(object):
             value = input_vars.get(key)
 
             if value is not None:
-                self.store[key] = copy(value)
+                self.store[key] = copy.copy(value)
 
     def update_output_store(self, output_var_keys):
         """Update the simulation output store (i.e., append new values to the
