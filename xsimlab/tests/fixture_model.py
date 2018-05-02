@@ -1,9 +1,11 @@
 from textwrap import dedent
 
 import numpy as np
+import xarray as xr
 import pytest
 
 import xsimlab as xs
+from xsimlab.xr_accessor import SimlabAccessor
 
 
 @xs.process
@@ -35,8 +37,8 @@ class InitProfile(object):
     u = xs.foreign(Profile, 'u', intent='out')
 
     def initialize(self):
-        self.u_init = np.zeros(self.n_points)
-        self.u_init[0] = 1.
+        self.u = np.zeros(self.n_points)
+        self.u[0] = 1.
 
 
 @xs.process
@@ -53,7 +55,7 @@ class Roll(object):
 class Add(object):
     offset = xs.variable(description=('offset * dt added every time step '
                                       'to profile u'))
-    u_diff = xs.variable(dims='x', group='diff', intent='out')
+    u_diff = xs.variable(group='diff', intent='out')
 
     def run_step(self, dt):
         self.u_diff = self.offset * dt
@@ -66,7 +68,7 @@ class AddOnDemand(object):
 
     @u_diff.compute
     def _compute_u_diff(self):
-        self.u_diff = self.offset
+        return self.offset
 
 
 @pytest.fixture
@@ -101,3 +103,58 @@ def no_init_model():
 def simple_model():
     return xs.Model({'roll': Roll,
                      'profile': Profile})
+
+
+@pytest.fixture
+def in_dataset():
+    clock_key = SimlabAccessor._clock_key
+    mclock_key = SimlabAccessor._master_clock_key
+    svars_key = SimlabAccessor._output_vars_key
+
+    ds = xr.Dataset()
+
+    ds['clock'] = ('clock', [0, 2, 4, 6, 8],
+                   {clock_key: np.uint8(True), mclock_key: np.uint8(True)})
+    ds['out'] = ('out', [0, 4, 8], {clock_key: np.uint8(True)})
+
+    ds['init_profile__n_points'] = (
+        (), 5, {'description': 'nb. of profile points'})
+    ds['roll__shift'] = (
+        (), 1, {'description': 'shift profile by a nb. of points'})
+    ds['add__offset'] = (
+        'clock', [1, 2, 3, 4, 5], {'description': 'offset added to profile u'})
+
+    ds['clock'].attrs[svars_key] = 'profile__u'
+    ds['out'].attrs[svars_key] = ('roll__u_diff,'
+                                  'add__u_diff')
+    ds.attrs[svars_key] = 'profile__u_opp'
+
+    return ds
+
+
+@pytest.fixture
+def out_dataset(in_dataset):
+    out_ds = in_dataset
+
+    del out_ds.attrs[SimlabAccessor._output_vars_key]
+    del out_ds.clock.attrs[SimlabAccessor._output_vars_key]
+    del out_ds.out.attrs[SimlabAccessor._output_vars_key]
+    out_ds['profile__u_opp'] = ('x', [-10. , -10., -10., -10., -11.])
+    out_ds['profile_u'] = (
+        ('clock', 'x'),
+        np.array([[1., 0., 0., 0., 0.],
+                  [1., 2., 1., 1., 1.],
+                  [3., 3., 4., 3., 3.],
+                  [6., 6., 6., 7., 6.],
+                  [10., 10., 10., 10., 11.]]),
+        {'description': 'quantity u'}
+    )
+    out_ds['roll_u_diff'] = (
+        ('out', 'x'),
+        np.array([[-1., 1., 0., 0., 0.],
+                  [ 0., 0., -1., 1., 0.],
+                  [ 0., 0., 0., -1., 1.]])
+    )
+    out_ds['add__u_diff'] = ('out', [1, 3, 4])
+
+    return out_ds

@@ -2,7 +2,7 @@ import attr
 import pytest
 
 from xsimlab import utils
-from xsimlab.tests.conftest import ExampleProcess
+from xsimlab.tests.fixture_process import ExampleProcess
 
 
 def test_variables_dict():
