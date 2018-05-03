@@ -108,23 +108,27 @@ class TestModel(object):
             xs.Model({'init_profile': InitProfile()})
         assert "values must be classes" in str(excinfo.value)
 
+        with pytest.raises(KeyError) as excinfo:
+            xs.Model({'init_profile': InitProfile})
+        assert "Process class 'Profile' missing" in str(excinfo.value)
+
         # test empty model
         assert len(xs.Model({})) == 0
 
     def test_process_dict_vs_attr_access(self, model):
         assert model['profile'] is model.profile
 
-    def all_vars_dict(self, model):
+    def test_all_vars_dict(self, model):
         assert all([p_name in model for p_name in model.all_vars_dict])
         assert all([isinstance(p_vars, list)
-                    for p_vars in model.all_vars_dict])
+                    for p_vars in model.all_vars_dict.values()])
         assert 'u' in model.all_vars_dict['profile']
 
-    def input_vars_dict(self, model):
+    def test_input_vars_dict(self, model):
         assert all([p_name in model for p_name in model.input_vars_dict])
         assert all([isinstance(p_vars, list)
-                    for p_vars in model.input_vars_dict])
-        assert 'u' in model.input_vars_dict['init_profile']
+                    for p_vars in model.input_vars_dict.values()])
+        assert 'n_points' in model.input_vars_dict['init_profile']
 
     def test_clone(self, model):
         cloned = model.clone()

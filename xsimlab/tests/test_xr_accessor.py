@@ -257,11 +257,14 @@ class TestSimlabAccessor(object):
         assert not ds['out'].identical(in_dataset['out'])
 
     def test_filter_vars(self, simple_model, in_dataset):
-        ds = in_dataset.xsimlab.filter_vars(model=simple_model)
+        in_dataset['not_a_xsimlab_model_input'] = 1
 
-        assert 'add__offset' not in ds
-        assert sorted(ds.xsimlab.clock_coords) == ['clock', 'out']
-        assert ds.out.attrs[self._output_vars_key] == 'roll__u_diff'
+        filtered_ds = in_dataset.xsimlab.filter_vars(model=simple_model)
+
+        assert 'add__offset' not in filtered_ds
+        assert 'not_a_xsimlab_model_input' not in filtered_ds
+        assert sorted(filtered_ds.xsimlab.clock_coords) == ['clock', 'out']
+        assert filtered_ds.out.attrs[self._output_vars_key] == 'roll__u_diff'
 
     def test_set_output_vars(self, model):
         ds = xr.Dataset()
@@ -306,7 +309,11 @@ class TestSimlabAccessor(object):
         assert ds.xsimlab.output_vars == expected
 
     def test_run(self, model, in_dataset):
-        # safe mode False: model not cloned -> values set in original model
+        # safe mode True: ensure model is cloned
+        _ = in_dataset.xsimlab.run(model=model, safe_mode=True)
+        assert model.profile.__xsimlab_store__ is None
+
+        # safe mode False: model not cloned -> original model is used
         _ = in_dataset.xsimlab.run(model=model, safe_mode=False)
         assert model.profile.u is not None
 

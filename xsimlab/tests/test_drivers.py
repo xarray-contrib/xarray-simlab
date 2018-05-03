@@ -3,9 +3,10 @@ import pytest
 from numpy.testing import assert_array_equal
 from xarray.testing import assert_identical
 
-from xsimlab.drivers import BaseSimulationDriver, XarraySimulationDriver
+import xsimlab as xs
+from xsimlab.drivers import (_get_dims_from_variable, BaseSimulationDriver,
+                             XarraySimulationDriver)
 from xsimlab.stores import InMemoryOutputStore
-from xsimlab.xr_accessor import SimlabAccessor
 
 
 @pytest.fixture
@@ -50,6 +51,16 @@ class TestBaseDriver(object):
     def test_run_model(self, base_driver):
         with pytest.raises(NotImplementedError):
             base_driver.run_model()
+
+
+@pytest.mark.parametrize('array,clock,expected' , [
+    (np.zeros((2, 2)), None, ('x', 'y')),
+    (np.zeros((2, 2)), 'clock', ('x',)),
+    (np.array(0), None, tuple())
+])
+def test_get_dims_from_variable(array, clock, expected):
+    var = xs.variable(dims=[(), ('x',), ('x', 'y')])
+    assert _get_dims_from_variable(array, var, clock) == expected
 
 
 class TestXarraySimulationDriver(object):

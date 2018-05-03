@@ -109,7 +109,10 @@ def test_process_properties_errors():
 
 
 def test_process_properties_docstrings(in_var_details):
-    assert ExampleProcess.in_var.__doc__ == in_var_details
+    # order of lines in string is not ensured (printed from a dictionary)
+    to_lines = lambda details_str: sorted(details_str.split('\n'))
+
+    assert to_lines(ExampleProcess.in_var.__doc__) == to_lines(in_var_details)
 
 
 def test_process_properties_values(processes_with_store):
@@ -150,4 +153,7 @@ def test_variable_info(in_var_details):
     buf = StringIO()
     variable_info(ExampleProcess, 'in_var', buf=buf)
 
-    assert buf.getvalue() == in_var_details
+    # order of lines in string is not ensured (printed from a dictionary)
+    to_lines = lambda details_str: sorted(details_str.split('\n'))
+
+    assert to_lines(buf.getvalue()) == to_lines(in_var_details)

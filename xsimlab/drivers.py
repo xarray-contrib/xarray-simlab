@@ -76,7 +76,7 @@ def _get_dims_from_variable(array, var, clock):
 
     """
     ndim = array.ndim
-    if clock:
+    if clock is not None:
         ndim -= 1      # ignore clock dimension
 
     for dims in var.metadata['dims']:

@@ -28,16 +28,12 @@ def test_wrap_indent():
 def test_var_details(example_process_obj):
     var = xs.variable(dims='x', description='a variable')
 
-    expected = dedent("""\
-    A variable
+    var_details_str = var_details(var)
 
-    - type : variable
-    - intent : in
-    - dims : (('x',),)
-    - group : None
-    - attrs : {}""")
-
-    assert var_details(var) == expected
+    assert var_details_str.strip().startswith('A variable')
+    assert "- type : variable" in var_details_str
+    assert "- intent : in" in var_details_str
+    assert "- dims : (('x',),)" in var_details_str
 
 
 def test_process_repr(example_process_obj, processes_with_store,

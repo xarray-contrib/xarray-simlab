@@ -457,7 +457,8 @@ class SimlabAccessor(object):
             try:
                 p_name, var_name = xr_var_name.split('__')
             except ValueError:
-                continue
+                # not a xsimlab model input: make sure to remove it
+                p_name, var_name = ('', xr_var_name)
 
             if (p_name, var_name) not in model.input_vars:
                 drop_variables.append(xr_var_name)
@@ -470,16 +471,6 @@ class SimlabAccessor(object):
             ds.xsimlab._set_output_vars(model, clock, new_out_vars)
 
         return ds
-
-    def _clean_output_dataset(self, ds):
-        """Remove unnecessary attributes in output dataset ``ds``."""
-        for clock in ds.xsimlab.output_vars:
-            if clock is None:
-                attrs = ds.attrs
-            else:
-                attrs = ds[clock].attrs
-
-            attrs.pop(self._output_vars_key)
 
     def run(self, model=None, safe_mode=True):
         """Run the model.
@@ -509,10 +500,7 @@ class SimlabAccessor(object):
 
         driver = XarraySimulationDriver(self._ds, model, store, output_store)
 
-        out_ds = driver.run_model()
-        self._clean_output_dataset(out_ds)
-
-        return out_ds
+        return driver.run_model()
 
     def run_multi(self):
         """Run multiple models.
