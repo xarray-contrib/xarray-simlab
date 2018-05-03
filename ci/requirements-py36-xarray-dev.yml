@@ -1,0 +1,12 @@
+name: test_env_py36
+channels:
+  - conda-forge
+dependencies:
+  - attrs
+  - python=3.6
+  - pytest
+  - numpy
+  - pip:
+    - git+https://github.com/pydata/xarray.git
+    - coveralls
+    - pytest-cov

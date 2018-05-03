@@ -12,6 +12,15 @@ matrix:
       env: CONDA_ENV=py35
     - python: 3.6
       env: CONDA_ENV=py36
+    - python: 3.6
+      env: CONDA_ENV=py36-xarray-dev
+    - python: 3.6
+      env: CONDA_ENV=py36-attr-dev
+  allow_failures:
+    - python: 3.6
+      env: CONDA_ENV=py36-xarray-dev
+    - python: 3.6
+      env: CONDA_ENV=py36-attrs-dev
 
 before_install:
   - if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then
@@ -29,10 +38,11 @@ before_install:
 install:
   - conda env create --file ci/requirements-$CONDA_ENV.yml
   - source activate test_env_$CONDA_ENV
-  - python setup.py install
+  - conda list
+  - pip install --no-deps -e .
 
 script:
-  - py.test xsimlab --cov=xsimlab --cov-report term-missing
+  - py.test xsimlab --cov=xsimlab --cov-report term-missing --verbose
 
 after_success:
   - coveralls
