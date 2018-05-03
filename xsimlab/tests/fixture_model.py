@@ -1,3 +1,4 @@
+from collections import OrderedDict
 from textwrap import dedent
 
 import numpy as np
@@ -80,19 +81,6 @@ def model():
                      'init_profile': InitProfile})
 
 
-@pytest.fixture(scope='session')
-def model_repr():
-    return dedent("""\
-    <xsimlab.Model (4 processes, 3 inputs)>
-    init_profile
-        n_points     [in] nb. of profile points
-    roll
-        shift        [in] shift profile by a nb. of points
-    add
-        offset       [in] offset added to profile u
-    profile""")
-
-
 @pytest.fixture
 def no_init_model():
     return xs.Model({'roll': Roll,
@@ -104,6 +92,16 @@ def no_init_model():
 def simple_model():
     return xs.Model({'roll': Roll,
                      'profile': Profile})
+
+
+@pytest.fixture(scope='session')
+def simple_model_repr():
+    return dedent("""\
+    <xsimlab.Model (2 processes, 2 inputs)>
+    roll
+        shift       [in] shift profile by a nb. of points
+    profile
+        u        [inout] ('x',) quantity u""")
 
 
 @pytest.fixture
@@ -122,8 +120,8 @@ def in_dataset():
         (), 5, {'description': 'nb. of profile points'})
     ds['roll__shift'] = (
         (), 1,
-        {'description': 'shift profile by a nb. of points',
-         'units': 'unitless'})
+        OrderedDict([('description', 'shift profile by a nb. of points'),
+                     ('units', 'unitless')]))
     ds['add__offset'] = (
         'clock', [1, 2, 3, 4, 5], {'description': 'offset added to profile u'})
 

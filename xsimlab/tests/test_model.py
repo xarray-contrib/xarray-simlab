@@ -133,11 +133,8 @@ class TestModel(object):
     def test_clone(self, model):
         cloned = model.clone()
 
-        zprocesses = zip(cloned.items(), model.items())
-
-        for (c_p_name, c_p_obj), (p_name, p_obj) in zprocesses:
-            assert c_p_name == p_name
-            assert c_p_obj is not p_obj
+        for p_name in model:
+            assert cloned[p_name] is not model[p_name]
 
     def test_update_processes(self, no_init_model, model):
         m = no_init_model.update_processes({'add': AddOnDemand,
@@ -166,5 +163,5 @@ class TestModel(object):
             show_only_variable=('profile', 'u'))
         assert isinstance(result, ipydisp.Image)
 
-    def test_repr(self, model, model_repr):
-        assert repr(model) == model_repr
+    def test_repr(self, simple_model, simple_model_repr):
+        assert repr(simple_model) == simple_model_repr
