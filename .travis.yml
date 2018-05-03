@@ -15,7 +15,7 @@ matrix:
     - python: 3.6
       env: CONDA_ENV=py36-xarray-dev
     - python: 3.6
-      env: CONDA_ENV=py36-attr-dev
+      env: CONDA_ENV=py36-attrs-dev
   allow_failures:
     - python: 3.6
       env: CONDA_ENV=py36-xarray-dev
