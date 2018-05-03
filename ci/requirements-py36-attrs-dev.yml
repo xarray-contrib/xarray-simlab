@@ -1,4 +1,4 @@
-name: test_env_py36
+name: test_env_py36-attrs-dev
 channels:
   - conda-forge
 dependencies:
