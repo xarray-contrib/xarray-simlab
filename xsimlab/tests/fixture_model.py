@@ -43,7 +43,8 @@ class InitProfile(object):
 
 @xs.process
 class Roll(object):
-    shift = xs.variable(description=('shift profile by a nb. of points'))
+    shift = xs.variable(description=('shift profile by a nb. of points'),
+                        attrs={'units': 'unitless'})
     u = xs.foreign(Profile, 'u')
     u_diff = xs.variable(dims='x', group='diff', intent='out')
 
@@ -120,7 +121,9 @@ def in_dataset():
     ds['init_profile__n_points'] = (
         (), 5, {'description': 'nb. of profile points'})
     ds['roll__shift'] = (
-        (), 1, {'description': 'shift profile by a nb. of points'})
+        (), 1,
+        {'description': 'shift profile by a nb. of points',
+         'units': 'unitless'})
     ds['add__offset'] = (
         'clock', [1, 2, 3, 4, 5], {'description': 'offset added to profile u'})
 
@@ -139,7 +142,7 @@ def out_dataset(in_dataset):
     del out_ds.attrs[SimlabAccessor._output_vars_key]
     del out_ds.clock.attrs[SimlabAccessor._output_vars_key]
     del out_ds.out.attrs[SimlabAccessor._output_vars_key]
-    out_ds['profile__u_opp'] = ('x', [-10. , -10., -10., -10., -11.])
+    out_ds['profile__u_opp'] = ('x', [-10., -10., -10., -10., -11.])
     out_ds['profile_u'] = (
         ('clock', 'x'),
         np.array([[1., 0., 0., 0., 0.],
@@ -152,8 +155,8 @@ def out_dataset(in_dataset):
     out_ds['roll_u_diff'] = (
         ('out', 'x'),
         np.array([[-1., 1., 0., 0., 0.],
-                  [ 0., 0., -1., 1., 0.],
-                  [ 0., 0., 0., -1., 1.]])
+                  [0., 0., -1., 1., 0.],
+                  [0., 0., 0., -1., 1.]])
     )
     out_ds['add__u_diff'] = ('out', [1, 3, 4])
 

@@ -106,7 +106,7 @@ def _flatten_outputs(output_vars):
                 else:
                     var_list += [(p_name, vname) for vname in var_names]
 
-        elif isinstance(out_vars, [tuple, str]):
+        elif isinstance(out_vars, (tuple, str)):
             var_list = [as_variable_key(out_vars)]
 
         elif isinstance(out_vars, list):
@@ -123,7 +123,7 @@ def _flatten_outputs(output_vars):
 
 @register_dataset_accessor('xsimlab')
 class SimlabAccessor(object):
-    """simlab extension to :class:`xarray.Dataset`."""
+    """Simlab extension to :class:`xarray.Dataset`."""
 
     _clock_key = '__xsimlab_output_clock__'
     _master_clock_key = '__xsimlab_master_clock__'
@@ -250,14 +250,7 @@ class SimlabAccessor(object):
         if invalid_inputs:
             raise KeyError(
                 "{} is/are not valid key(s) for input variables in model {}"
-                .format(', '.join([k for k in invalid_inputs]), model)
-            )
-
-        missing_inputs = set(model.input_vars) - set(input_vars)
-        if missing_inputs:
-            raise KeyError(
-                "Missing value for input variable(s) {}"
-                .format(', '.join([k for k in missing_inputs]))
+                .format(', '.join([str(k) for k in invalid_inputs]), model)
             )
 
         for (p_name, var_name), data in input_vars.items():
@@ -267,9 +260,9 @@ class SimlabAccessor(object):
             xr_var_name = p_name + '__' + var_name
             xr_var = as_variable(data)
 
-            xr_var.attrs.update(var.metadata['attrs'])
             if var.metadata['description']:
                 xr_var.attrs['description'] = var.metadata['description']
+            xr_var.attrs.update(var.metadata['attrs'])
 
             self._ds[xr_var_name] = xr_var
 
@@ -278,54 +271,54 @@ class SimlabAccessor(object):
         if invalid_outputs:
             raise KeyError(
                 "{} is/are not valid key(s) for variables in model {}"
-                .format(', '.join([k for k in invalid_outputs]), model)
+                .format(', '.join([str(k) for k in invalid_outputs]), model)
             )
 
-        output_vars = ','.join([p_name + '__' + var_name
-                                for (p_name, var_name) in output_vars])
+        output_vars_str = ','.join([p_name + '__' + var_name
+                                    for (p_name, var_name) in output_vars])
 
         if clock is None:
-            self._ds.attrs[self._output_vars_key] = output_vars
+            self._ds.attrs[self._output_vars_key] = output_vars_str
 
         else:
             if clock not in self.clock_coords:
                 raise ValueError("{!r} coordinate is not a valid clock "
                                  "coordinate.".format(clock))
             coord = self.clock_coords[clock]
-            coord.attrs[self._output_vars_key] = output_vars
+            coord.attrs[self._output_vars_key] = output_vars_str
 
-    def _get_output_vars(self, clock, ds_or_coord):
-        out_attr = ds_or_coord.attrs.get(self._output_vars_key, '')
+    def _maybe_update_output_vars(self, clock, ds_or_coord, output_vars):
+        out_attr = ds_or_coord.attrs.get(self._output_vars_key)
 
-        if out_attr:
-            return {clock: [as_variable_key(k) for k in out_attr.split(',')]}
-        else:
-            return {}
+        if out_attr is not None:
+            output_vars[clock] = [as_variable_key(k)
+                                  for k in out_attr.split(',')]
 
     @property
     def output_vars(self):
-        """Returns a dictionary of snapshot clock dimension names as keys and
-        output variable names - i.e. lists of (process name, variable name)
+        """Returns a dictionary of clock dimension names (or None) as keys and
+        output variable names - i.e. lists of ``('p_name', 'var_name')``
         tuples - as values.
+
         """
         output_vars = {}
 
         for clock, clock_coord in self.clock_coords.items():
-            output_vars.update(self._get_output_vars(clock, clock_coord))
+            self._maybe_update_output_vars(clock, clock_coord, output_vars)
 
-        output_vars.update(self._get_output_vars(None, self._ds))
+        self._maybe_update_output_vars(None, self._ds, output_vars)
 
         return output_vars
 
     def update_clocks(self, model=None, clocks=None, master_clock=None):
         """Update clock coordinates.
 
-        Drop all clock coordinates (if any) and add a new set of master and
-        snapshot clock coordinates.
-        Also copy all snapshot-specific attributes of the replaced coordinates.
+        Add clock coordinates (after dropped all existing clock
+        coordinates). Output variable attributes are propagate to
+        the replaced coordinates.
 
-        More details about the values allowed for the parameters below can be
-        found in the doc of :meth:`xsimlab.create_setup`.
+        More details about the values allowed for the parameters below
+        can be found in the doc of :meth:`xsimlab.create_setup`.
 
         Parameters
         ----------
@@ -334,8 +327,8 @@ class SimlabAccessor(object):
         clocks : dict of dicts, optional
             Used to create one or several clock coordinates.
         master_clock : str or dict, optional
-            Name (and units/calendar) of the clock coordinate (dimension) to
-            use as master clock.
+            Name (and units/calendar) of the clock coordinate
+            (dimension) to use as master clock.
 
         Returns
         -------
@@ -379,13 +372,9 @@ class SimlabAccessor(object):
             for dim, kwargs in clocks.items():
                 ds.xsimlab._set_snapshot_clock(dim, **kwargs)
 
-        for dim, var_list in self.output_vars.items():
-            var_dict = defaultdict(list)
-            for p_name, var_name in var_list:
-                var_dict[p_name].append(var_name)
-
-            if dim is None or dim in ds:
-                ds.xsimlab._set_output_vars(model, dim, **var_dict)
+        for clock, var_keys in self.output_vars.items():
+            if clock is None or clock in ds:
+                ds.xsimlab._set_output_vars(model, clock, var_keys)
 
         return ds
 
@@ -425,9 +414,8 @@ class SimlabAccessor(object):
             ds.xsimlab._set_input_vars(model, _flatten_inputs(input_vars))
 
         if output_vars is not None:
-            for clock, out_vars in output_vars.items():
-                ds.xsimlab._set_output_vars(model, clock,
-                                            _flatten_outputs(out_vars))
+            for clock, out_vars in _flatten_outputs(output_vars).items():
+                ds.xsimlab._set_output_vars(model, clock, out_vars)
 
         return ds
 
@@ -462,7 +450,7 @@ class SimlabAccessor(object):
         # drop variables
         drop_variables = []
 
-        for xr_var_name in self._ds:
+        for xr_var_name in self._ds.variables:
             if xr_var_name in self.clock_coords:
                 continue
 
@@ -484,18 +472,14 @@ class SimlabAccessor(object):
         return ds
 
     def _clean_output_dataset(self, ds):
-        """Return a new dataset after having removed unnecessary attributes."""
-        clean_ds = ds.copy()
-
-        for clock in clean_ds.output_vars:
+        """Remove unnecessary attributes in output dataset ``ds``."""
+        for clock in ds.xsimlab.output_vars:
             if clock is None:
-                attrs = clean_ds.attrs
+                attrs = ds.attrs
             else:
-                attrs = clean_ds[clock].attrs
+                attrs = ds[clock].attrs
 
             attrs.pop(self._output_vars_key)
-
-        return clean_ds
 
     def run(self, model=None, safe_mode=True):
         """Run the model.
@@ -523,9 +507,10 @@ class SimlabAccessor(object):
         store = {}
         output_store = InMemoryOutputStore()
 
-        driver = XarraySimulationDriver(model, self._ds, store, output_store)
+        driver = XarraySimulationDriver(self._ds, model, store, output_store)
 
-        out_ds = driver.run_model().pipe(self._clean_output_dataset)
+        out_ds = driver.run_model()
+        self._clean_output_dataset(out_ds)
 
         return out_ds
 
