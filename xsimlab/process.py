@@ -329,8 +329,8 @@ def process(maybe_cls=None, autodoc=False):
       :func:`group`). This decorator automatically adds properties to
       get/set values for these variables.
 
-    - One or more methods among `initialize()`, `run_step()`,
-      `finalize_step()` and `finalize()`, which are called at different
+    - One or more methods among ``initialize()``, ``run_step()``,
+      ``finalize_step()`` and ``finalize()``, which are called at different
       stages of a simulation and perform some computation based on the
       variables defined in the process interface.
 
@@ -340,12 +340,11 @@ def process(maybe_cls=None, autodoc=False):
     Parameters
     ----------
     maybe_cls : class, optional
-        Allows to apply this decorator to a class either as `@process` or
-        `@process(*args)`.
+        Allows to apply this decorator to a class either as ``@process`` or
+        ``@process(*args)``.
     autodoc : bool, optional
-        If True, render the docstrings given as a template and fill the
-        corresponding sections with metadata found in the class
-        (default: False).
+        If True, render the docstrings template and fill the
+        corresponding sections with variable metadata (default: False).
 
     """
     def wrap(cls):

@@ -2,8 +2,6 @@
 xarray extensions (accessors).
 
 """
-from collections import defaultdict
-
 import numpy as np
 from xarray import as_variable, Dataset, register_dataset_accessor
 

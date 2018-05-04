@@ -27,6 +27,11 @@ try:
 except ImportError:
     print("no numpy")
 try:
+    import attr
+    print("attr: %s, %s" % (attr.__version__, attr.__file__))
+except ImportError:
+    print("no attr")
+try:
     import xarray
     print("xarray: %s, %s" % (xarray.__version__, xarray.__file__))
 except ImportError:
@@ -205,6 +210,7 @@ texinfo_documents = [
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3.6/', None),
     'numpy': ('https://docs.scipy.org/doc/numpy/', None),
+    'attr': ('http://www.attrs.org/en/stable/', None),
     'pandas': ('http://pandas.pydata.org/pandas-docs/stable/', None),
     'xarray': ('http://xarray.pydata.org/en/stable/', None)
 }
