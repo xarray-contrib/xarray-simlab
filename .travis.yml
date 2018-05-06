@@ -16,6 +16,8 @@ matrix:
       env: CONDA_ENV=py36-xarray-dev
     - python: 3.6
       env: CONDA_ENV=py36-attrs-dev
+    - python: 3.5
+      env: CONDA_ENV=docs
   allow_failures:
     - python: 3.6
       env: CONDA_ENV=py36-xarray-dev
@@ -36,8 +38,12 @@ before_install:
   - conda info -a
 
 install:
-  - conda env create --file ci/requirements-$CONDA_ENV.yml
-  - source activate test_env_$CONDA_ENV
+  - if [[ "$CONDA_ENV" == "docs" ]]; then
+      conda env create -n test_env --file doc/environment.yml;
+    else
+      conda env create -n test_env --file ci/requirements-$CONDA_ENV.yml;
+    fi
+  - source activate test_env
   - conda list
   - pip install --no-deps -e .
 
