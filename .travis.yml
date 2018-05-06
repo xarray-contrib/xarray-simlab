@@ -51,7 +51,8 @@ script:
   - python -OO -c "import xsimlab"
   - if [[ "$CONDA_ENV" == "docs" ]]; then
       conda install -c conda-forge sphinx_rtd_theme;
-      sphinx-build -n -j auto -b html -d _build/doctrees doc _build/html;
+      cd doc;
+      sphinx-build -n -j auto -b html -d _build/doctrees . _build/html;
     else
       py.test xsimlab --cov=xsimlab --cov-report term-missing --verbose;
     fi
