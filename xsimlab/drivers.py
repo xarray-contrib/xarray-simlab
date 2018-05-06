@@ -155,7 +155,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
         """Return a xarray.DataArray of duration between two
         consecutive time steps."""
         mclock = self.dataset[self.master_clock_dim]
-        return mclock.diff(self.master_clock_dim)
+        return mclock.diff(self.master_clock_dim).values
 
     def _split_clock_inputs(self):
         """Return two datasets with time-independent and time-dependent
@@ -246,12 +246,12 @@ class XarraySimulationDriver(BaseSimulationDriver):
         ds_in, ds_in_clock = self._split_clock_inputs()
         has_clock_inputs = bool(ds_in_clock.data_vars)
 
-        da_dt = self._get_time_steps()
+        dt_array = self._get_time_steps()
 
         self._set_input_vars(ds_in)
         self.model.initialize()
 
-        for istep, dt in enumerate(da_dt):
+        for istep, dt in enumerate(dt_array):
             if has_clock_inputs:
                 ds_in_step = ds_in_clock.isel(**{self.master_clock_dim: istep})
                 self._set_input_vars(ds_in_step)
