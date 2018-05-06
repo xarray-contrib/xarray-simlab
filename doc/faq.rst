@@ -35,17 +35,20 @@ main bottleneck of the overall model execution, especially when using
 an implicit time scheme. For inner (e.g., spatial) loops in each model
 processes, it might be better to have a numpy vectorized
 implementation, use tools like Cython_ or Numba_ or call wrapped code
-that is written in, e.g., C or Fortran (see for example f2py_ for
-wrapping Fortran code).
+that is written in, e.g., C/C++ or Fortran (see for example f2py_ for
+wrapping Fortran code or pybind11_ for wrapping C++11 code).
 
 As with any other framework, xarray-simlab introduces an overhead
 compared to a simple, straightforward (but non-flexible)
 implementation of a model. The preliminary benchmarks that we have run
-show only a very small overhead, though.
+show only a very small overhead, though. This overhead is mainly
+introduced by the thin object-oriented layer that model components
+(i.e., Python classes) together form.
 
 .. _Cython: http://cython.org/
 .. _Numba: http://numba.pydata.org/
 .. _f2py: https://docs.scipy.org/doc/numpy-dev/f2py/
+.. _pybind11: https://pybind11.readthedocs.io
 
 Does xarray-simlab support running model(s) in parallel?
 --------------------------------------------------------

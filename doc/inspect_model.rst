@@ -85,6 +85,13 @@ variable level:
     xs.variable_info(ProfileU, 'u')
     xs.variable_info(model2.profile, 'u_vars')
 
+Alternatively, we can look at the docstrings of auto-generated
+properties for each variable, e.g.,
+
+.. ipython:: python
+
+    ProfileU.u?
+
 Like :attr:`~xsimlab.Model.input_vars` and
 :attr:`~xsimlab.Model.input_vars_dict`, Model properties
 :attr:`~xsimlab.Model.all_vars` and
