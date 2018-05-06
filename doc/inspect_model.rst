@@ -13,18 +13,44 @@ this user guide.
 
     import sys
     sys.path.append('scripts')
-    from advection_model import model2
+    from advection_model import model2, ProfileU
 
-Inspect processes and variables
--------------------------------
+.. ipython:: python
+
+    import xsimlab as xs
+
+Inspect model inputs
+--------------------
 
 Model *repr* already gives information about the number and names of
-processes and their variables that need an input value (if provided, a
-short description is also displayed for these variables):
+processes and their variables that need an input value (if any):
 
 .. ipython:: python
 
     model2
+
+For each input, a one-line summary is shown with the intent (either
+'in' or 'inout') as well as the dimension labels for inputs that don't
+expect a scalar value only. If provided, a short description is also
+displayed in the summary.
+
+The convenient property :attr:`~xsimlab.Model.input_vars` of Model
+returns all inputs as a list of 2-length tuples with process and
+variable names, respectively.
+
+.. ipython:: python
+
+    model2.input_vars
+
+:attr:`~xsimlab.Model.input_vars_dict` returns all inputs grouped by
+process, as a dictionary:
+
+.. ipython:: python
+
+    model2.input_vars_dict
+
+Inspect processes and variables
+-------------------------------
 
 For deeper inspection, Model objects support both dict-like and
 attribute-like access to their processes, e.g.,
@@ -36,34 +62,34 @@ attribute-like access to their processes, e.g.,
 
 As shown here above, process *repr* includes:
 
-- the path to the corresponding Process subclass (top line) ;
+- the name to the process class and the name of the process in the model
+  (top line) ;
 - a "Variables" section with all variables declared in the process
-  (not only model inputs), their types (e.g., ``FloatVariable``,
-  ``ForeignVariable``) and some additional information depending on
-  their type like dimension labels for regular variables or references
-  to original variables for ``ForeignVariable`` objects ;
-- a "Meta" section with all process metadata.
+  (not only model inputs) including one-line summaries that depend on
+  their type (i.e., ``variable``, ``foreign``, ``group``, etc.) ;
+- a "Simulation stages" section with the stages that are implemented
+  in the process.
 
-In "Variables" section, symbol ``*`` means that a value for the
-variable is provided by the process itself (i.e., ``provided=True``).
-
-Processes also support dict-like and attribute-like access to all
-their declared variables, e.g.,
+It is also possible to inspect a process class taken individually with
+:func:`~xsimlab.process_info`:
 
 .. ipython:: python
 
-    model2['advect']['v']
-    model2.grid.x
+    xs.process_info(ProfileU)
 
-It is also possible to have direct access to all input variables in a
-model using the :attr:`~xsimlab.Model.input_vars` property.
-
-We can further test whether a variable is a model input or not, e.g.,
+Similarly, :func:`~xsimlab.variable_info` allows inspection at the
+variable level:
 
 .. ipython:: python
 
-    model2.is_input(('advect', 'v'))
-    model2.is_input(('profile', 'u'))
+    xs.variable_info(ProfileU, 'u')
+    xs.variable_info(model2.profile, 'u_vars')
+
+Like :attr:`~xsimlab.Model.input_vars` and
+:attr:`~xsimlab.Model.input_vars_dict`, Model properties
+:attr:`~xsimlab.Model.all_vars` and
+:attr:`~xsimlab.Model.all_vars_dict` are available for all model
+variables, not only inputs.
 
 Visualize models as graphs
 --------------------------
@@ -115,10 +141,10 @@ square nodes:
    :width: 60%
 
 Nodes with solid border correspond to regular variables while nodes
-with dashed border correspond to ``ForeignVariable`` objects. 3d-box
-nodes correspond to iterables of Variable objects, like
-``VariableGroup``. Variables connected to their process with an arrow
-have a value provided by the process.
+with dashed border correspond to foreign variables. 3d-box nodes
+correspond group variables. Variables connected to their process with
+an arrow have a value computed by the process itself (i.e.,
+``intent='out'``).
 
 A third option ``show_only_variable`` allows to show only one given
 variable and all its references in other processes, e.g.,

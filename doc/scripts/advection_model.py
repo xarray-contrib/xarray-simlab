@@ -1,158 +1,144 @@
 import numpy as np
 
-from xsimlab import Process, FloatVariable
+import xsimlab as xs
 
 
-class AdvectionLax1D(Process):
+@xs.process
+class AdvectionLax1D(object):
     """Wrap 1-dimensional advection in a single Process."""
 
-    spacing = FloatVariable((), description='grid spacing')
-    length = FloatVariable((), description='grid total length')
-    x = FloatVariable('x', provided=True)
+    spacing = xs.variable(description='grid spacing')
+    length = xs.variable(description='grid total length')
+    x = xs.variable(dims='x', intent='out')
 
-    v = FloatVariable([(), 'x'], description='velocity')
+    v = xs.variable(dims=[(), 'x'], description='velocity')
 
-    loc = FloatVariable((), description='location of initial profile')
-    scale = FloatVariable((), description='scale of initial profile')
-    u = FloatVariable('x', description='quantity u',
-                      attrs={'units': 'm'}, provided=True)
+    loc = xs.variable(description='location of initial profile')
+    scale = xs.variable(description='scale of initial profile')
+    u = xs.variable(dims='x', intent='out', description='quantity u',
+                    attrs={'units': 'm'})
 
     def initialize(self):
-        self.x.value = np.arange(0, self.length.value, self.spacing.value)
-        self.u.state = np.exp(-1 / self.scale.value**2 *
-                              (self.x.value - self.loc.value)**2)
+        self.x = np.arange(0, self.length, self.spacing)
+        self.u = np.exp(-1 / self.scale**2 * (self.x - self.loc)**2)
 
     def run_step(self, dt):
-        factor = (self.v.value * dt) / (2 * self.spacing.value)
-        u_left = np.roll(self.u.state, 1)
-        u_right = np.roll(self.u.state, -1)
+        factor = (self.v * dt) / (2 * self.spacing)
+        u_left = np.roll(self.u, 1)
+        u_right = np.roll(self.u, -1)
         self.u1 = 0.5 * (u_right + u_left) - factor * (u_right - u_left)
 
     def finalize_step(self):
-        self.u.state = self.u1
+        self.u = self.u1
 
 
-from xsimlab import Model
+model1 = xs.Model({'advect': AdvectionLax1D})
 
 
-model1 = Model({'advect': AdvectionLax1D})
-
-
-class UniformGrid1D(Process):
+@xs.process
+class UniformGrid1D(object):
     """Create a 1-dimensional, equally spaced grid."""
 
-    spacing = FloatVariable((), description='uniform spacing')
-    length = FloatVariable((), description='total length')
-    x = FloatVariable('x', provided=True)
-
-    class Meta:
-        time_dependent = False
+    spacing = xs.variable(description='uniform spacing')
+    length = xs.variable(description='total length')
+    x = xs.variable(dims='x', intent='out')
 
     def initialize(self):
-        self.x.value = np.arange(0, self.length.value, self.spacing.value)
+        self.x = np.arange(0, self.length, self.spacing)
 
 
-from xsimlab import VariableGroup
-
-
-class ProfileU(Process):
+@xs.process
+class ProfileU(object):
     """Compute the evolution of the profile of quantity `u`."""
 
-    u_vars = VariableGroup('u_vars')
-    u = FloatVariable('x', description='quantity u',
-                      attrs={'units': 'm'})
+    u_vars = xs.group('u_vars')
+    u = xs.variable(dims='x', intent='inout', description='quantity u',
+                    attrs={'units': 'm'})
 
     def run_step(self, *args):
-        self.u.change = sum((var.change for var in self.u_vars))
+        self._delta_u = sum((v for v in self.u_vars))
 
     def finalize_step(self):
-        self.u.state += self.u.change
+        self.u += self._delta_u
 
 
-from xsimlab import ForeignVariable
-
-
-class AdvectionLax(Process):
+@xs.process
+class AdvectionLax(object):
     """Advection using finite difference (Lax method) on
     a fixed grid with periodic boundary conditions.
 
     """
-    v = FloatVariable([(), 'x'], description='velocity')
-    grid_spacing = ForeignVariable(UniformGrid1D, 'spacing')
-    u = ForeignVariable(ProfileU, 'u')
-    u_advected = FloatVariable('x', provided=True, group='u_vars')
+    v = xs.variable(dims=[(), 'x'], description='velocity')
+    grid_spacing = xs.foreign(UniformGrid1D, 'spacing')
+    u = xs.foreign(ProfileU, 'u')
+    u_advected = xs.variable(dims='x', intent='out', group='u_vars')
 
     def run_step(self, dt):
-        factor = self.v.value / (2 * self.grid_spacing.value)
+        factor = self.v / (2 * self.grid_spacing)
 
-        u_left = np.roll(self.u.state, 1)
-        u_right = np.roll(self.u.state, -1)
+        u_left = np.roll(self.u, 1)
+        u_right = np.roll(self.u, -1)
         u_1 = 0.5 * (u_right + u_left) - factor * dt * (u_right - u_left)
 
-        self.u_advected.change = u_1 - self.u.state
+        self.u_advected = u_1 - self.u
 
 
-class InitUGauss(Process):
-    """Initialize `u` profile using a gaussian pulse."""
+@xs.process
+class InitUGauss(object):
+    """Initialize `u` profile using a Gaussian pulse."""
 
-    loc = FloatVariable((), description='location of initial pulse')
-    scale = FloatVariable((), description='scale of initial pulse')
-    x = ForeignVariable(UniformGrid1D, 'x')
-    u = ForeignVariable(ProfileU, 'u', provided=True)
-
-    class Meta:
-        time_dependent = False
+    loc = xs.variable(description='location of initial pulse')
+    scale = xs.variable(description='scale of initial pulse')
+    x = xs.foreign(UniformGrid1D, 'x')
+    u = xs.foreign(ProfileU, 'u', intent='out')
 
     def initialize(self):
-        self.u.state = np.exp(
-            -1 / self.scale.value**2 * (self.x.value - self.loc.value)**2
-        )
+        self.u = np.exp(-1 / self.scale**2 * (self.x - self.loc)**2)
 
 
-model2 = Model({'grid': UniformGrid1D,
-                'profile': ProfileU,
-                'init': InitUGauss,
-                'advect': AdvectionLax})
+model2 = xs.Model({'grid': UniformGrid1D,
+                   'profile': ProfileU,
+                   'init': InitUGauss,
+                   'advect': AdvectionLax})
 
 
-class SourcePoint(Process):
+@xs.process
+class SourcePoint(object):
     """Source point for quantity `u`.
 
     The location of the source point is adjusted to coincide with
     the nearest node the grid.
 
     """
-    loc = FloatVariable((), description='source location')
-    flux = FloatVariable((), description='source flux')
-    x = ForeignVariable(UniformGrid1D, 'x')
-    u_source = FloatVariable('x', provided=True, group='u_vars')
+    loc = xs.variable(description='source location')
+    flux = xs.variable(description='source flux')
+    x = xs.foreign(UniformGrid1D, 'x')
+    u_source = xs.variable(dims='x', intent='out', group='u_vars')
 
     @property
     def nearest_node(self):
-        idx = np.abs(self.x.value - self.loc.value).argmin()
+        idx = np.abs(self.x - self.loc).argmin()
         return idx
 
     @property
     def source_rate(self):
-        src_array = np.zeros_like(self.x.value)
-        src_array[self.nearest_node] = self.flux.value
+        src_array = np.zeros_like(self.x)
+        src_array[self.nearest_node] = self.flux
         return src_array
 
     def run_step(self, dt):
-        self.u_source.change = self.source_rate * dt
+        self.u_source = self.source_rate * dt
 
 
-class InitUFlat(Process):
+@xs.process
+class InitUFlat(object):
     """Flat initial profile of `u`."""
 
-    x = ForeignVariable(UniformGrid1D, 'x')
-    u = ForeignVariable(ProfileU, 'u', provided=True)
-
-    class Meta:
-        time_dependent = False
+    x = xs.foreign(UniformGrid1D, 'x')
+    u = xs.foreign(ProfileU, 'u', intent='out')
 
     def initialize(self):
-        self.u.state = np.zeros_like(self.x.value)
+        self.u = np.zeros_like(self.x)
 
 
 model3 = model2.update_processes({'source': SourcePoint,

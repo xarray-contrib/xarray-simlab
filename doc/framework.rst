@@ -65,7 +65,7 @@ declare variables without implementing any computation.
    possible.
 
 A process-ified class behaves mostly like any other regular Python
-class, i.e., there is a-priori nothing that prevents us from using
+class, i.e., there is a-priori nothing that prevents you from using
 the common object-oriented features as you like. The only difference
 is that you can here create classes in a very succinct way without
 boilerplate, i.e., you don't need to implement dunder methods like
@@ -81,8 +81,9 @@ Variables
 ---------
 
 Variables are the most basic elements of a model. They are declared in
-processes as class attributes, using :func:`~xsimlab.variable`. It
-allows to define useful metadata such as:
+processes as class attributes, using :func:`~xsimlab.variable`.
+Declaring variables mainly consists of defining useful metadata such
+as:
 
 - labeled dimensions (or no dimension for scalars),
 - predefined meta-data attributes, e.g., a short description,
@@ -94,7 +95,8 @@ allows to define useful metadata such as:
 .. note::
 
    xarray-simlab does not distinguish between model parameters, input
-   and output variables. All can be declared using ``variable``.
+   and output variables. All can be declared using
+   :func:`~xsimlab.variable`.
 
 Foreign variables
 ~~~~~~~~~~~~~~~~~
@@ -107,8 +109,16 @@ In xarray-simlab, a variable is declared at a unique place, i.e.,
 within one and only one process. Using common variables across
 processes is achieved by declaring :func:`~xsimlab.foreign`
 variables. These are simply references to variables that are declared
-in other processes. You can use it for any computation inside a process
-just like original variables.
+in other processes.
+
+You can use foreign variables for almost any computation inside a
+process just like original variables. The only difference is that
+``intent='inout'`` is not supported for a foreign variable, i.e., a
+process may either need or compute a value of a foreign variable but
+may not update it (otherwise it would not be possible to unambiguously
+determine process dependencies -- see below). For the same reason,
+only one process in a model may compute a value of a variable (i.e.,
+``intent='out'``).
 
 The great advantage of declaring variables at unique places is that
 all their meta-data are defined once. However, a downside of this
@@ -116,10 +126,10 @@ approach is that foreign variables may potentially add many hard-coded
 links between processes, which makes harder reusing these processes
 independently of each other.
 
-Variable groups
+Group variables
 ~~~~~~~~~~~~~~~
 
-In some cases, using variable groups may provide an elegant
+In some cases, using group variables may provide an elegant
 alternative to hard-coded links between processes.
 
 The membership of variables to a group is defined via their ``group``
@@ -129,12 +139,16 @@ declare a :func:`~xsimlab.group` variable. The latter behaves like an
 iterable of foreign variables pointing to each of the variables that
 are members of the group, across the model.
 
-Variable groups are useful particularly in cases where you want to
-combine different processes that act on the same variable, e.g. in
-landscape evolution modeling combine the effect of different erosion
-processes on the evolution of the surface elevation. This way you can
-easily add or remove processes to/from a model and avoid missing or
-broken links between processes.
+Note that group variables only support ``intent='in'``, i.e, group
+variables should only be used to get the values of multiple foreign
+variables of a same group.
+
+Group variables are useful particularly in cases where you want to
+combine (aggregate) different processes that act on the same
+variable, e.g. in landscape evolution modeling combine the effect of
+different erosion processes on the evolution of the surface
+elevation. This way you can easily add or remove processes to/from a
+model and avoid missing or broken links between processes.
 
 On-demand variables
 ~~~~~~~~~~~~~~~~~~~
@@ -144,9 +158,9 @@ value is not intended to be computed systematically, e.g., at each
 time step of a simulation, but instead only at a given few
 times. These are declared using :func:`~xsimlab.on_demand` and must
 implement in the same process-ified class a dedicated method that
-computes their value.
+computes their value. They have always ``intent='out'``.
 
-These variables are useful, e.g., for model diagnostics.
+On-demand variables are useful, e.g., for model diagnostics.
 
 Simulation workflow
 -------------------
@@ -162,11 +176,13 @@ During a simulation, stages 1 and 4 are run only once while stages 2
 and 3 are repeated for a given number of (time) steps.
 
 Each process-ified class may provide its own computation instructions
-for those stages by implementing specific methods (one per
-stage). Note that this is entirely optional. For example,
-time-independent processes (e.g., for setting model grids) usually
-implement stage 1 only. In a few cases, the role of a process may even
-consist of just declaring some variables that are used elsewhere.
+by implementing specific methods named ``.initialize()``,
+``.run_step()``, ``.finalize_step()`` and ``.finalize()`` for each
+stage above, respectively. Note that this is entirely optional. For
+example, time-independent processes (e.g., for setting model grids)
+usually implement stage 1 only. In a few cases, the role of a process
+may even consist of just declaring some variables that are used
+elsewhere.
 
 Get / set variable values inside a process
 ------------------------------------------
@@ -182,12 +198,12 @@ takes all variables declared as class attributes and turns them into
 properties, which may be read-only depending on the ``intent`` set for
 the variables.
 
-Basically, these properties read/write values from/into a simple
-key-value store (except for on-demand variables). Currently the store
-is fully in-memory but it could be easily replaced by an on-disk or a
-distributed store. The xarray-simlab's modeling framework can thus be
-viewed as a thin object-oriented layer built on top of an abstract
-key-value store.
+Basically, the getter (setter) methods of these properties read
+(write) values from (into) a simple key-value store (except for
+on-demand variables). Currently the store is fully in-memory but it
+could be easily replaced by an on-disk or a distributed store. The
+xarray-simlab's modeling framework can thus be viewed as a thin
+object-oriented layer built on top of an abstract key-value store.
 
 Process dependencies and ordering
 ---------------------------------
