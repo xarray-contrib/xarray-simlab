@@ -101,7 +101,8 @@ def simple_model_repr():
     roll
         shift       [in] shift profile by a nb. of points
     profile
-        u        [inout] ('x',) quantity u""")
+        u        [inout] ('x',) quantity u
+    """)
 
 
 @pytest.fixture

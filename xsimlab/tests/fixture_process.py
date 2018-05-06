@@ -67,7 +67,8 @@ def example_process_repr():
         in_foreign_od_var     [in] <--- SomeProcess.some_od_var
         group_var             [in] <--- group 'some_group'
     Simulation stages:
-        *no stage implemented*""")
+        *no stage implemented*
+    """)
 
 
 @pytest.fixture(scope='session')
@@ -79,7 +80,8 @@ def in_var_details():
     - intent : in
     - dims : (('x',), ('x', 'y'))
     - group : None
-    - attrs : {}""")
+    - attrs : {}
+    """)
 
 
 def _init_process(p_cls, p_name, model, store, store_keys=None, od_keys=None):
@@ -145,4 +147,5 @@ def example_process_in_model_repr():
         in_foreign_od_var     [in] <--- some_process.some_od_var
         group_var             [in] <--- group 'some_group'
     Simulation stages:
-        *no stage implemented*""")
+        *no stage implemented*
+    """)

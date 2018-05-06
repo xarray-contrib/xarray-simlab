@@ -95,7 +95,7 @@ def var_details(var):
 
     details = "\n".join(["- {} : {}".format(k, v) for k, v in detail_items])
 
-    return description + "\n\n" + details
+    return description + "\n\n" + details + '\n'
 
 
 def repr_process(process):
@@ -132,11 +132,13 @@ def repr_process(process):
     else:
         stages_section_details = "    *no stage implemented*"
 
-    return "\n".join([header,
-                      var_section_summary,
-                      var_section_details,
-                      stages_section_summary,
-                      stages_section_details])
+    process_repr = "\n".join([header,
+                              var_section_summary,
+                              var_section_details,
+                              stages_section_summary,
+                              stages_section_details])
+
+    return process_repr + '\n'
 
 
 def repr_model(model):
@@ -146,7 +148,7 @@ def repr_model(model):
               .format(n_processes, len(model.input_vars)))
 
     if not n_processes:
-        return header
+        return header + '\n'
 
     col_width = _calculate_col_width(
         [var_name for _, var_name in model.input_vars]
@@ -169,4 +171,4 @@ def repr_model(model):
 
         sections.append(p_section)
 
-    return header + '\n' + '\n'.join(sections)
+    return header + '\n' + '\n'.join(sections) + '\n'

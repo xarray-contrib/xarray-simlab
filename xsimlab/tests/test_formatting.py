@@ -57,7 +57,8 @@ def test_process_repr(example_process_obj, processes_with_store,
         *empty*
     Simulation stages:
         initialize
-        run_step""")
+        run_step
+    """)
 
     assert repr_process(Dummy()) == expected
 
@@ -65,5 +66,5 @@ def test_process_repr(example_process_obj, processes_with_store,
 def test_model_repr(simple_model, simple_model_repr):
     assert repr_model(simple_model) == simple_model_repr
 
-    expected = "<xsimlab.Model (0 processes, 0 inputs)>"
+    expected = "<xsimlab.Model (0 processes, 0 inputs)>\n"
     assert repr(xs.Model({})) == expected
