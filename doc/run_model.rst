@@ -223,8 +223,8 @@ flat initial profile for :math:`u`) instead of ``model2`` :
 Time-varying input values
 -------------------------
 
-All model inputs accept as values arrays which have a dimension that
-corresponds to the master clock.
+All model inputs accept arrays which have a dimension that corresponds
+to the master clock.
 
 The example below is based on the last example above, but instead of
 being fixed, the flux of :math:`u` at the source point decreases over
