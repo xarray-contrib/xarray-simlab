@@ -3,7 +3,9 @@ import xarray as xr
 import numpy as np
 
 from xsimlab import xr_accessor, create_setup
-from xsimlab.xr_accessor import _maybe_get_model_from_context
+from xsimlab.xr_accessor import (as_variable_key,
+                                 _flatten_inputs, _flatten_outputs,
+                                 _maybe_get_model_from_context)
 
 
 def test_filter_accessor():
@@ -14,11 +16,66 @@ def test_filter_accessor():
     assert 'x' in filtered.coords and 'y' not in filtered.coords
 
 
+def test_get_model_from_context(model):
+    with pytest.raises(TypeError) as excinfo:
+        _maybe_get_model_from_context(None)
+    assert "No model found in context" in str(excinfo.value)
+
+    with model as m:
+        assert _maybe_get_model_from_context(None) is m
+
+    with pytest.raises(TypeError) as excinfo:
+        _maybe_get_model_from_context('not a model')
+    assert "is not an instance of xsimlab.Model" in str(excinfo.value)
+
+
+def test_as_variable_key():
+    assert as_variable_key(('foo', 'bar')) == ('foo', 'bar')
+    assert as_variable_key('foo__bar') == ('foo', 'bar')
+    assert as_variable_key('foo_bar__baz') == ('foo_bar', 'baz')
+
+    with pytest.raises(ValueError) as excinfo:
+        as_variable_key('foo__bar__baz')
+    assert "not a valid input variable" in str(excinfo.value)
+
+    with pytest.raises(ValueError) as excinfo:
+        as_variable_key('foo__')
+    assert "not a valid input variable" in str(excinfo.value)
+
+
+@pytest.mark.parametrize('input_vars,expected', [
+    ({('foo', 'bar'): 1}, {('foo', 'bar'): 1}),
+    ({'foo__bar': 1}, {('foo', 'bar'): 1}),
+    ({'foo': {'bar': 1}}, {('foo', 'bar'): 1})
+])
+def test_flatten_inputs(input_vars, expected):
+    assert _flatten_inputs(input_vars) == expected
+
+
+@pytest.mark.parametrize('output_vars,expected', [
+    ({'clock': 'foo__bar'}, {'clock': [('foo', 'bar')]}),
+    ({'clock': ('foo', 'bar')}, {'clock': [('foo', 'bar')]}),
+    ({'clock': [('foo', 'bar')]}, {'clock': [('foo', 'bar')]}),
+    ({'clock': [('foo__bar')]}, {'clock': [('foo', 'bar')]}),
+    ({'clock': {'foo': 'bar'}}, {'clock': [('foo', 'bar')]}),
+    ({'clock': {'foo': ['bar', 'baz']}},
+     {'clock': [('foo', 'bar'), ('foo', 'baz')]})
+])
+def test_flatten_outputs(output_vars, expected):
+    assert _flatten_outputs(output_vars) == expected
+
+
+def test_flatten_outputs_error():
+    with pytest.raises(ValueError) as excinfo:
+        _flatten_outputs({'clock': 2})
+    assert "Cannot interpret" in str(excinfo.value)
+
+
 class TestSimlabAccessor(object):
 
     _clock_key = xr_accessor.SimlabAccessor._clock_key
     _master_clock_key = xr_accessor.SimlabAccessor._master_clock_key
-    _snapshot_vars_key = xr_accessor.SimlabAccessor._snapshot_vars_key
+    _output_vars_key = xr_accessor.SimlabAccessor._output_vars_key
 
     def test_clock_coords(self):
         ds = xr.Dataset(
@@ -125,42 +182,25 @@ class TestSimlabAccessor(object):
             ds.xsimlab._set_snapshot_clock('snap_clock', data=[0, 3, 8],
                                            auto_adjust=False)
 
-    def test_set_input_vars(self, model):
-        ds = xr.Dataset()
+    def test_set_input_vars(self, model, in_dataset):
+        in_vars = {('init_profile', 'n_points'): 5,
+                   ('roll', 'shift'): 1,
+                   ('add', 'offset'): ('clock', [1, 2, 3, 4, 5])}
+
+        ds = xr.Dataset(coords={'clock': [0, 2, 4, 6, 8]})
+        ds.xsimlab._set_input_vars(model, in_vars)
+
+        for vname in ('init_profile__n_points', 'roll__shift', 'add__offset'):
+            # xr.testing.assert_identical also checks attrs of coordinates
+            # (not needed here)
+            xr.testing.assert_equal(ds[vname], in_dataset[vname])
+            assert ds[vname].attrs == in_dataset[vname].attrs
+
+        in_vars[('not_an', 'input_var')] = None
 
         with pytest.raises(KeyError) as excinfo:
-            ds.xsimlab._set_input_vars(model, 'invalid_process', var=1)
-        assert "no process named" in str(excinfo.value)
-
-        with pytest.raises(ValueError) as excinfo:
-            ds.xsimlab._set_input_vars(model, 'some_process', some_param=0,
-                                       invalid_var=1)
-        assert "not valid input variables" in str(excinfo.value)
-
-        ds.xsimlab._set_input_vars(model, 'quantity',
-                                   quantity=('x', np.zeros(10)))
-        expected = xr.DataArray(data=np.zeros(10), dims='x')
-        assert "quantity__quantity" in ds
-        xr.testing.assert_equal(ds['quantity__quantity'], expected)
-
-        # test time and parameter dimensions
-        ds.xsimlab._set_input_vars(model, model.some_process, some_param=[1, 2])
-        expected = xr.DataArray(data=[1, 2], dims='some_process__some_param',
-                                coords={'some_process__some_param': [1, 2]})
-        xr.testing.assert_equal(ds['some_process__some_param'], expected)
-        del ds['some_process__some_param']
-
-        ds['clock'] = ('clock', [0, 1], {self._master_clock_key: 1})
-        ds.xsimlab._set_input_vars(model, 'some_process',
-                                   some_param=('clock', [1, 2]))
-        expected = xr.DataArray(data=[1, 2], dims='clock',
-                                coords={'clock': [0, 1]})
-        xr.testing.assert_equal(ds['some_process__some_param'], expected)
-
-        # test optional
-        ds.xsimlab._set_input_vars(model, 'grid')
-        expected = xr.DataArray(data=5)
-        xr.testing.assert_equal(ds['grid__x_size'], expected)
+            ds.xsimlab._set_input_vars(model, in_vars)
+        assert "not valid key(s)" in str(excinfo.value)
 
     def test_update_clocks(self, model):
         ds = xr.Dataset()
@@ -193,7 +233,7 @@ class TestSimlabAccessor(object):
         )
         assert ds.xsimlab.master_clock_dim == 'clock'
 
-        ds.clock.attrs[self._snapshot_vars_key] = 'quantity__quantity'
+        ds.clock.attrs[self._output_vars_key] = 'profile__u'
 
         ds = ds.xsimlab.update_clocks(
             model=model,
@@ -204,91 +244,78 @@ class TestSimlabAccessor(object):
         )
         assert 'units' in ds.clock.attrs
         assert 'calendar' in ds.clock.attrs
-        assert ds.clock.attrs[self._snapshot_vars_key] == 'quantity__quantity'
+        assert ds.clock.attrs[self._output_vars_key] == 'profile__u'
 
-    def test_update_vars(self, model, input_dataset):
-        ds = input_dataset.xsimlab.update_vars(
+    def test_update_vars(self, model, in_dataset):
+        ds = in_dataset.xsimlab.update_vars(
             model=model,
-            input_vars={'some_process': {'some_param': 2}},
-            snapshot_vars={'out': {'other_process': 'other_effect'}}
+            input_vars={('roll', 'shift'): 2},
+            output_vars={'out': ('profile', 'u')}
         )
-        var = 'some_process__some_param'
-        assert not ds[var].equals(input_dataset[var])
-        assert not ds['out'].identical(input_dataset['out'])
 
-    def test_filter_vars(self, model, input_dataset):
-        alt_model = model.drop_processes(['other_process'])
+        assert not ds['roll__shift'].equals(in_dataset['roll__shift'])
+        assert not ds['out'].identical(in_dataset['out'])
 
-        ds = input_dataset.xsimlab.filter_vars(model=alt_model)
-        assert 'other_process__other_param' not in ds
-        assert sorted(ds.xsimlab.clock_coords) == ['clock', 'out']
-        expected = 'some_process__some_effect'
-        assert ds.out.attrs[self._snapshot_vars_key] == expected
+    def test_filter_vars(self, simple_model, in_dataset):
+        in_dataset['not_a_xsimlab_model_input'] = 1
 
-    def test_set_snapshot_vars(self, model):
+        filtered_ds = in_dataset.xsimlab.filter_vars(model=simple_model)
+
+        assert 'add__offset' not in filtered_ds
+        assert 'not_a_xsimlab_model_input' not in filtered_ds
+        assert sorted(filtered_ds.xsimlab.clock_coords) == ['clock', 'out']
+        assert filtered_ds.out.attrs[self._output_vars_key] == 'roll__u_diff'
+
+    def test_set_output_vars(self, model):
         ds = xr.Dataset()
         ds['clock'] = ('clock', [0, 2, 4, 6, 8],
                        {self._clock_key: 1, self._master_clock_key: 1})
-        ds['snap_clock'] = ('snap_clock', [0, 4, 8], {self._clock_key: 1})
+        ds['out'] = ('out', [0, 4, 8], {self._clock_key: 1})
         ds['not_a_clock'] = ('not_a_clock', [0, 1])
 
         with pytest.raises(KeyError) as excinfo:
-            ds.xsimlab._set_snapshot_vars(model, None, invalid_process='var')
-        assert "no process named" in str(excinfo.value)
+            ds.xsimlab._set_output_vars(model, None, [('invalid', 'var')])
+        assert "not valid key(s)" in str(excinfo.value)
 
-        with pytest.raises(KeyError) as excinfo:
-            ds.xsimlab._set_snapshot_vars(model, None, quantity='invalid_var')
-        assert "has no variable" in str(excinfo.value)
+        ds.xsimlab._set_output_vars(model, None, [('profile', 'u_opp')])
+        assert ds.attrs[self._output_vars_key] == 'profile__u_opp'
 
-        ds.xsimlab._set_snapshot_vars(model, None, grid='x')
-        assert ds.attrs[self._snapshot_vars_key] == 'grid__x'
-
-        ds.xsimlab._set_snapshot_vars(model, 'clock',
-                                      some_process='some_effect',
-                                      quantity='quantity')
-        expected = {'some_process__some_effect', 'quantity__quantity'}
-        actual = set(ds['clock'].attrs[self._snapshot_vars_key].split(','))
-        assert actual == expected
-
-        ds.xsimlab._set_snapshot_vars(model, 'snap_clock',
-                                      other_process=('other_effect', 'x2'))
-        expected = {'other_process__other_effect', 'other_process__x2'}
-        actual = set(ds['snap_clock'].attrs[self._snapshot_vars_key].split(','))
-        assert actual == expected
+        ds.xsimlab._set_output_vars(model, 'out',
+                                    [('roll', 'u_diff'), ('add', 'u_diff')])
+        expected = 'roll__u_diff,add__u_diff'
+        assert ds['out'].attrs[self._output_vars_key] == expected
 
         with pytest.raises(ValueError) as excinfo:
-            ds.xsimlab._set_snapshot_vars(model, 'not_a_clock',
-                                          quantity='quantity')
+            ds.xsimlab._set_output_vars(model, 'not_a_clock',
+                                        [('profile', 'u')])
         assert "not a valid clock" in str(excinfo.value)
 
-    def test_snapshot_vars(self, model):
+    def test_output_vars(self, model):
         ds = xr.Dataset()
         ds['clock'] = ('clock', [0, 2, 4, 6, 8],
                        {self._clock_key: 1, self._master_clock_key: 1})
-        ds['snap_clock'] = ('snap_clock', [0, 4, 8], {self._clock_key: 1})
-        # snapshot clock with no snapshot variable (attribute) set
-        ds['snap_clock2'] = ('snap_clock2', [0, 8], {self._clock_key: 1})
+        ds['out'] = ('out', [0, 4, 8], {self._clock_key: 1})
+        # snapshot clock with no output variable (attribute) set
+        ds['out2'] = ('out2', [0, 8], {self._clock_key: 1})
 
-        ds.xsimlab._set_snapshot_vars(model, None, grid='x')
-        ds.xsimlab._set_snapshot_vars(model, 'clock', quantity='quantity')
-        ds.xsimlab._set_snapshot_vars(model, 'snap_clock',
-                                      other_process=('other_effect', 'x2'))
+        ds.xsimlab._set_output_vars(model, None, [('profile', 'u_opp')])
+        ds.xsimlab._set_output_vars(model, 'clock', [('profile', 'u')])
+        ds.xsimlab._set_output_vars(model, 'out',
+                                    [('roll', 'u_diff'), ('add', 'u_diff')])
 
-        expected = {None: set([('grid', 'x')]),
-                    'clock': set([('quantity', 'quantity')]),
-                    'snap_clock': set([('other_process', 'other_effect'),
-                                       ('other_process', 'x2')])}
-        actual = {k: set(v) for k, v in ds.xsimlab.snapshot_vars.items()}
-        assert actual == expected
+        expected = {None: [('profile', 'u_opp')],
+                    'clock': [('profile', 'u')],
+                    'out': [('roll', 'u_diff'), ('add', 'u_diff')]}
+        assert ds.xsimlab.output_vars == expected
 
-    def test_run(self, model, input_dataset):
-        # safe mode True: model cloned -> values not set in original model
-        _ = input_dataset.xsimlab.run(model=model)
-        assert model.quantity.quantity.value is None
+    def test_run(self, model, in_dataset):
+        # safe mode True: ensure model is cloned
+        _ = in_dataset.xsimlab.run(model=model, safe_mode=True)
+        assert model.profile.__xsimlab_store__ is None
 
-        # safe mode False: model not cloned -> values set in original model
-        _ = input_dataset.xsimlab.run(model=model, safe_mode=False)
-        assert model.quantity.quantity.value is not None
+        # safe mode False: model not cloned -> original model is used
+        _ = in_dataset.xsimlab.run(model=model, safe_mode=False)
+        assert model.profile.u is not None
 
     def test_run_multi(self):
         ds = xr.Dataset()
@@ -297,7 +324,7 @@ class TestSimlabAccessor(object):
             ds.xsimlab.run_multi()
 
 
-def test_create_setup(model, input_dataset):
+def test_create_setup(model, in_dataset):
     expected = xr.Dataset()
     actual = create_setup(model=model)
     xr.testing.assert_identical(actual, expected)
@@ -305,33 +332,18 @@ def test_create_setup(model, input_dataset):
     ds = create_setup(
         model=model,
         input_vars={
-            'grid': {'x_size': 10},
-            'quantity': {'quantity': ('x', np.zeros(10))},
-            'some_process': {'some_param': 1},
-            'other_process': {'other_param': ('clock', [1, 2, 3, 4, 5])}
+            'init_profile': {'n_points': 5},
+            ('roll', 'shift'): 1,
+            'add__offset': ('clock', [1, 2, 3, 4, 5])
         },
         clocks={
             'clock': {'data': [0, 2, 4, 6, 8]},
             'out': {'data': [0, 4, 8]},
         },
         master_clock='clock',
-        snapshot_vars={
-            'clock': {'quantity': 'quantity'},
-            'out': {'some_process': 'some_effect',
-                    'other_process': 'other_effect'},
-            None: {'grid': 'x'}
+        output_vars={
+            'clock': 'profile__u',
+            'out': [('roll', 'u_diff'), ('add', 'u_diff')],
+            None: {'profile': 'u_opp'}
         })
-    xr.testing.assert_identical(ds, input_dataset)
-
-
-def test_get_model_from_context(model):
-    with pytest.raises(TypeError) as excinfo:
-        _maybe_get_model_from_context(None)
-    assert "no model found in context" in str(excinfo.value)
-
-    with model as m:
-        assert _maybe_get_model_from_context(None) is m
-
-    with pytest.raises(TypeError) as excinfo:
-        _maybe_get_model_from_context('not a model')
-    assert "is not an instance of xsimlab.Model" in str(excinfo.value)
+    xr.testing.assert_identical(ds, in_dataset)

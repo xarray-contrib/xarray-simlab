@@ -4,16 +4,28 @@ language: python
 sudo: false   # use container based build
 notifications:
   email: false
+branches:
+  only:
+    - master
 
 matrix:
   fast_finish: True
   include:
-    - python: 3.4
-      env: CONDA_ENV=py34
     - python: 3.5
       env: CONDA_ENV=py35
     - python: 3.6
       env: CONDA_ENV=py36
+    - python: 3.6
+      env: CONDA_ENV=py36-xarray-dev
+    - python: 3.6
+      env: CONDA_ENV=py36-attrs-dev
+    - python: 3.5
+      env: CONDA_ENV=docs
+  allow_failures:
+    - python: 3.6
+      env: CONDA_ENV=py36-xarray-dev
+    - python: 3.6
+      env: CONDA_ENV=py36-attrs-dev
 
 before_install:
   - if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then
@@ -29,12 +41,24 @@ before_install:
   - conda info -a
 
 install:
-  - conda env create --file ci/requirements-$CONDA_ENV.yml
-  - source activate test_env_$CONDA_ENV
-  - python setup.py install
+  - if [[ "$CONDA_ENV" == "docs" ]]; then
+      conda env create -n test_env --file doc/environment.yml;
+    else
+      conda env create -n test_env --file ci/requirements-$CONDA_ENV.yml;
+    fi
+  - source activate test_env
+  - conda list
+  - pip install --no-deps -e .
 
 script:
-  - py.test xsimlab --cov=xsimlab --cov-report term-missing
+  - python -OO -c "import xsimlab"
+  - if [[ "$CONDA_ENV" == "docs" ]]; then
+      conda install -c conda-forge sphinx_rtd_theme;
+      cd doc;
+      sphinx-build -n -j auto -b html -d _build/doctrees . _build/html;
+    else
+      py.test xsimlab --cov=xsimlab --cov-report term-missing --verbose;
+    fi
 
 after_success:
   - coveralls

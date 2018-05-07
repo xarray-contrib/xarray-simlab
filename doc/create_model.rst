@@ -30,7 +30,7 @@ between times :math:`n` and :math:`n+1`.
 
 We could just implement this numerical model with a few lines of
 Python / Numpy code, e.g., here below assuming periodic boundary
-conditions and a gaussian pulse as initial profile. We will show,
+conditions and a Gaussian pulse as initial profile. We will show,
 however, that it is very easy to refactor this code for using it with
 xarray-simlab. We will also show that, while enabling useful features,
 the refactoring still results in a short amount of readable code.
@@ -42,9 +42,9 @@ the refactoring still results in a short amount of readable code.
 Anatomy of a Process subclass
 -----------------------------
 
-Let's first wrap the code above into a single subclass of
-:class:`~xsimlab.Process` named ``AdvectionLax1D``. Next we'll explain in
-detail the content of this class.
+Let's first wrap the code above into a single class named
+``AdvectionLax1D`` decorated by :class:`~xsimlab.process`. Next we'll
+explain in detail the content of this class.
 
 .. literalinclude:: scripts/advection_model.py
    :lines: 3-32
@@ -54,44 +54,35 @@ Process interface
 
 ``AdvectionLax1D`` has some class attributes declared at the top,
 which together form the process' "public" interface, i.e., all the
-variables that we want to be publicly exposed by this process. These
-attributes usually correspond to instances of
-:class:`~xsimlab.Variable` or derived classes, depending on their
-expected value type, like :class:`~xsimlab.FloatVariable` in this case
-(see section :doc:`api` for a full list of available classes).
+variables that we want to be publicly exposed by this process. Here we
+use :func:`~xsimlab.variable` to add some metadata to each variable
+of the interface.
 
-The creation of Variable objects requires to explicitly provide
-dimension label(s) for arrays or an empty tuple for scalars. In this
-case, variables ``spacing``, ``length``, ``loc`` and ``scale`` are all
-scalars, whereas ``x`` and ``u`` are both arrays defined on the
-1-dimensional :math:`x` grid. Multiple choices can also be given as a
-list, like variable ``v`` which represents a velocity field that can
-be either constant (scalar) or variable (array) in space.
-
-.. note::
-
-   All variable objects also implicitly allow a time dimension as
-   well as their own dimension (coordinate). See section :doc:`run_model`.
-
-There is also a set of common arguments available to all Variable
-types. All are optional. In the example above, ``description`` and
-``attrs`` are used to define some (custom) metadata.
-
-Variables ``x`` and ``u`` have also an option ``provided`` set to
-``True``. It means that the process ``AdvectionLax1D`` itself provides
-a value for these variables. ``provided=False`` (default) means
-that a value should be provided elsewhere, either by another process
-or as model input.
+We first may specify the labels of the dimensions expected for each
+variable, which defaults to an empty tuple (i.e., a scalar value is
+expected). In this example, variables ``spacing``, ``length``, ``loc``
+and ``scale`` are all scalars, whereas ``x`` and ``u`` are both arrays
+defined on the 1-dimensional :math:`x` grid. Multiple choices can also
+be given as a list, like variable ``v`` which represents a velocity
+field that can be either constant (scalar) or variable (array) in
+space.
 
 .. note::
 
-   A process which updates the value (i.e., state) of a variable
-   during a simulation does not necessarily imply setting
-   ``provide=True`` for that variable, e.g., when it still requires an
-   initial value.
+   All variable objects also implicitly allow a time dimension.
+   See section :doc:`run_model`.
 
-Other options are available, see :class:`~xsimlab.Variable` for full
-reference.
+Additionally, it is also possible to add a short ``description``
+and/or custom metadata like units with the ``attrs`` argument.
+
+Another important argument is ``intent``, which specifies how the
+process deals with the value of the variable. By default,
+``intent='in'`` means that the process just needs the value of the
+variable for its computation ; this value should either be computed
+elsewhere by another process or be provided by the user as model
+input. By contrast, variables ``x`` and ``u`` have ``intent='out'``,
+which means that the process ``AdvectionLax1D`` itself initializes and
+computes a value for these two variables.
 
 Process "runtime" methods
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -99,62 +90,56 @@ Process "runtime" methods
 Beside its interface, the process ``AdvectionLax1D`` also implements
 methods that will be called during simulation runtime:
 
-- ``initialize`` will be called once at the beginning of a
+- ``.initialize()`` will be called once at the beginning of a
   simulation. Here it is used to set the x-coordinate values of the
-  grid and the initial values of ``u`` along the grid (gaussian
+  grid and the initial values of ``u`` along the grid (Gaussian
   pulse).
-- ``run_step`` will be called at each time step iteration and have the
-  current time step duration as required argument. This is where the
-  Lax method is implemented.
-- ``finalize_step`` will be called at each time step iteration too but
-  after having called ``run_step`` for all other processes (if
+- ``.run_step()`` will be called at each time step iteration and have
+  the current time step duration as required argument. This is where
+  the Lax method is implemented.
+- ``.finalize_step()`` will be called at each time step iteration too
+  but after having called ``run_step`` for all other processes (if
   any). Its intended use is mainly to ensure that state variables like
   ``u`` are updated consistently and after having taken snapshots.
 
-A fourth method ``finalize`` could also be implemented, but it is not
-needed in this case. This method is called once at the end of the
-simulation, e.g., for cleaning purposes.
+A fourth method ``.finalize()`` could also be implemented, but it is
+not needed in this case. This method is called once at the end of the
+simulation, e.g., for some clean-up.
 
-Accessing process variables and values
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Getting / setting variable values
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The Variable objects declared in ``AdvectionLax1D`` can be accessed
-elsewhere in the class like normal attributes, e.g., using ``self.u``
-for variable ``u``.
+For each variable declared as class attributes in ``AdvectionLax1D``
+we can get their value (and/or set a value depending on their
+``intent``) elsewhere in the class like if it was defined as regular
+instance attributes, e.g., using ``self.u`` for variable ``u``.
 
 .. note::
 
-   Like the other variables, ``self.u`` actually returns a copy of the
-   corresponding ``FloatVariable`` object that is originally declared
-   as a class attribute. Some internal magic happens in xarray-simlab
-   in order to avoid value conflicts when using the same process in
-   different contexts.
+   In xarray-simlab it is safe to run multiple simulations
+   concurrently: each simulation has its own process instances.
 
-Variable objects may hold multiple, independent values that we set/get
-via specific properties (see section :doc:`framework`), e.g.,
-``self.u.state`` for :math:`u` values and ``self.x.value`` for
-x-coordinate values on the grid. Note that we use here the property
-``value`` for all time-independent variables, which is just an alias
-of ``state`` (this is purely conventional).
-
-Beside Variable object attributes, we can of course use normal
-attributes in Process subclasses too, like ``self.u1`` in
-``AdvectionLax1D``.
+Beside variables declared in the process interface, nothing prevent us
+from using regular attributes in process classes if needed. For
+example, ``self.u1`` is set as a temporary internal state in
+``AdvectionLax1D`` to wait for the "finalize step" stage before
+updating :math:`u`.
 
 Creating a Model instance
 -------------------------
 
 Creating a new :class:`~xsimlab.Model` instance is very easy. We just
-need to provide a dictionary with the process(es) that we want to
-include in the model, e.g., with only the process created above:
+need to provide a dictionary with the process class(es) that we want
+to include in the model, e.g., with only the process created above:
 
 .. literalinclude:: scripts/advection_model.py
-   :lines: 35-38
+   :lines: 35
 
-That's it! Now we can use that model with the xarray extension provided
-by xarray-simlab to create new setups, run the model, take snapshots
-for one or more variables on a given frequency, etc. (see section
-:doc:`run_model`).
+That's it! Now we have different tools already available to inspect
+the model (see section :doc:`inspect_model`). We can also use that
+model with the xarray extension provided by xarray-simlab to create
+new setups, run the model, take snapshots for one or more variables on
+a given frequency, etc. (see section :doc:`run_model`).
 
 Fine-grained process refactoring
 --------------------------------
@@ -164,9 +149,9 @@ the initial conditions? Use a grid with variable spacing? Add another
 physical process impacting :math:`u` such as a source or sink term?
 In all cases we would need to modify the class ``AdvectionLax1D``.
 
-This framework works best if instead we first split the problem into
-small pieces, i.e., small Process subclasses that we can easily
-combine and replace in models.
+This framework works best if we instead split the problem into small
+pieces, i.e., small process classes that we can easily combine and
+replace in models.
 
 The ``AdvectionLax1D`` process may for example be refactored into 4
 separate processes:
@@ -183,57 +168,57 @@ This process declares all grid-related variables and computes
 x-coordinate values.
 
 .. literalinclude:: scripts/advection_model.py
-   :lines: 41-52
+   :lines: 38-47
 
-``class Meta`` is used here to specify that this process is not time
-dependent (by default processes are considered as
-time-dependent). Grid x-coordinate values only need to be set once at
-the beginning of the simulation ; there is no need to implement
-``run_step`` here.
+Grid x-coordinate values only need to be set once at the beginning of
+the simulation ; there is no need to implement ``.run_step()`` here.
 
 **ProfileU**
 
 .. literalinclude:: scripts/advection_model.py
-   :lines: 55-69
+   :lines: 50-62
 
-``u_vars`` is declared as a :class:`~xsimlab.VariableGroup`, i.e., an
+``u_vars`` is declared as a :func:`~xsimlab.group` variable, i.e., an
 iterable of all variables declared elsewhere that belong the same
-group ('u_vars' in this case). In this case, it allows to further add
-one or more processes that would also impact :math:`u` in addition to
-advection.
+group ('u_vars' in this case). In this example, it allows to further
+add one or more processes that will also affect the evolution of
+:math:`u` in addition to advection (see below).
+
+Note also ``intent='inout'`` set for ``u``, which means that
+``ProfileU`` updates the value of :math:`u` but still needs an initial
+value from elsewhere.
 
 **AdvectionLax**
 
 .. literalinclude:: scripts/advection_model.py
-   :lines: 72-92
+   :lines: 65-83
 
 ``u_advected`` represents the effect of advection on the evolution of
-:math:`u` and therefore belongs to the group 'u_vars'. By convention
-we use the property ``change`` to store values for that variable.
+:math:`u` and therefore belongs to the group 'u_vars'.
 
-Computing values of ``u_advected`` requires access to the values of
-variables ``spacing`` and ``u`` that are already declared in the
-``UniformGrid1D`` and ``ProfileU`` classes, respectively.
-:class:`~xsimlab.ForeignVariable` allows to declare references to
-these external variables and handle them just as if these were the
-original variables. For example, ``self.grid_spacing.value`` in this
-class will return the same value than ``self.spacing`` in
-``UniformGrid1D``.
+Computing values of ``u_advected`` requires values of variables
+``spacing`` and ``u`` that are already declared in the
+``UniformGrid1D`` and ``ProfileU`` classes, respectively.  Here we
+declare them as :func:`~xsimlab.foreign` variables, which allows to
+handle them like if these were the original variables. For example,
+``self.grid_spacing`` in this class will return the same value than
+``self.spacing`` in ``UniformGrid1D``.
 
 **InitUGauss**
 
 .. literalinclude:: scripts/advection_model.py
-   :lines: 95-109
+   :lines: 86-96
 
-Note that ForeignVariable can also be used to set values for variables
-that are declared in other processes, as for ``u`` here.
+A foreign variable can also be used to set values for variables that
+are declared in other processes, as for ``u`` here with
+``intent='out'``.
 
 **Refactored model**
 
 We now have all the building blocks to create a more flexible model:
 
 .. literalinclude:: scripts/advection_model.py
-   :lines: 112-115
+   :lines: 99-102
 
 The order in which processes are given doesn't matter (it is a
 dictionary). A computationally consistent order, as well as model
@@ -258,9 +243,9 @@ original, simple version.
 For this we create a new process:
 
 .. literalinclude:: scripts/advection_model.py
-   :lines: 118-142
+   :lines: 105-130
 
-A couple of comments about this class:
+Some comments about this class:
 
 - ``u_source`` belongs to the group 'u_vars' and therefore will be
   added to ``u_advected`` in ``ProfileU`` process.
@@ -270,21 +255,21 @@ A couple of comments about this class:
 - Nearest node index and source rate array will be recomputed at each
   time iteration because variables ``loc`` and ``flux`` may both have
   a time dimension (variable source location and intensity), i.e.,
-  ``self.loc.value`` and ``self.flux.value`` may both change at each
+  ``self.loc`` and ``self.flux`` may both change at each
   time iteration.
 
 In this example we also want to start with a flat, zero :math:`u`
-profile instead of a gaussian pulse. We create another (minimal)
+profile instead of a Gaussian pulse. We create another (minimal)
 process for that:
 
 .. literalinclude:: scripts/advection_model.py
-   :lines: 145-155
+   :lines: 133-141
 
 Using one command, we can then update the model with these new
 features:
 
 .. literalinclude:: scripts/advection_model.py
-   :lines: 158-159
+   :lines: 144-145
 
 Compared to ``model2``, this new ``model3`` have a new process named
 'source' and a replaced process 'init'.
@@ -295,7 +280,7 @@ It is also possible to create new models by removing one or more
 processes from existing Model instances, e.g.,
 
 .. literalinclude:: scripts/advection_model.py
-   :lines: 162
+   :lines: 148
 
 In this latter case, users will have to provide initial values of
 :math:`u` along the grid directly as an input array.
@@ -304,5 +289,5 @@ In this latter case, users will have to provide initial values of
 
    Model instances are immutable, i.e., once created it is not
    possible to modify these instances by adding, updating or removing
-   processes. Both methods ``.update_processes`` and
-   ``.drop_processes`` always return new Model instances.
+   processes. Both methods ``.update_processes()`` and
+   ``.drop_processes()`` always return new instances of ``Model``.

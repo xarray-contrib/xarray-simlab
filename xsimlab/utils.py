@@ -3,10 +3,30 @@ Internal utilties; not for external use.
 
 """
 import threading
-from collections import Mapping, KeysView, ItemsView, ValuesView
-from functools import wraps
+from collections import (Mapping, KeysView, ItemsView, ValuesView,
+                         OrderedDict)
 from contextlib import suppress
 from importlib import import_module
+
+from attr import fields_dict
+
+
+def variables_dict(process_cls):
+    """Get all xsimlab variables declared in a process.
+
+    Exclude attr.Attribute objects that are not xsimlab-specific.
+    """
+    return OrderedDict((k, v)
+                       for k, v in fields_dict(process_cls).items()
+                       if 'var_type' in v.metadata)
+
+
+def has_method(obj, meth):
+    return callable(getattr(obj, meth, False))
+
+
+def maybe_to_list(obj):
+    return obj if isinstance(obj, list) else [obj]
 
 
 def import_required(mod_name, error_msg):
@@ -17,20 +37,6 @@ def import_required(mod_name, error_msg):
         return import_module(mod_name)
     except ImportError:
         raise RuntimeError(error_msg)
-
-
-class combomethod(object):
-    def __init__(self, method):
-        self.method = method
-
-    def __get__(self, obj=None, objtype=None):
-        @wraps(self.method)
-        def _wrapper(*args, **kwargs):
-            if obj is not None:
-                return self.method(obj, *args, **kwargs)
-            else:
-                return self.method(objtype, *args, **kwargs)
-        return _wrapper
 
 
 class AttrMapping(object):
@@ -52,6 +58,7 @@ class AttrMapping(object):
       https://www.python.org/
 
     """
+    # TODO: use abc.ABCMeta now that metaclasses are not used anymore?
     _initialized = False
 
     def __init__(self, mapping=None):

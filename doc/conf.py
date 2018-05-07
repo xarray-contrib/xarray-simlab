@@ -27,6 +27,11 @@ try:
 except ImportError:
     print("no numpy")
 try:
+    import attr
+    print("attr: %s, %s" % (attr.__version__, attr.__file__))
+except ImportError:
+    print("no attr")
+try:
     import xarray
     print("xarray: %s, %s" % (xarray.__version__, xarray.__file__))
 except ImportError:
@@ -120,15 +125,7 @@ todo_emit_warnings = True
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-
-# on_rtd is whether we are on readthedocs.org, this line of code grabbed from
-# docs.readthedocs.org
-on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
-
-if not on_rtd:  # only import and set the theme if we're building docs locally
-    import sphinx_rtd_theme
-    html_theme = 'sphinx_rtd_theme'
-    html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
+html_theme = 'sphinx_rtd_theme'
 
 # otherwise, readthedocs.org uses their theme by default, so no need
 # to specify it
@@ -205,6 +202,7 @@ texinfo_documents = [
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3.6/', None),
     'numpy': ('https://docs.scipy.org/doc/numpy/', None),
+    'attr': ('http://www.attrs.org/en/stable/', None),
     'pandas': ('http://pandas.pydata.org/pandas-docs/stable/', None),
     'xarray': ('http://xarray.pydata.org/en/stable/', None)
 }

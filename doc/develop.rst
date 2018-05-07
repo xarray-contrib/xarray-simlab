@@ -53,7 +53,7 @@ To install the dependencies, we recommend using the conda_ package manager with
 the conda-forge_ channel. For development purpose, you might consider installing
 the packages in a new conda environment::
 
-  $ conda create -n xarray-simlab_dev python=3.6 numpy xarray -c conda-forge
+  $ conda create -n xarray-simlab_dev python=3.6 attrs numpy xarray -c conda-forge
   $ source activate xarray-simlab_dev
 
 Then install xarray-simlab locally using ``pip``::

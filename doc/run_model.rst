@@ -20,7 +20,7 @@ The following imports are necessary for the examples below.
 
 .. ipython:: python
 
-    import xsimlab
+    import xsimlab as xs
     import matplotlib.pyplot as plt
 
 .. note::
@@ -45,16 +45,16 @@ create a new setup in a very declarative way:
 
 .. ipython:: python
 
-    in_ds = xsimlab.create_setup(
+    in_ds = xs.create_setup(
         model=model2,
         clocks={'time': {'start': 0, 'end': 1, 'step': 0.01},
-                'stime': {'data': [0, 0.5, 1]}},
+                'otime': {'data': [0, 0.5, 1]}},
         master_clock='time',
         input_vars={'grid': {'length': 1.5, 'spacing': 0.01},
                     'advect': {'v': 1.},
                     'init': {'loc': 0.3, 'scale': 0.1}},
-        snapshot_vars={None: {'grid': 'x'},
-                       'stime': {'profile': 'u'}}
+        output_vars={None: {'grid': 'x'},
+                     'otime': {'profile': 'u'}}
     )
 
 A setup consists in:
@@ -71,7 +71,7 @@ A setup consists in:
   (``None``).
 
 In the example above, we set ``time`` as the master clock dimension
-and ``stime`` as another dimension for taking snapshots of :math:`u`
+and ``otime`` as another dimension for taking snapshots of :math:`u`
 along the grid at three given times of the simulation (beginning,
 middle and end). The time-independent x-coordinate values of the grid
 will be saved as well.
@@ -94,23 +94,20 @@ variables, e.g.,
 Run a simulation
 ----------------
 
-A simple call to :meth:`.xsimlab.run` from the input dataset created
-above is needed to perform the simulation. It returns a new dataset:
+A new simulation is run by simply calling the :meth:`.xsimlab.run`
+method from the input dataset created above. It returns a new dataset:
 
 .. ipython:: python
 
     out_ds = in_ds.xsimlab.run(model=model2)
 
 The returned dataset contains all the variables of the input
-dataset. It also contains snapshots values as new data variables,
-e.g., ``grid__x`` and ``profile__u`` in this example:
+dataset. It also contains simulation outputs as new or updated data
+variables, e.g., ``grid__x`` and ``profile__u`` in this example:
 
 .. ipython:: python
 
     out_ds
-
-Note that in other cases snapshots may also result in updated data
-variables with an additional time dimension.
 
 Post-processing and plotting
 ----------------------------
@@ -137,8 +134,8 @@ e.g., for plotting snapshots:
 
     def plot_u(ds):
         fig, axes = plt.subplots(ncols=3, figsize=(10, 3))
-        for t, ax in zip(ds.stime, axes):
-            ds.profile__u.sel(stime=t).plot(ax=ax)
+        for t, ax in zip(ds.otime, axes):
+            ds.profile__u.sel(otime=t).plot(ax=ax)
         fig.tight_layout()
         return fig
 
@@ -159,7 +156,7 @@ update only the value of velocity, thanks to
 
 .. ipython:: python
 
-    in_vars = {'advect': {'v': 0.5}}
+    in_vars = {('advect', 'v'): 0.5}
     with model2:
         out_ds2 = (in_ds.xsimlab.update_vars(input_vars=in_vars)
                         .xsimlab.run()
@@ -167,7 +164,7 @@ update only the value of velocity, thanks to
 
 .. note::
 
-   For convenience, we may use a Model instance in a context instead
+   For convenience, a Model instance may be used in a context instead
    of providing it repeatedly as an argument of xarray-simlab's
    functions or methods in which it is required.
 
@@ -185,13 +182,13 @@ Update time dimensions
 
 :meth:`.xsimlab.update_clocks` allows to only update the time
 dimensions and/or their coordinates. Here below we set other values
-for the ``stime`` coordinate (which serves to take snapshots of
+for the ``otime`` coordinate (which serves to take snapshots of
 :math:`u`):
 
 .. ipython:: python
 
     clocks = {'time': {'data': in_ds.time},
-              'stime': {'data': [0, 0.25, 0.5]}}
+              'otime': {'data': [0, 0.25, 0.5]}}
     with model2:
         out_ds3 = (in_ds.xsimlab.update_clocks(clocks=clocks,
                                                master_clock='time')
@@ -226,8 +223,8 @@ flat initial profile for :math:`u`) instead of ``model2`` :
 Time-varying input values
 -------------------------
 
-All model inputs accept as values arrays which have a dimension that
-corresponds to the master clock.
+All model inputs accept arrays which have a dimension that corresponds
+to the master clock.
 
 The example below is based on the last example above, but instead of
 being fixed, the flux of :math:`u` at the source point decreases over

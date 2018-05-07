@@ -2,14 +2,13 @@
 xarray extensions (accessors).
 
 """
-from collections import defaultdict
-
 import numpy as np
-from xarray import Dataset, register_dataset_accessor
+from xarray import as_variable, Dataset, register_dataset_accessor
 
-from .process import Process
+from .drivers import XarraySimulationDriver
 from .model import Model
-from .xr_interface import DatasetModelInterface
+from .stores import InMemoryOutputStore
+from .utils import variables_dict
 
 
 @register_dataset_accessor('filter')
@@ -34,7 +33,7 @@ def _maybe_get_model_from_context(model):
         try:
             return Model.get_context()
         except TypeError:
-            raise TypeError("no model found in context")
+            raise TypeError("No model found in context")
 
     if not isinstance(model, Model):
         raise TypeError("%s is not an instance of xsimlab.Model" % model)
@@ -42,24 +41,102 @@ def _maybe_get_model_from_context(model):
     return model
 
 
+def as_variable_key(key):
+    """Returns ``key`` as a tuple of the form
+    ``('process_name', 'var_name')``.
+
+    If ``key`` is given as a string, then process name and variable
+    name must be separated unambiguously by '__' (double underscore)
+    and must not be empty.
+
+    """
+    key_tuple = None
+
+    if isinstance(key, tuple) and len(key) == 2:
+        key_tuple = key
+
+    elif isinstance(key, str):
+        key_split = key.split('__')
+        if len(key_split) == 2:
+            p_name, var_name = key_split
+            if p_name and var_name:
+                key_tuple = (p_name, var_name)
+
+    if key_tuple is None:
+        raise ValueError("{!r} is not a valid input variable key".format(key))
+
+    return key_tuple
+
+
+def _flatten_inputs(input_vars):
+    """Returns ``input_vars`` as a flat dictionary where keys are tuples in
+    the form ``(process_name, var_name)``. Raises an error if the
+    given format appears to be invalid.
+
+    """
+    flatten_vars = {}
+
+    for key, val in input_vars.items():
+        if isinstance(key, str) and isinstance(val, dict):
+            for var_name, var_value in val.items():
+                flatten_vars[(key, var_name)] = var_value
+
+        else:
+            flatten_vars[as_variable_key(key)] = val
+
+    return flatten_vars
+
+
+def _flatten_outputs(output_vars):
+    """Returns ``output_vars`` as a flat dictionary where keys are clock
+    names (or None) and values are lists of tuples in the form
+    ``(process_name, var_name)``.
+
+    """
+    flatten_vars = {}
+
+    for clock, out_vars in output_vars.items():
+        if isinstance(out_vars, dict):
+            var_list = []
+            for p_name, var_names in out_vars.items():
+                if isinstance(var_names, str):
+                    var_list.append((p_name, var_names))
+                else:
+                    var_list += [(p_name, vname) for vname in var_names]
+
+        elif isinstance(out_vars, (tuple, str)):
+            var_list = [as_variable_key(out_vars)]
+
+        elif isinstance(out_vars, list):
+            var_list = [as_variable_key(k) for k in out_vars]
+
+        else:
+            raise ValueError("Cannot interpret {!r} as valid output "
+                             "variable key(s)".format(out_vars))
+
+        flatten_vars[clock] = var_list
+
+    return flatten_vars
+
+
 @register_dataset_accessor('xsimlab')
 class SimlabAccessor(object):
-    """simlab extension to :class:`xarray.Dataset`."""
+    """Simlab extension to :class:`xarray.Dataset`."""
 
-    _clock_key = '_xsimlab_snapshot_clock'
-    _master_clock_key = '_xsimlab_master_clock'
-    _snapshot_vars_key = '_xsimlab_snapshot_vars'
+    _clock_key = '__xsimlab_output_clock__'
+    _master_clock_key = '__xsimlab_master_clock__'
+    _output_vars_key = '__xsimlab_output_vars__'
 
-    def __init__(self, xarray_obj):
-        self._obj = xarray_obj
+    def __init__(self, ds):
+        self._ds = ds
         self._master_clock_dim = None
 
     @property
     def clock_coords(self):
         """Dictionary of :class:`xarray.DataArray` objects corresponding to
-        clock coordinates (including master clock and snapshot clocks).
+        clock coordinates.
         """
-        return {k: coord for k, coord in self._obj.coords.items()
+        return {k: coord for k, coord in self._ds.coords.items()
                 if self._clock_key in coord.attrs}
 
     @property
@@ -75,7 +152,7 @@ class SimlabAccessor(object):
         if self._master_clock_dim is not None:
             return self._master_clock_dim
         else:
-            for c in self._obj.coords.values():
+            for c in self._ds.coords.values():
                 if c.attrs.get(self._master_clock_key, False):
                     dim = c.dims[0]
                     self._master_clock_dim = dim
@@ -83,17 +160,17 @@ class SimlabAccessor(object):
             return None
 
     def _set_master_clock_dim(self, dim):
-        if dim not in self._obj.coords:
+        if dim not in self._ds.coords:
             raise KeyError("Dataset has no %r dimension coordinate. "
                            "To create a new master clock dimension, "
                            "use Dataset.xsimlab.update_clock."
                            % dim)
 
         if self.master_clock_dim is not None:
-            self._obj[self.master_clock_dim].attrs.pop(self._master_clock_key)
+            self._ds[self.master_clock_dim].attrs.pop(self._master_clock_key)
 
-        self._obj[dim].attrs[self._clock_key] = np.uint8(True)
-        self._obj[dim].attrs[self._master_clock_key] = np.uint8(True)
+        self._ds[dim].attrs[self._clock_key] = np.uint8(True)
+        self._ds[dim].attrs[self._master_clock_key] = np.uint8(True)
         self._master_clock_dim = dim
 
     def _set_clock_data(self, dim, data, start, end, step, nsteps):
@@ -124,15 +201,15 @@ class SimlabAccessor(object):
 
     def _set_master_clock(self, dim, data=None, start=0., end=None,
                           step=None, nsteps=None, units=None, calendar=None):
-        if dim in self._obj.dims:
+        if dim in self._ds.dims:
             raise ValueError("dimension %r already exists" % dim)
 
-        self._obj[dim] = self._set_clock_data(dim, data, start, end,
-                                              step, nsteps)
+        self._ds[dim] = self._set_clock_data(dim, data, start, end,
+                                             step, nsteps)
         if units is not None:
-            self._obj[dim].attrs['units'] = units
+            self._ds[dim].attrs['units'] = units
         if calendar is not None:
-            self._obj[dim].attrs['calendar'] = calendar
+            self._ds[dim].attrs['calendar'] = calendar
 
         self._set_master_clock_dim(dim)
 
@@ -145,7 +222,7 @@ class SimlabAccessor(object):
 
         clock_data = self._set_clock_data(dim, data, start, end, step, nsteps)
 
-        da_master_clock = self._obj[self.master_clock_dim]
+        da_master_clock = self._ds[self.master_clock_dim]
 
         if auto_adjust:
             kwargs = {'method': 'nearest'}
@@ -156,120 +233,90 @@ class SimlabAccessor(object):
         kwargs.update(indexer)
         da_snapshot_clock = da_master_clock.sel(**kwargs)
 
-        self._obj[dim] = da_snapshot_clock.rename({self.master_clock_dim: dim})
+        self._ds[dim] = da_snapshot_clock.rename({self.master_clock_dim: dim})
+
         # .sel copies variable attributes
-        self._obj[dim].attrs.pop(self._master_clock_key)
+        self._ds[dim].attrs.pop(self._master_clock_key)
 
         for attr_name in ('units', 'calendar'):
             attr_value = da_master_clock.attrs.get(attr_name)
             if attr_value is not None:
-                self._obj[dim].attrs[attr_name] = attr_value
+                self._ds[dim].attrs[attr_name] = attr_value
 
-    def _set_input_vars(self, model, process, **inputs):
-        if isinstance(process, Process):
-            process = process.name
-        if process not in model:
-            raise KeyError("no process named %r found in current model"
-                           % process)
-
-        process_inputs = model.input_vars[process]
-
-        invalid_inputs = set(inputs) - set(process_inputs)
+    def _set_input_vars(self, model, input_vars):
+        invalid_inputs = set(input_vars) - set(model.input_vars)
         if invalid_inputs:
-            raise ValueError("%s are not valid input variables of %r"
-                             % (', '.join([name for name in invalid_inputs]),
-                                process))
+            raise KeyError(
+                "{} is/are not valid key(s) for input variables in model {}"
+                .format(', '.join([str(k) for k in invalid_inputs]), model)
+            )
 
-        # convert to xarray variables and validate the given dimensions
-        xr_variables = {}
-        for name, var in model.input_vars[process].items():
-            xr_var = var.to_xarray_variable(inputs.get(name))
-            var.validate_dimensions(xr_var.dims,
-                                    ignore_dims=(self.master_clock_dim,
-                                                 'this_variable'))
-            xr_variables[name] = xr_var
+        for (p_name, var_name), data in input_vars.items():
+            p_obj = model[p_name]
+            var = variables_dict(type(p_obj))[var_name]
 
-        # validate at the process level
-        # first assign values to a cloned process object to avoid conflicts
-        process_obj = model._processes[process].clone()
-        for name, xr_var in xr_variables.items():
-            process_obj[name].value = xr_var.values
-        process_obj.validate()
+            xr_var_name = p_name + '__' + var_name
+            xr_var = as_variable(data)
 
-        # maybe set optional variables, and validate each variable
-        for name, xr_var in xr_variables.items():
-            var = process_obj[name]
-            if var.value is not xr_var.values:
-                xr_var = var.to_xarray_variable(var.value)
-                xr_variables[name] = xr_var
-            var.run_validators(xr_var)
-            var.validate(xr_var)
+            if var.metadata['description']:
+                xr_var.attrs['description'] = var.metadata['description']
+            xr_var.attrs.update(var.metadata['attrs'])
 
-        # add variables to dataset if all validation tests passed
-        # also rename the 'this_variable' dimension if present
-        for name, xr_var in xr_variables.items():
-            xr_var_name = process + '__' + name
-            rename_dict = {'this_variable': xr_var_name}
-            dims = tuple(rename_dict.get(dim, dim) for dim in xr_var.dims)
-            xr_var.dims = dims
-            self._obj[xr_var_name] = xr_var
+            self._ds[xr_var_name] = xr_var
 
-    def _set_snapshot_vars(self, model, clock_dim, **process_vars):
-        xr_vars_list = []
+    def _set_output_vars(self, model, clock, output_vars):
+        invalid_outputs = set(output_vars) - set(model.all_vars)
+        if invalid_outputs:
+            raise KeyError(
+                "{} is/are not valid key(s) for variables in model {}"
+                .format(', '.join([str(k) for k in invalid_outputs]), model)
+            )
 
-        for proc_name, vars in sorted(process_vars.items()):
-            if proc_name not in model:
-                raise KeyError("no process named %r found in current model"
-                               % proc_name)
-            process = model[proc_name]
-            if isinstance(vars, str):
-                vars = [vars]
-            for var_name in vars:
-                if process.variables.get(var_name, None) is None:
-                    raise KeyError("process %r has no variable %r"
-                                   % (proc_name, var_name))
-                xr_vars_list.append(proc_name + '__' + var_name)
+        output_vars_str = ','.join([p_name + '__' + var_name
+                                    for (p_name, var_name) in output_vars])
 
-        snapshot_vars = ','.join(xr_vars_list)
+        if clock is None:
+            self._ds.attrs[self._output_vars_key] = output_vars_str
 
-        if clock_dim is None:
-            self._obj.attrs[self._snapshot_vars_key] = snapshot_vars
         else:
-            if clock_dim not in self.clock_coords:
-                raise ValueError("%r coordinate is not a valid clock "
-                                 "coordinate. " % clock_dim)
-            coord = self.clock_coords[clock_dim]
-            coord.attrs[self._snapshot_vars_key] = snapshot_vars
+            if clock not in self.clock_coords:
+                raise ValueError("{!r} coordinate is not a valid clock "
+                                 "coordinate.".format(clock))
+            coord = self.clock_coords[clock]
+            coord.attrs[self._output_vars_key] = output_vars_str
 
-    def _get_snapshot_vars(self, name, obj):
-        vars_str = obj.attrs.get(self._snapshot_vars_key, '')
-        if vars_str:
-            return {name: [tuple(s.split('__'))
-                           for s in vars_str.split(',')]}
-        else:
-            return {}
+    def _maybe_update_output_vars(self, clock, ds_or_coord, output_vars):
+        out_attr = ds_or_coord.attrs.get(self._output_vars_key)
+
+        if out_attr is not None:
+            output_vars[clock] = [as_variable_key(k)
+                                  for k in out_attr.split(',')]
 
     @property
-    def snapshot_vars(self):
-        """Returns a dictionary of snapshot clock dimension names as keys and
-        snapshot variable names - i.e. lists of (process name, variable name)
+    def output_vars(self):
+        """Returns a dictionary of clock dimension names (or None) as keys and
+        output variable names - i.e. lists of ``('p_name', 'var_name')``
         tuples - as values.
+
         """
-        snapshot_vars = {}
-        for cname, coord in self._obj.coords.items():
-            snapshot_vars.update(self._get_snapshot_vars(cname, coord))
-        snapshot_vars.update(self._get_snapshot_vars(None, self._obj))
-        return snapshot_vars
+        output_vars = {}
+
+        for clock, clock_coord in self.clock_coords.items():
+            self._maybe_update_output_vars(clock, clock_coord, output_vars)
+
+        self._maybe_update_output_vars(None, self._ds, output_vars)
+
+        return output_vars
 
     def update_clocks(self, model=None, clocks=None, master_clock=None):
         """Update clock coordinates.
 
-        Drop all clock coordinates (if any) and add a new set of master and
-        snapshot clock coordinates.
-        Also copy all snapshot-specific attributes of the replaced coordinates.
+        Add clock coordinates (after dropped all existing clock
+        coordinates). Output variable attributes are propagate to
+        the replaced coordinates.
 
-        More details about the values allowed for the parameters below can be
-        found in the doc of :meth:`xsimlab.create_setup`.
+        More details about the values allowed for the parameters below
+        can be found in the doc of :meth:`xsimlab.create_setup`.
 
         Parameters
         ----------
@@ -278,8 +325,8 @@ class SimlabAccessor(object):
         clocks : dict of dicts, optional
             Used to create one or several clock coordinates.
         master_clock : str or dict, optional
-            Name (and units/calendar) of the clock coordinate (dimension) to
-            use as master clock.
+            Name (and units/calendar) of the clock coordinate
+            (dimension) to use as master clock.
 
         Returns
         -------
@@ -293,7 +340,7 @@ class SimlabAccessor(object):
         """
         model = _maybe_get_model_from_context(model)
 
-        ds = self._obj.drop(self.clock_coords)
+        ds = self._ds.drop(self.clock_coords)
 
         attrs_master_clock = {}
 
@@ -323,21 +370,14 @@ class SimlabAccessor(object):
             for dim, kwargs in clocks.items():
                 ds.xsimlab._set_snapshot_clock(dim, **kwargs)
 
-        for dim, var_list in self.snapshot_vars.items():
-            var_dict = defaultdict(list)
-            for proc_name, var_name in var_list:
-                var_dict[proc_name].append(var_name)
-
-            if dim is None or dim in ds:
-                ds.xsimlab._set_snapshot_vars(model, dim, **var_dict)
+        for clock, var_keys in self.output_vars.items():
+            if clock is None or clock in ds:
+                ds.xsimlab._set_output_vars(model, clock, var_keys)
 
         return ds
 
-    def update_vars(self, model=None, input_vars=None, snapshot_vars=None):
-        """Update model input values and/or snapshot variable names.
-
-        Add or replace all input values (resp. snapshot variable names) per
-        given process (resp. clock coordinate).
+    def update_vars(self, model=None, input_vars=None, output_vars=None):
+        """Update model input values and/or output variable names.
 
         More details about the values allowed for the parameters below can be
         found in the doc of :meth:`xsimlab.create_setup`.
@@ -346,10 +386,11 @@ class SimlabAccessor(object):
         ----------
         model : :class:`xsimlab.Model` object, optional
             Reference model. If None, tries to get model from context.
-        input_vars : dict of dicts, optional
-            Model input values given per process.
-        snapshot_vars : dict of dicts, optional
-            Model variables to save as simulation snapshots, given per
+        input_vars : dict, optional
+            Model input values (may be grouped per process name, as dict of
+            dicts).
+        output_vars : dict, optional
+            Model variables to save as simulation output, given per
             clock coordinate.
 
         Returns
@@ -365,24 +406,25 @@ class SimlabAccessor(object):
         """
         model = _maybe_get_model_from_context(model)
 
-        ds = self._obj.copy()
+        ds = self._ds.copy()
 
         if input_vars is not None:
-            for proc_name, vars in input_vars.items():
-                ds.xsimlab._set_input_vars(model, proc_name, **vars)
+            ds.xsimlab._set_input_vars(model, _flatten_inputs(input_vars))
 
-        if snapshot_vars is not None:
-            for dim, proc_vars in snapshot_vars.items():
-                ds.xsimlab._set_snapshot_vars(model, dim, **proc_vars)
+        if output_vars is not None:
+            for clock, out_vars in _flatten_outputs(output_vars).items():
+                ds.xsimlab._set_output_vars(model, clock, out_vars)
 
         return ds
 
     def filter_vars(self, model=None):
         """Filter Dataset content according to Model.
 
-        Keep only data variables and coordinates that correspond to inputs of
-        the model (keep clock coordinates too). Also update snapshot-specific
-        attributes so that their values all correspond to processes and
+        Keep only data variables and coordinates that correspond to
+        inputs of the model (keep clock coordinates too).
+
+        Also update xsimlab-specific attributes so that output
+        variables given per clock only refer to processes and
         variables defined in the model.
 
         Parameters
@@ -403,28 +445,28 @@ class SimlabAccessor(object):
         """
         model = _maybe_get_model_from_context(model)
 
+        # drop variables
         drop_variables = []
 
-        for xr_var_name in self._obj:
+        for xr_var_name in self._ds.variables:
             if xr_var_name in self.clock_coords:
                 continue
-            try:
-                proc_name, var_name = xr_var_name.split('__')
-            except ValueError:
-                continue
 
-            if not model.is_input((proc_name, var_name)):
+            try:
+                p_name, var_name = xr_var_name.split('__')
+            except ValueError:
+                # not a xsimlab model input: make sure to remove it
+                p_name, var_name = ('', xr_var_name)
+
+            if (p_name, var_name) not in model.input_vars:
                 drop_variables.append(xr_var_name)
 
-        ds = self._obj.drop(drop_variables)
+        ds = self._ds.drop(drop_variables)
 
-        for dim, var_list in self.snapshot_vars.items():
-            var_dict = defaultdict(list)
-            for proc_name, var_name in var_list:
-                if model.get(proc_name, {}).get(var_name, False):
-                    var_dict[proc_name].append(var_name)
-
-            ds.xsimlab._set_snapshot_vars(model, dim, **var_dict)
+        # update output variable attributes
+        for clock, out_vars in self.output_vars.items():
+            new_out_vars = [key for key in out_vars if key in model.all_vars]
+            ds.xsimlab._set_output_vars(model, clock, new_out_vars)
 
         return ds
 
@@ -443,7 +485,7 @@ class SimlabAccessor(object):
         Returns
         -------
         output : Dataset
-            Another Dataset with both model inputs and outputs (snapshots).
+            Another Dataset with both model inputs and outputs.
 
         """
         model = _maybe_get_model_from_context(model)
@@ -451,9 +493,12 @@ class SimlabAccessor(object):
         if safe_mode:
             model = model.clone()
 
-        ds_model_interface = DatasetModelInterface(model, self._obj)
-        out_ds = ds_model_interface.run_model()
-        return out_ds
+        store = {}
+        output_store = InMemoryOutputStore()
+
+        driver = XarraySimulationDriver(self._ds, model, store, output_store)
+
+        return driver.run_model()
 
     def run_multi(self):
         """Run multiple models.
@@ -470,12 +515,13 @@ class SimlabAccessor(object):
 
 
 def create_setup(model=None, clocks=None, master_clock=None,
-                 input_vars=None, snapshot_vars=None):
+                 input_vars=None, output_vars=None):
     """Create a specific setup for model runs.
 
-    This convenient function creates a new :class:`xarray.Dataset` object with
-    model input values, time steps and model output variables (including
-    snapshot times) as data variables, coordinates and attributes.
+    This convenient function creates a new :class:`xarray.Dataset`
+    object with everything needed to run a model (i.e., input values,
+    time steps, output variables to save at given times) as data
+    variables, coordinates and attributes.
 
     Parameters
     ----------
@@ -493,22 +539,39 @@ def create_setup(model=None, clocks=None, master_clock=None,
         A dictionary with at least a 'dim' key can be provided instead, it
         allows setting time units and calendar (CF-conventions) with
         'units' and 'calendar' keys.
-    input_vars : dict of dicts, optional
-        Model inputs values given per process. The structure of the dict of
-        dicts looks like ``{'process_name': {'var_name': value, ...}, ...}``.
+    input_vars : dict, optional
+        Dictionary with values given for model inputs. Entries of the
+        dictionary may look like:
+
+        - ``'foo': {'bar': value, ...}`` or
+        - ``('foo', 'bar'): value`` or
+        - ``'foo__bar': value``
+
+        where ``foo`` is the name of a existing process in the model and
+        ``bar`` is the name of an (input) variable declared in that process.
+
         Values are anything that can be easily converted to
         :class:`xarray.Variable` objects, e.g., single values, array-like,
-        (dims, data, attrs) tuples or xarray objects.
-    snapshot_vars : dict of dicts, optional
-        Model variables to save as simulation snapshots, given per clock
-        coordinate. The structure of the dict of dicts looks like
-        ``{'dim': {'process_name': 'var_name', ...}, ...}``.
-        'dim' must correspond to the dimension of a clock coordinate or None
-        for snapshots that only have to be taken once at the end of the
-        simulation.
-        To take snapshots for multiple variables that belong to the same
-        process, a tuple of multiple variable names can be given instead of a
-        string.
+        ``(dims, data, attrs)`` tuples or xarray objects.
+    output_vars : dict, optional
+        Dictionary with model variable names to save as simulation output,
+        given per clock coordinate. Entries of the given dictionary may
+        look like:
+
+        - ``'dim': {'foo': 'bar'}`` or
+        - ``'dim': {'foo': ('bar', 'baz')}`` or
+        - ``'dim': ('foo', 'bar')`` or
+        - ``'dim': [('foo', 'bar'), ('foo', 'baz')]`` or
+        - ``'dim': 'foo__bar'`` or
+        - ``'dim': ['foo__bar', 'foo__baz']``
+
+        where ``foo`` is the name of a existing process in the model and
+        ``bar``, ``baz`` are the names of variables declared in that process.
+
+        If ``'dim'`` corresponds to the dimension of a clock coordinate,
+        new output values will be saved at each time given by the coordinate
+        labels. if None is given instead, only one value will be saved at the
+        end of the simulation.
 
     Returns
     -------
@@ -516,7 +579,7 @@ def create_setup(model=None, clocks=None, master_clock=None,
         A new Dataset object with model inputs as data variables or coordinates
         (depending on their given value) and clock coordinates.
         The names of the input variables also include the name of their process
-        (i.e., 'process_name__var_name').
+        (i.e., 'foo__bar').
 
     Notes
     -----
@@ -541,11 +604,7 @@ def create_setup(model=None, clocks=None, master_clock=None,
         with the labels of the master clock coordinate. Otherwise raise a
         KeyError if labels are not valid. (DataArray.sel is used internally).
 
-    Inputs of ``model`` for which no value is given are still added as variables
-    in the returned Dataset, using their default value (if any). It requires
-    that their process are provided as keys of ``input_vars``, though.
-
-    Snapshot variable names are added in Dataset as specific attributes
+    Output variable names are added in Dataset as specific attributes
     (global and/or clock coordinate attributes).
 
     """
@@ -555,6 +614,6 @@ def create_setup(model=None, clocks=None, master_clock=None,
           .xsimlab.update_clocks(model=model, clocks=clocks,
                                  master_clock=master_clock)
           .xsimlab.update_vars(model=model, input_vars=input_vars,
-                               snapshot_vars=snapshot_vars))
+                               output_vars=output_vars))
 
     return ds

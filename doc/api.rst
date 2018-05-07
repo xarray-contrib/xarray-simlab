@@ -40,7 +40,7 @@ properties listed below. Proper use of this accessor should be like:
 
    Dataset.xsimlab.clock_coords
    Dataset.xsimlab.master_clock_dim
-   Dataset.xsimlab.snapshot_vars
+   Dataset.xsimlab.output_vars
 
 **Methods**
 
@@ -79,14 +79,17 @@ Model introspection
 -------------------
 
 ``Model`` implements an immutable mapping interface where keys are
-process names and values are objects of ``Process`` subclasses (attribute-style
-access is also supported).
+process names and values are objects of ``Process`` subclasses
+(attribute-style access is also supported).
 
 .. autosummary::
    :toctree: _api_generated/
 
+   Model.all_vars
+   Model.all_vars_dict
    Model.input_vars
-   Model.is_input
+   Model.input_vars_dict
+   Model.dependent_processes
    Model.visualize
 
 Running a model
@@ -109,126 +112,31 @@ interfaces.
 Process
 =======
 
-Note: ``Process`` is a base class that should be subclassed.
+Creating a process
+------------------
 
 .. autosummary::
    :toctree: _api_generated/
 
-   Process
+   process
 
-Clone a process
----------------
-
-.. autosummary::
-   :toctree: _api_generated/
-
-   Process.clone
-
-Process interface and introspection
+Process introspection and variables
 -----------------------------------
 
-``Process`` implements an immutable mapping interface where keys are
-variable names and values are Variable objects (attribute-style
-access is also supported).
-
 .. autosummary::
    :toctree: _api_generated/
 
-   Process.variables
-   Process.meta
-   Process.name
-   Process.info
-
-Process "abstract" methods
---------------------------
-
-Subclasses of ``Process`` usually implement at least some of the methods below.
-
-.. autosummary::
-   :toctree: _api_generated/
-
-   Process.validate
-   Process.initialize
-   Process.run_step
-   Process.finalize_step
-   Process.finalize
+   process_info
+   variable_info
+   filter_variables
 
 Variable
 ========
 
-Base variable class
--------------------
-
-Although it has the same name, this class is different from
-:py:class:`xarray.Variable`.
-
 .. autosummary::
    :toctree: _api_generated/
 
-   Variable
-
-**Attributes**
-
-.. autosummary::
-   :toctree: _api_generated/
-
-   Variable.value
-   Variable.state
-   Variable.rate
-   Variable.change
-
-**Methods**
-
-.. autosummary::
-   :toctree: _api_generated/
-
-   Variable.to_xarray_variable
-
-Derived variable classes
-------------------------
-
-These classes inherit from ``Variable``.
-
-.. autosummary::
-   :toctree: _api_generated/
-
-   NumberVariable
-   FloatVariable
-   IntegerVariable
-
-Foreign variable
-----------------
-
-.. autosummary::
-   :toctree: _api_generated/
-
-   ForeignVariable
-
-**Attributes**
-
-.. autosummary::
-   :toctree: _api_generated/
-
-   ForeignVariable.ref_process
-   ForeignVariable.ref_var
-   ForeignVariable.value
-   ForeignVariable.state
-   ForeignVariable.rate
-   ForeignVariable.change
-
-Diagnostic variable
--------------------
-
-.. autosummary::
-   :toctree: _api_generated/
-
-   diagnostic
-
-Collections of variables
-------------------------
-
-.. autosummary::
-   :toctree: _api_generated/
-
-   VariableList
-   VariableGroup
+   variable
+   foreign
+   group
+   on_demand

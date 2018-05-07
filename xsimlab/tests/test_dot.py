@@ -5,7 +5,8 @@ from errno import ENOENT
 import pytest
 pytest.importorskip("graphviz")
 
-from xsimlab.dot import to_graphviz, dot_graph, hash_variable
+from xsimlab.dot import to_graphviz, dot_graph, _hash_variable
+from xsimlab.utils import variables_dict
 
 
 # need to parse elements of graphivz's Graph object
@@ -48,57 +49,32 @@ def test_to_graphviz(model):
     g = to_graphviz(model)
     actual_nodes = _get_graph_nodes(g)
     actual_edges = _get_graph_edges(g)
-    expected_nodes = ['grid', 'some_process', 'other_process', 'quantity']
-    expected_edges = [
-        ('grid', 'some_process'),
-        ('some_process', 'other_process'),
-        ('grid', 'other_process'),
-        ('some_process', 'quantity'),
-        ('other_process', 'quantity')
-    ]
+    expected_nodes = list(model)
+    expected_edges = [(dep_p_name, p_name)
+                      for p_name, p_deps in model.dependent_processes.items()
+                      for dep_p_name in p_deps]
     assert sorted(actual_nodes) == sorted(expected_nodes)
     assert set(actual_edges) == set(expected_edges)
 
     g = to_graphviz(model, show_inputs=True)
     actual_nodes = _get_graph_nodes(g)
     actual_edges = _get_graph_edges(g)
-    expected_nodes = ['grid', 'some_process', 'other_process', 'quantity',
-                      'x_size', 'some_param', 'other_param', 'quantity']
-    expected_edges = [
-        ('grid', 'some_process'),
-        ('some_process', 'other_process'),
-        ('grid', 'other_process'),
-        ('some_process', 'quantity'),
-        ('other_process', 'quantity'),
-        (hash_variable(model.grid.x_size), 'grid'),
-        (hash_variable(model.some_process.some_param), 'some_process'),
-        (hash_variable(model.other_process.other_param), 'other_process'),
-        (hash_variable(model.quantity.quantity), 'quantity')
+    expected_nodes += [var_name for _, var_name in model.input_vars]
+    expected_edges += [
+        (_hash_variable(variables_dict(type(model[p_name]))[var_name]), p_name)
+        for p_name, var_name in model.input_vars
     ]
     assert sorted(actual_nodes) == sorted(expected_nodes)
     assert set(actual_edges) == set(expected_edges)
 
     g = to_graphviz(model, show_variables=True)
     actual_nodes = _get_graph_nodes(g)
-    expected_nodes = ['grid', 'some_process', 'other_process', 'quantity',
-                      'x', 'copy_param', 'quantity', 'some_effect', 'x',
-                      'copy_param', 'other_effect', 'quantity', 'x', 'x2',
-                      'all_effects', 'other_derived_quantity',
-                      'some_derived_quantity', '"\\<no_name\\>"',
-                      '"\\<no_name\\>"']
+    expected_nodes = list(model) + [var_name for _, var_name in model.all_vars]
     assert sorted(actual_nodes) == sorted(expected_nodes)
 
-    g = to_graphviz(model, show_only_variable=('quantity', 'quantity'))
-    assert _get_graph_nodes(g).count('quantity') == 4
-
-    g = to_graphviz(model, show_only_variable=model.some_process.quantity)
-    assert _get_graph_nodes(g).count('quantity') == 4
-
-    g = to_graphviz(model, show_only_variable=('some_process', 'some_effect'))
+    g = to_graphviz(model, show_only_variable=('profile', 'u'))
     actual_nodes = _get_graph_nodes(g)
-    expected_nodes = ['grid', 'some_process', 'other_process',
-                      'quantity', 'some_effect', 'all_effects',
-                      '"\\<no_name\\>"']
+    expected_nodes = list(model) + ['u'] * 3
     assert sorted(actual_nodes) == sorted(expected_nodes)
 
 
