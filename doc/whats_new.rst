@@ -122,8 +122,8 @@ Regressions (will be fixed in future releases)
   are not handled by xarray-simlab yet.
 - Variables don't accept anymore a dimension that corresponds to their
   own name. This may be useful, e.g., for sensitivity analysis, but as
-  the latter is not implemented yet this feature will be added back in
-  a next release.
+  the latter is not implemented yet this feature has been removed and
+  will be added back in a next release.
 
 v0.1.1 (20 November 2017)
 -------------------------

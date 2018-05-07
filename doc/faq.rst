@@ -41,9 +41,9 @@ wrapping Fortran code or pybind11_ for wrapping C++11 code).
 As with any other framework, xarray-simlab introduces an overhead
 compared to a simple, straightforward (but non-flexible)
 implementation of a model. The preliminary benchmarks that we have run
-show only a very small overhead, though. This overhead is mainly
-introduced by the thin object-oriented layer that model components
-(i.e., Python classes) together form.
+show only a very small (almost free) overhead, though. This overhead
+is mainly introduced by the thin object-oriented layer that model
+components (i.e., Python classes) together form.
 
 .. _Cython: http://cython.org/
 .. _Numba: http://numba.pydata.org/
