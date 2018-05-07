@@ -88,7 +88,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'xarray-simlab'
-copyright = '2017, xarray-simlab Developers'
+copyright = '2017-2018, xarray-simlab Developers'
 author = 'Benoit Bovy and xarray-simlab Developers'
 
 # The version info for the project you're documenting, acts as replacement for
@@ -203,8 +203,8 @@ intersphinx_mapping = {
     'python': ('https://docs.python.org/3.6/', None),
     'numpy': ('https://docs.scipy.org/doc/numpy/', None),
     'attr': ('http://www.attrs.org/en/stable/', None),
-    'pandas': ('http://pandas.pydata.org/pandas-docs/stable/', None),
-    'xarray': ('http://xarray.pydata.org/en/stable/', None)
+    'pandas': ('https://pandas.pydata.org/pandas-docs/stable/', None),
+    'xarray': ('https://xarray.pydata.org/en/stable/', None)
 }
 
 
