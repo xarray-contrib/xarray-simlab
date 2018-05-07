@@ -172,10 +172,14 @@ class XarraySimulationDriver(BaseSimulationDriver):
             xr_var_name = p_name + '__' + var_name
             xr_var = dataset.get(xr_var_name)
 
-            # TODO: convert 0-d arrays to scalars
-
             if xr_var is not None:
-                self.store[(p_name, var_name)] = xr_var.data.copy()
+                data = xr_var.data.copy()
+
+                if data.ndim == 0:
+                    # convert array to scalar
+                    data = data.item()
+
+                self.store[(p_name, var_name)] = data
 
     def _maybe_save_output_vars(self, istep):
         # TODO: optimize this for performance

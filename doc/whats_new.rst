@@ -88,6 +88,10 @@ changes are effective now!
   ``Dataset.xsimlab.update_vars``. this is a regression that will be
   fixed in the next releases.
 
+- Scalar values from a input ``xarray.Dataset`` are now converted into
+  scalars (instead of a 0-d numpy array) when setting input model
+  variables during a simulation.
+
 Enhancements
 ~~~~~~~~~~~~
 

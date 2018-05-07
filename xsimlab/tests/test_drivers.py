@@ -96,14 +96,28 @@ class TestXarraySimulationDriver(object):
         assert 'add__offset' in ds_in_clock and 'add__offset' not in ds_in
         assert 'roll__shift' in ds_in and 'roll__shift' not in ds_in_clock
 
-    def test_set_input_vars(self, in_dataset, xarray_driver):
-        in_ds = in_dataset.drop('add__offset')
-        xarray_driver._set_input_vars(in_ds)
+    @pytest.mark.parametrize('var_key,is_scalar', [
+        (('init_profile', 'n_points'), True),
+        (('add', 'offset'), False)
+    ])
+    def test_set_input_vars(self, in_dataset, xarray_driver,
+                            var_key, is_scalar):
+        xarray_driver._set_input_vars(in_dataset)
 
-        assert (xarray_driver.store[('init_profile', 'n_points')] ==
-                in_dataset['init_profile__n_points'].data)
-        assert (xarray_driver.store[('init_profile', 'n_points')] is not
-                in_dataset['init_profile__n_points'].data)
+        actual = xarray_driver.store[var_key]
+        expected = in_dataset['__'.join(var_key)].data
+
+        if is_scalar:
+            assert actual == expected
+            assert np.isscalar(actual)
+
+        else:
+            assert_array_equal(actual, expected)
+            assert not np.isscalar(actual)
+
+            # test copy
+            actual[0] = -9999
+            assert not np.array_equal(actual, expected)
 
     def test_run_model(self, in_dataset, out_dataset, xarray_driver):
         out_ds_actual = xarray_driver.run_model()
