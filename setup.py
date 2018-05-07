@@ -20,6 +20,6 @@ setup(name='xarray-simlab',
       long_description=(open('README.rst').read() if exists('README.rst')
                         else ''),
       python_requires='>=3.5',
-      install_requires=['attrs', 'numpy', 'xarray >= 0.10.0'],
+      install_requires=['attrs >= 18.1.0', 'numpy', 'xarray >= 0.10.0'],
       tests_require=['pytest >= 3.3.0'],
       zip_safe=False)

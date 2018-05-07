@@ -14,6 +14,10 @@ the API on how processes and variables are defined and depends on
 each other in a model. xarray-simlab now uses and extends
 attrs_ (:issue:`33`).
 
+Also, Python 3.4 support has been dropped. It may still work with that
+version but it is not actively tested anymore and it is not packaged
+with conda.
+
 .. _attrs: http://www.attrs.org
 
 Breaking changes

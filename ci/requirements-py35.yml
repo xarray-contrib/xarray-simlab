@@ -2,7 +2,7 @@ name: test_env_py35
 channels:
   - conda-forge
 dependencies:
-  - attrs
+  - attrs>=18.1.0
   - python=3.5
   - pytest
   - numpy

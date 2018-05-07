@@ -7,31 +7,18 @@ from collections import (Mapping, KeysView, ItemsView, ValuesView,
                          OrderedDict)
 from contextlib import suppress
 from importlib import import_module
-from inspect import isclass
 
-import attr
-
-
-def attr_fields_dict(cls):
-    # TODO: remove this and use attr.fields_dict instead (18.1.0)
-    if not isclass(cls):
-        raise TypeError("Passed object must be a class.")
-    attrs = getattr(cls, "__attrs_attrs__", None)
-    if attrs is None:
-        raise attr.NotAnAttrsClassError(
-            "{cls!r} is not an attrs-decorated class.".format(cls=cls)
-        )
-    return OrderedDict(((a.name, a) for a in attrs))
+from attr import fields_dict
 
 
 def variables_dict(process_cls):
-    """Get all xsimlab variables declared in a process."""
+    """Get all xsimlab variables declared in a process.
 
-    # exclude attr.Attribute objects that are not xsimlab-specific
-    vars = OrderedDict((k, v)
-                       for k, v in attr_fields_dict(process_cls).items()
+    Exclude attr.Attribute objects that are not xsimlab-specific.
+    """
+    return OrderedDict((k, v)
+                       for k, v in fields_dict(process_cls).items()
                        if 'var_type' in v.metadata)
-    return vars
 
 
 def has_method(obj, meth):
