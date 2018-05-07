@@ -51,25 +51,33 @@ great sources of inspiration for this project.
 
 - xarray_: xarray-simlab actually provides an xarray extension for setting and
   running models.
+- attrs_: a package that allows writing Python classes without
+  boilerplate. xarray-simlab uses and extends attrs for writing
+  processes as succinct Python classes.
 - luigi_: the concept of Luigi is to use Python classes as re-usable units that
   help building complex workflows. xarray-simlab's concept is similar, but
   here it is specific to computational (numerical) modeling.
-- django_ (not really a scientific package): the way that model processes are
-  designed in xarray-simlab is heavily inspired from Django's ORM (i.e., the
-  ``django.db.models`` part).
+- django_ (not really a scientific package): the way that model
+  processes are designed in xarray-simlab has been initially inspired
+  from Django's ORM (i.e., the ``django.db.models`` part).
 - param_: another source of inspiration for the interface of processes
   (more specifically the variables that it defines).
 - climlab_: another python package for process-oriented modeling, which uses
   the same approach although having a slightly different design/API, and which
   is applied to climate modeling.
+- landlab_: like climlab it provides a framework for building model
+  components but it is here applied to landscape evolution
+  modeling. It already has a great list of components ready to use.
 - dask_: represents fine-grained processing tasks as Directed Acyclic Graphs
   (DAGs). xarray-simlab models are DAGs too, where the nodes are interdepent
   processes. In this project we actually borrow some code from dask
   for resolving process dependencies and for model visualization.
 
+.. _attrs: https://github.com/python-attrs/attrs
 .. _xarray: https://github.com/pydata/xarray
 .. _dask: https://github.com/dask/dask
 .. _luigi: https://github.com/spotify/luigi
 .. _django: https://github.com/django/django
 .. _param: https://github.com/ioam/param
 .. _climlab: https://github.com/brian-rose/climlab
+.. _landlab: https://github.com/landlab/landlab
