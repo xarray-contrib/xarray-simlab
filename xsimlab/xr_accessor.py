@@ -296,17 +296,20 @@ class SimlabAccessor(object):
         model : :class:`xsimlab.Model` object, optional
             Reference model. If None, tries to get model from context.
         clocks : dict, optional
-            Used to create one or several clock coordinates.
+            Used to create one or several clock coordinates. Dictionary
+            values are anything that can be easily converted to
+            :class:`xarray.IndexVariable` objects (e.g., a 1-d
+            :class:`numpy.ndarray` or a :class:`pandas.Index`).
         master_clock : str or dict, optional
             Name of the clock coordinate (dimension) to use as master clock.
             If not set, the name is inferred from ``clocks`` (only if
-            one coordinate is given and if Dataset and Dataset has no
-            master clock defined yet).
+            one coordinate is given and if Dataset has no master clock
+            defined yet).
             A dictionary can also be given with one of several of these keys:
 
-            - dim : name of the master clock dimension/coordinate
-            - units : units of all clock coordinate labels
-            - calendar : a unique calendar for all (time) clock coordinates
+            - ``dim`` : name of the master clock dimension/coordinate
+            - ``units`` : units of all clock coordinate labels
+            - ``calendar`` : a unique calendar for all (time) clock coordinates
 
         Returns
         -------
@@ -510,17 +513,21 @@ def create_setup(model=None, clocks=None, master_clock=None,
     model : :class:`xsimlab.Model` object, optional
         Create a simulation setup for this model. If None, tries to get model
         from context.
-    clocks : dict of dicts, optional
-        Used to create one or several clock coordinates. The structure of the
-        dict of dicts looks like ``{'dim': {key: value, ...}, ...}``.
-        See the "Notes" section below for allowed keys and values.
-        If only one clock is provided, it will be used as master clock.
+    clocks : dict, optional
+        Used to create one or several clock coordinates. Dictionary
+        values are anything that can be easily converted to
+        :class:`xarray.IndexVariable` objects (e.g., a 1-d
+        :class:`numpy.ndarray` or a :class:`pandas.Index`).
     master_clock : str or dict, optional
-        Name of the clock coordinate (dimension) to use as master clock (i.e.,
-        for time steps).
-        A dictionary with at least a 'dim' key can be provided instead, it
-        allows setting time units and calendar (CF-conventions) with
-        'units' and 'calendar' keys.
+        Name of the clock coordinate (dimension) to use as master clock.
+        If not set, the name is inferred from ``clocks`` (only if
+        one coordinate is given and if Dataset has no master clock
+        defined yet).
+        A dictionary can also be given with one of several of these keys:
+
+        - ``dim`` : name of the master clock dimension/coordinate
+        - ``units`` : units of all clock coordinate labels
+        - ``calendar`` : a unique calendar for all (time) clock coordinates
     input_vars : dict, optional
         Dictionary with values given for model inputs. Entries of the
         dictionary may look like:
@@ -565,27 +572,6 @@ def create_setup(model=None, clocks=None, master_clock=None,
 
     Notes
     -----
-    Allowed parameters for creating clock coordinates:
-
-    - data : array-like or :class:`pandas.Index`, optional
-        Absolute time values for the master clock (must be 1-dimensional).
-        If provided, all other parameters below will be ignored.
-        A :py:class:`pandas.DatetimeIndex` object can be used, e.g.,
-        when working with datetime-like values.
-    - start : float, optional
-        Start simulation time (default: 0).
-    - end : float, optional
-        End simulation time.
-    - step : float, optional
-        Time step duration.
-    - nsteps : int, optional
-        Number of time steps.
-    - auto_adjust : bool, optional
-        Only for snapshot clock coordinates. If True (default), the resulting
-        coordinate labels are automatically adjusted so that they are consistent
-        with the labels of the master clock coordinate. Otherwise raise a
-        KeyError if labels are not valid. (DataArray.sel is used internally).
-
     Output variable names are added in Dataset as specific attributes
     (global and/or clock coordinate attributes).
 
