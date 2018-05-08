@@ -154,13 +154,15 @@ On-demand variables
 ~~~~~~~~~~~~~~~~~~~
 
 On-demand variables are like regular variables, except that their
-value is not intended to be computed systematically, e.g., at each
-time step of a simulation, but instead only at a given few
-times. These are declared using :func:`~xsimlab.on_demand` and must
-implement in the same process-ified class a dedicated method that
-computes their value. They have always ``intent='out'``.
+value is not intended to be computed systematically, e.g., at the
+beginning or at each time step of a simulation, but instead only at a
+given few times (or not at all). These are declared using
+:func:`~xsimlab.on_demand` and must implement in the same
+process-ified class a dedicated method -- i.e., decorated with
+``@foo.compute`` where ``foo`` is the name of the variable -- that
+returns their value. They have always ``intent='out'``.
 
-On-demand variables are useful, e.g., for model diagnostics.
+On-demand variables are useful, e.g., for optional model diagnostics.
 
 Simulation workflow
 -------------------
