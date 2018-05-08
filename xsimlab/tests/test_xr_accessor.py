@@ -99,88 +99,18 @@ class TestSimlabAccessor(object):
         ds = xr.Dataset()
         assert ds.xsimlab.master_clock_dim is None
 
-    def test_set_master_clock_dim(self):
-        ds = xr.Dataset(coords={'clock': [1, 2], 'clock2': [3, 4]})
+    # def test_set_master_clock_dim(self):
+    #     ds = xr.Dataset(coords={'clock': [1, 2], 'clock2': [3, 4]})
 
-        ds.xsimlab._set_master_clock_dim('clock')
-        assert self._master_clock_key in ds.clock.attrs
+    #     ds.xsimlab._set_master_clock_dim('clock')
+    #     assert self._master_clock_key in ds.clock.attrs
 
-        ds.xsimlab._set_master_clock_dim('clock2')
-        assert self._master_clock_key not in ds.clock.attrs
-        assert self._master_clock_key in ds.clock2.attrs
+    #     ds.xsimlab._set_master_clock_dim('clock2')
+    #     assert self._master_clock_key not in ds.clock.attrs
+    #     assert self._master_clock_key in ds.clock2.attrs
 
-        with pytest.raises(KeyError):
-            ds.xsimlab._set_master_clock_dim('invalid_clock')
-
-    def test_set_master_clock(self):
-        data = [0, 2, 4, 6, 8]
-
-        valid_kwargs = [
-            {'data': data},
-            # data provided -> ignore other arguments even if invalid
-            {'data': data, 'end': 0, 'nsteps': -1, 'step': 3},
-            {'nsteps': 4, 'end': 8, 'step': 2},
-            {'nsteps': 4, 'end': 8},
-            {'nsteps': 4, 'step': 2},
-            {'step': 2, 'end': 8}
-        ]
-        for kwargs in valid_kwargs:
-            ds = xr.Dataset()
-            ds.xsimlab._set_master_clock('clock', **kwargs)
-            np.testing.assert_array_equal(ds.clock.values, data)
-
-        invalid_kwargs = [
-            {'nsteps': 4, 'end': 8, 'step': 3},
-            {'start': 1, 'nsteps': 4, 'end': 8, 'step': 2},
-            {'nsteps': 4}
-        ]
-        for kwargs in invalid_kwargs:
-            with pytest.raises(ValueError) as excinfo:
-                ds = xr.Dataset()
-                ds.xsimlab._set_master_clock('clock', **kwargs)
-            assert "Invalid combination" in str(excinfo.value)
-
-        ds = xr.Dataset()
-        ds.xsimlab._set_master_clock('clock', data=data,
-                                     units='years since 1-1-1 0:0:0',
-                                     calendar='365_day')
-        assert self._master_clock_key in ds.clock.attrs
-        assert ds.clock.attrs['units'] == 'years since 1-1-1 0:0:0'
-        assert ds.clock.attrs['calendar'] == '365_day'
-
-        with pytest.raises(ValueError) as excinfo:
-            ds.xsimlab._set_master_clock('clock', data=data)
-        assert "already exists" in str(excinfo.value)
-
-        ds = xr.Dataset()
-        da = xr.DataArray(data, dims='other_dim')
-        with pytest.raises(ValueError) as excinfo:
-            ds.xsimlab._set_master_clock('clock', data=da)
-        assert "expected dimension" in str(excinfo.value)
-
-    def test_set_snapshot_clock(self):
-        with pytest.raises(ValueError) as excinfo:
-            ds = xr.Dataset()
-            ds.xsimlab._set_snapshot_clock('snap_clock', data=[1, 2])
-        assert "no master clock" in str(excinfo.value)
-
-        ds = xr.Dataset()
-        ds.xsimlab._set_master_clock('clock', data=[0, 2, 4, 6, 8],
-                                     units='years since 1-1-1 0:0:0',
-                                     calendar='365_day')
-
-        ds.xsimlab._set_snapshot_clock('snap_clock', end=8, step=4)
-        np.testing.assert_array_equal(ds['snap_clock'], [0, 4, 8])
-        assert self._clock_key in ds['snap_clock'].attrs
-        assert 'units' in ds['snap_clock'].attrs
-        assert 'calendar' in ds['snap_clock'].attrs
-
-        ds.xsimlab._set_snapshot_clock('snap_clock', data=[0, 3, 8])
-        np.testing.assert_array_equal(ds['snap_clock'], [0, 4, 8])
-
-        with pytest.raises(KeyError):
-            ds.xsimlab._set_snapshot_clock('snap_clock', data=[0, 3, 8],
-                                           auto_adjust=False)
+    #     with pytest.raises(KeyError):
+    #         ds.xsimlab._set_master_clock_dim('invalid_clock')
 
     def test_set_input_vars(self, model, in_dataset):
         in_vars = {('init_profile', 'n_points'): 5,
@@ -206,30 +136,48 @@ class TestSimlabAccessor(object):
         ds = xr.Dataset()
         with pytest.raises(ValueError) as excinfo:
             ds.xsimlab.update_clocks(model=model, clocks={})
-        assert "cannot determine which clock" in str(excinfo.value)
+        assert "Cannot determine which clock" in str(excinfo.value)
 
         ds = xr.Dataset()
         with pytest.raises(ValueError) as excinfo:
             ds.xsimlab.update_clocks(
                 model=model,
-                clocks={'clock': {'data': [0, 1, 2]},
-                        'out': {'data': [0, 2]}}
+                clocks={'clock': [0, 1, 2],
+                        'out': [0, 2]}
             )
-        assert "cannot determine which clock" in str(excinfo.value)
+        assert "Cannot determine which clock" in str(excinfo.value)
 
         ds = xr.Dataset()
         with pytest.raises(KeyError) as excinfo:
             ds.xsimlab.update_clocks(
                 model=model,
-                clocks={'clock': {'data': [0, 1, 2]}},
+                clocks={'clock': [0, 1, 2]},
                 master_clock='non_existing_clock_dim'
             )
-        assert "master clock dimension name" in str(excinfo.value)
+        assert "Master clock dimension name" in str(excinfo.value)
+
+        ds = xr.Dataset()
+        with pytest.raises(ValueError) as excinfo:
+            ds.xsimlab.update_clocks(
+                model=model,
+                clocks={'clock': ('x', [0, 1, 2])},
+            )
+        assert "Invalid dimension" in str(excinfo.value)
+
+        ds = xr.Dataset()
+        with pytest.raises(ValueError) as excinfo:
+            ds.xsimlab.update_clocks(
+                model=model,
+                clocks={'clock': [0, 1, 2],
+                        'out': [0, 0.5, 2]},
+                master_clock='clock'
+            )
+        assert "not synchronized" in str(excinfo.value)
 
         ds = xr.Dataset()
         ds = ds.xsimlab.update_clocks(
             model=model,
-            clocks={'clock': {'data': [0, 1, 2]}}
+            clocks={'clock': [0, 1, 2]}
         )
         assert ds.xsimlab.master_clock_dim == 'clock'
 
@@ -237,14 +185,28 @@ class TestSimlabAccessor(object):
 
         ds = ds.xsimlab.update_clocks(
             model=model,
-            clocks={'clock': {'data': [0, 1, 2]}},
+            clocks={'clock': [0, 1, 2]},
             master_clock={'dim': 'clock',
                           'units': 'days since 1-1-1 0:0:0',
                           'calendar': '365_days'}
         )
+        np.testing.assert_array_equal(ds.clock.values, [0, 1, 2])
         assert 'units' in ds.clock.attrs
         assert 'calendar' in ds.clock.attrs
         assert ds.clock.attrs[self._output_vars_key] == 'profile__u'
+
+        new_ds = ds.xsimlab.update_clocks(
+            model=model,
+            clocks={'clock2': [0, 0.5, 1, 1.5, 2]},
+            master_clock='clock2'
+        )
+        assert new_ds.xsimlab.master_clock_dim == 'clock2'
+
+        new_ds = ds.xsimlab.update_clocks(
+            model=model,
+            clocks={'out2': [0, 2]}
+        )
+        assert new_ds.xsimlab.master_clock_dim == 'clock'
 
     def test_update_vars(self, model, in_dataset):
         ds = in_dataset.xsimlab.update_vars(
@@ -337,8 +299,8 @@ def test_create_setup(model, in_dataset):
             'add__offset': ('clock', [1, 2, 3, 4, 5])
         },
         clocks={
-            'clock': {'data': [0, 2, 4, 6, 8]},
-            'out': {'data': [0, 4, 8]},
+            'clock': [0, 2, 4, 6, 8],
+            'out': [0, 4, 8],
         },
         master_clock='clock',
         output_vars={
