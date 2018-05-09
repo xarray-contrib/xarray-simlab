@@ -20,6 +20,7 @@ The following imports are necessary for the examples below.
 
 .. ipython:: python
 
+    import numpy as np
     import xsimlab as xs
     import matplotlib.pyplot as plt
 
@@ -47,12 +48,12 @@ create a new setup in a very declarative way:
 
     in_ds = xs.create_setup(
         model=model2,
-        clocks={'time': {'start': 0, 'end': 1, 'step': 0.01},
-                'otime': {'data': [0, 0.5, 1]}},
+        clocks={'time': np.linspace(0., 1., 101),
+                'otime': [0, 0.5, 1]},
         master_clock='time',
         input_vars={'grid': {'length': 1.5, 'spacing': 0.01},
-                    'advect': {'v': 1.},
-                    'init': {'loc': 0.3, 'scale': 0.1}},
+                    'init': {'loc': 0.3, 'scale': 0.1},
+                    'advect': {'v': 1.}},
         output_vars={None: {'grid': 'x'},
                      'otime': {'profile': 'u'}}
     )
@@ -187,8 +188,7 @@ for the ``otime`` coordinate (which serves to take snapshots of
 
 .. ipython:: python
 
-    clocks = {'time': {'data': in_ds.time},
-              'otime': {'data': [0, 0.25, 0.5]}}
+    clocks = {'otime': [0, 0.25, 0.5]}
     with model2:
         out_ds3 = (in_ds.xsimlab.update_clocks(clocks=clocks,
                                                master_clock='time')

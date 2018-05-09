@@ -87,6 +87,11 @@ changes are effective now!
   updating a setup using ``create_setup`` or
   ``Dataset.xsimlab.update_vars``. this is a regression that will be
   fixed in the next releases.
+- Argument values for generating clock data in ``create_setup`` and
+  ``Dataset.xsimlab.update_clocks`` have changed and are now more
+  consistent with how coordinates are set in xarray. Additionally,
+  ``auto_adjust`` has been removed (an error is raised instead when
+  clock coordinate labels are not synchronized).
 
 - Scalar values from a input ``xarray.Dataset`` are now converted into
   scalars (instead of a 0-d numpy array) when setting input model
@@ -117,6 +122,9 @@ Enhancements
   but return all variable names in the model.
 - ``input_vars`` and ``output_vars`` arguments of ``create_setup`` and
   ``Dataset.xsimlab.update_vars`` now accepts different formats.
+- It is now possible to update only some clocks with
+  ``Dataset.xsimlab.update_clocks`` (previously all existing clock
+  coordinates were dropped first).
 
 Regressions (will be fixed in future releases)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -128,6 +136,10 @@ Regressions (will be fixed in future releases)
   own name. This may be useful, e.g., for sensitivity analysis, but as
   the latter is not implemented yet this feature has been removed and
   will be added back in a next release.
+- High-level API for generating clock coordinate data (i.e.,
+  ``start``, ``end``, ``step`` and ``auto_adjust`` arguments) is not
+  supported anymore. This could be added back in a future release in a
+  cleaner form.
 
 v0.1.1 (20 November 2017)
 -------------------------
