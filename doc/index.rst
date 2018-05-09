@@ -46,22 +46,33 @@ Documentation index
    inspect_model
    run_model
 
-**Help & reference**
+**Help & Reference**
 
 * :doc:`api`
-* :doc:`develop`
 * :doc:`whats_new`
 * :doc:`citation`
 
 .. toctree::
    :maxdepth: 1
    :hidden:
-   :caption: Help & reference
+   :caption: Help & Reference
 
    api
-   develop
    whats_new
    citation
+
+**For Contributors**
+
+* :doc:`develop`
+* :doc:`release_procedure`
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+   :caption: For Contributors
+
+   develop
+   release_procedure
 
 Get in touch
 ------------
