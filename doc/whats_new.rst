@@ -3,7 +3,7 @@
 Release Notes
 =============
 
-v0.2.0 (Unreleased)
+v0.2.0 (9 May 2018)
 -------------------
 
 Highlights
