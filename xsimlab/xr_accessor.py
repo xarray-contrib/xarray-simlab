@@ -159,89 +159,66 @@ class SimlabAccessor(object):
                     return dim
             return None
 
-    def _set_master_clock_dim(self, dim):
-        if dim not in self._ds.coords:
-            raise KeyError("Dataset has no %r dimension coordinate. "
-                           "To create a new master clock dimension, "
-                           "use Dataset.xsimlab.update_clock."
-                           % dim)
+    def _set_clock_coord(self, dim, data):
+        xr_var = as_variable(data, name=dim)
 
-        if self.master_clock_dim is not None:
-            self._ds[self.master_clock_dim].attrs.pop(self._master_clock_key)
+        if xr_var.dims != (dim,):
+            raise ValueError("Invalid dimension(s) given for clock coordinate "
+                             "{dim!r}: found {invalid_dims!r}, "
+                             "expected {dim!r}"
+                             .format(dim=dim, invalid_dims=xr_var.dims))
 
-        self._ds[dim].attrs[self._clock_key] = np.uint8(True)
-        self._ds[dim].attrs[self._master_clock_key] = np.uint8(True)
-        self._master_clock_dim = dim
+        xr_var.attrs[self._clock_key] = np.uint8(True)
 
-    def _set_clock_data(self, dim, data, start, end, step, nsteps):
-        if data is not None:
-            data_dims = getattr(data, 'dims', None)
-            if data_dims is not None and data_dims != (dim,):
-                raise ValueError("expected dimension %r for clock coordinate"
-                                 "but found %r" % (dim, data_dims))
-            return data
+        self._ds.coords[dim] = xr_var
 
-        args = {'step': step, 'nsteps': nsteps, 'end': end}
-        provided_args = {k for k, v in args.items() if v is not None}
+    def _uniformize_clock_coords(self, dim=None, units=None, calendar=None):
+        """Ensure consistency across all clock coordinates.
 
-        if provided_args == {'nsteps', 'end', 'step'}:
-            if end - start == nsteps * step:
-                provided_args = {'nsteps', 'end'}
-        if provided_args == {'nsteps', 'end'}:
-            data = np.linspace(start, end, nsteps + 1)
-        elif provided_args == {'step', 'nsteps'}:
-            data = np.arange(start, start + (nsteps + 1) * step, step)
-        elif provided_args == {'step', 'end'}:
-            data = np.arange(start, end + step, step)
-        else:
-            raise ValueError("Invalid combination of nsteps (%s), step (%s) "
-                             "and end (%s)" % (nsteps, step, end))
+        - maybe update master clock dimension
+        - maybe set or update the same units and/or calendar for all
+          coordinates as attributes
+        - check that all clocks are synchronized with master clock, i.e.,
+          there is no coordinate label that is not present in master clock
 
-        return data
+        """
+        if dim is not None:
+            if self.master_clock_dim is not None:
+                old_mclock_coord = self._ds[self.master_clock_dim]
+                old_mclock_coord.attrs.pop(self._master_clock_key)
 
-    def _set_master_clock(self, dim, data=None, start=0., end=None,
-                          step=None, nsteps=None, units=None, calendar=None):
-        if dim in self._ds.dims:
-            raise ValueError("dimension %r already exists" % dim)
+            if dim not in self._ds.coords:
+                raise KeyError("Master clock dimension name {} as no "
+                               "defined coordinate in Dataset"
+                               .format(dim))
 
-        self._ds[dim] = self._set_clock_data(dim, data, start, end,
-                                             step, nsteps)
+            self._ds[dim].attrs[self._master_clock_key] = np.uint8(True)
+            self._master_clock_dim = dim
+
         if units is not None:
-            self._ds[dim].attrs['units'] = units
+            for coord in self.clock_coords.values():
+                coord.attrs['units'] = units
+
         if calendar is not None:
-            self._ds[dim].attrs['calendar'] = calendar
+            for coord in self.clock_coords.values():
+                coord.attrs['calendar'] = calendar
 
-        self._set_master_clock_dim(dim)
+        master_clock_idx = self._ds.indexes.get(self.master_clock_dim)
 
-    def _set_snapshot_clock(self, dim, data=None, start=0., end=None,
-                            step=None, nsteps=None, auto_adjust=True):
-        if self.master_clock_dim is None:
-            raise ValueError("no master clock dimension/coordinate is defined "
-                             "in Dataset. "
-                             "Use `Dataset.xsimlab._set_master_clock` first")
+        for clock_dim in self.clock_coords:
+            if clock_dim == self.master_clock_dim:
+                continue
 
-        clock_data = self._set_clock_data(dim, data, start, end, step, nsteps)
+            clock_idx = self._ds.indexes[clock_dim]
+            diff_idx = clock_idx.difference(master_clock_idx)
 
-        da_master_clock = self._ds[self.master_clock_dim]
-
-        if auto_adjust:
-            kwargs = {'method': 'nearest'}
-        else:
-            kwargs = {}
-
-        indexer = {self.master_clock_dim: clock_data}
-        kwargs.update(indexer)
-        da_snapshot_clock = da_master_clock.sel(**kwargs)
-
-        self._ds[dim] = da_snapshot_clock.rename({self.master_clock_dim: dim})
-
-        # .sel copies variable attributes
-        self._ds[dim].attrs.pop(self._master_clock_key)
-
-        for attr_name in ('units', 'calendar'):
-            attr_value = da_master_clock.attrs.get(attr_name)
-            if attr_value is not None:
-                self._ds[dim].attrs[attr_name] = attr_value
+            if diff_idx.size:
+                raise ValueError("Clock coordinate {} is not synchronized "
+                                 "with master clock coordinate {}. "
+                                 "The following coordinate labels are "
+                                 "absent in master clock: {}"
+                                 .format(clock_dim, self.master_clock_dim,
+                                         diff_idx.values))
 
     def _set_input_vars(self, model, input_vars):
         invalid_inputs = set(input_vars) - set(model.input_vars)
@@ -309,24 +286,30 @@ class SimlabAccessor(object):
         return output_vars
 
     def update_clocks(self, model=None, clocks=None, master_clock=None):
-        """Update clock coordinates.
+        """Set or update clock coordinates.
 
-        Add clock coordinates (after dropped all existing clock
-        coordinates). Output variable attributes are propagate to
-        the replaced coordinates.
-
-        More details about the values allowed for the parameters below
-        can be found in the doc of :meth:`xsimlab.create_setup`.
+        Also copy from the replaced coordinates any attribute that is
+        specific to model output variables.
 
         Parameters
         ----------
         model : :class:`xsimlab.Model` object, optional
             Reference model. If None, tries to get model from context.
-        clocks : dict of dicts, optional
-            Used to create one or several clock coordinates.
+        clocks : dict, optional
+            Used to create one or several clock coordinates. Dictionary
+            values are anything that can be easily converted to
+            :class:`xarray.IndexVariable` objects (e.g., a 1-d
+            :class:`numpy.ndarray` or a :class:`pandas.Index`).
         master_clock : str or dict, optional
-            Name (and units/calendar) of the clock coordinate
-            (dimension) to use as master clock.
+            Name of the clock coordinate (dimension) to use as master clock.
+            If not set, the name is inferred from ``clocks`` (only if
+            one coordinate is given and if Dataset has no master clock
+            defined yet).
+            A dictionary can also be given with one of several of these keys:
+
+            - ``dim`` : name of the master clock dimension/coordinate
+            - ``units`` : units of all clock coordinate labels
+            - ``calendar`` : a unique calendar for all (time) clock coordinates
 
         Returns
         -------
@@ -340,35 +323,37 @@ class SimlabAccessor(object):
         """
         model = _maybe_get_model_from_context(model)
 
-        ds = self._ds.drop(self.clock_coords)
-
-        attrs_master_clock = {}
+        ds = self._ds.copy()
 
         if isinstance(master_clock, str):
-            master_clock_dim = master_clock
-        elif isinstance(master_clock, dict):
-            master_clock_dim = master_clock.pop('dim')
-            attrs_master_clock.update(master_clock)
-        elif master_clock is None and clocks is not None and len(clocks) == 1:
-            master_clock_dim = list(clocks.keys())[0]
+            master_clock_dict = {'dim': master_clock}
+
+        elif master_clock is None:
+            if (clocks is not None and len(clocks) == 1 and
+                    self.master_clock_dim is None):
+                master_clock_dict = {'dim': list(clocks.keys())[0]}
+            else:
+                master_clock_dict = {}
+
         else:
-            master_clock_dim = None
+            master_clock_dict = master_clock
+
+        master_clock_dim = master_clock_dict.get('dim', self.master_clock_dim)
 
         if clocks is not None:
             if master_clock_dim is None:
-                raise ValueError("cannot determine which clock coordinate is "
+                raise ValueError("Cannot determine which clock coordinate is "
                                  "the master clock")
-            elif master_clock_dim not in clocks:
-                raise KeyError("master clock dimension name %r not found "
-                               "in `clocks`" % master_clock_dim)
+            elif (master_clock_dim not in clocks and
+                  master_clock_dim not in self.clock_coords):
+                raise KeyError("Master clock dimension name {!r} not found "
+                               "in `clocks` nor in Dataset"
+                               .format(master_clock_dim))
 
-            master_clock_kwargs = clocks.pop(master_clock_dim)
-            master_clock_kwargs.update(attrs_master_clock)
-            ds.xsimlab._set_master_clock(master_clock_dim,
-                                         **master_clock_kwargs)
+            for dim, data in clocks.items():
+                ds.xsimlab._set_clock_coord(dim, data)
 
-            for dim, kwargs in clocks.items():
-                ds.xsimlab._set_snapshot_clock(dim, **kwargs)
+        ds.xsimlab._uniformize_clock_coords(**master_clock_dict)
 
         for clock, var_keys in self.output_vars.items():
             if clock is None or clock in ds:
@@ -528,17 +513,21 @@ def create_setup(model=None, clocks=None, master_clock=None,
     model : :class:`xsimlab.Model` object, optional
         Create a simulation setup for this model. If None, tries to get model
         from context.
-    clocks : dict of dicts, optional
-        Used to create one or several clock coordinates. The structure of the
-        dict of dicts looks like ``{'dim': {key: value, ...}, ...}``.
-        See the "Notes" section below for allowed keys and values.
-        If only one clock is provided, it will be used as master clock.
+    clocks : dict, optional
+        Used to create one or several clock coordinates. Dictionary
+        values are anything that can be easily converted to
+        :class:`xarray.IndexVariable` objects (e.g., a 1-d
+        :class:`numpy.ndarray` or a :class:`pandas.Index`).
     master_clock : str or dict, optional
-        Name of the clock coordinate (dimension) to use as master clock (i.e.,
-        for time steps).
-        A dictionary with at least a 'dim' key can be provided instead, it
-        allows setting time units and calendar (CF-conventions) with
-        'units' and 'calendar' keys.
+        Name of the clock coordinate (dimension) to use as master clock.
+        If not set, the name is inferred from ``clocks`` (only if
+        one coordinate is given and if Dataset has no master clock
+        defined yet).
+        A dictionary can also be given with one of several of these keys:
+
+        - ``dim`` : name of the master clock dimension/coordinate
+        - ``units`` : units of all clock coordinate labels
+        - ``calendar`` : a unique calendar for all (time) clock coordinates
     input_vars : dict, optional
         Dictionary with values given for model inputs. Entries of the
         dictionary may look like:
@@ -583,27 +572,6 @@ def create_setup(model=None, clocks=None, master_clock=None,
 
     Notes
     -----
-    Allowed parameters for creating clock coordinates:
-
-    - data : array-like or :class:`pandas.Index`, optional
-        Absolute time values for the master clock (must be 1-dimensional).
-        If provided, all other parameters below will be ignored.
-        A :py:class:`pandas.DatetimeIndex` object can be used, e.g.,
-        when working with datetime-like values.
-    - start : float, optional
-        Start simulation time (default: 0).
-    - end : float, optional
-        End simulation time.
-    - step : float, optional
-        Time step duration.
-    - nsteps : int, optional
-        Number of time steps.
-    - auto_adjust : bool, optional
-        Only for snapshot clock coordinates. If True (default), the resulting
-        coordinate labels are automatically adjusted so that they are consistent
-        with the labels of the master clock coordinate. Otherwise raise a
-        KeyError if labels are not valid. (DataArray.sel is used internally).
-
     Output variable names are added in Dataset as specific attributes
     (global and/or clock coordinate attributes).
 
