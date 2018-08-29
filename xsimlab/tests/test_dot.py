@@ -4,6 +4,11 @@ from errno import ENOENT
 
 import pytest
 pytest.importorskip("graphviz")
+try:
+    from IPython.display import Image, SVG
+    ipython_installed = True
+except ImportError:
+    ipython_installed = False
 
 from xsimlab.dot import to_graphviz, dot_graph, _hash_variable
 from xsimlab.utils import variables_dict
@@ -83,32 +88,31 @@ def test_to_graphviz_attributes(model):
     assert to_graphviz(model, rankdir='BT').graph_attr['rankdir'] == 'BT'
 
 
-def test_dot_graph(model, tmpdir):
-    ipydisp = pytest.importorskip('IPython.display')
-
+@pytest.mark.skipif(ipython_installed == False,
+                    reason="IPython is not installed")
+@pytest.mark.parametrize('format,typ', [
+    ('png', Image),
+    pytest.mark.xfail(('jpeg', Image),
+                      reason='jpeg not always supported in dot'),
+    ('dot', type(None)),
+    ('pdf', type(None)),
+    ('svg', SVG),
+])
+def test_dot_graph(model, tmpdir, format, typ):
     # Use a name that the shell would interpret specially to ensure that we're
     # not vulnerable to shell injection when interacting with `dot`.
     filename = str(tmpdir.join('$(touch should_not_get_created.txt)'))
 
-    # Map from format extension to expected return type.
-    result_types = {
-        'png': ipydisp.Image,
-        'jpeg': ipydisp.Image,
-        'dot': type(None),
-        'pdf': type(None),
-        'svg': ipydisp.SVG,
-    }
-    for format in result_types:
-        target = '.'.join([filename, format])
-        _ensure_not_exists(target)
-        try:
-            result = dot_graph(model, filename=filename, format=format)
+    target = '.'.join([filename, format])
+    _ensure_not_exists(target)
+    try:
+        result = dot_graph(model, filename=filename, format=format)
 
-            assert not os.path.exists('should_not_get_created.txt')
-            assert os.path.isfile(target)
-            assert isinstance(result, result_types[format])
-        finally:
-            _ensure_not_exists(target)
+        assert not os.path.exists('should_not_get_created.txt')
+        assert os.path.isfile(target)
+        assert isinstance(result, typ)
+    finally:
+        _ensure_not_exists(target)
 
     # format supported by graphviz but not by IPython
     with pytest.raises(ValueError) as excinfo:
@@ -124,28 +128,28 @@ def test_dot_graph_no_ipython(model):
         assert result is None
 
 
-def test_dot_graph_no_filename(tmpdir, model):
-    ipydisp = pytest.importorskip('IPython.display')
+@pytest.mark.skipif(ipython_installed == False,
+                    reason="IPython is not installed")
+@pytest.mark.parametrize('format,typ', [
+    ('png', Image),
+    pytest.mark.xfail(('jpeg', Image),
+                      reason='jpeg not always supported in dot'),
+    ('dot', type(None)),
+    ('pdf', type(None)),
+    ('svg', SVG),
+])
+def test_dot_graph_no_filename(tmpdir, model, format, typ):
+    before = tmpdir.listdir()
+    result = dot_graph(model, filename=None, format=format)
+    # We shouldn't write any files if filename is None.
+    after = tmpdir.listdir()
+    assert before == after
+    assert isinstance(result, typ)
 
-    # Map from format extension to expected return type.
-    result_types = {
-        'png': ipydisp.Image,
-        'jpeg': ipydisp.Image,
-        'dot': type(None),
-        'pdf': type(None),
-        'svg': ipydisp.SVG,
-    }
-    for format in result_types:
-        before = tmpdir.listdir()
-        result = dot_graph(model, filename=None, format=format)
-        # We shouldn't write any files if filename is None.
-        after = tmpdir.listdir()
-        assert before == after
-        assert isinstance(result, result_types[format])
 
-
+@pytest.mark.skipif(ipython_installed == False,
+                    reason="IPython is not installed")
 def test_filenames_and_formats(model):
-    ipydisp = pytest.importorskip('IPython.display')
 
     # Test with a variety of user provided args
     filenames = ['modelpdf', 'model.pdf', 'model.pdf', 'modelpdf',
@@ -155,11 +159,9 @@ def test_filenames_and_formats(model):
                'model.pdf.svg']
 
     result_types = {
-        'png': ipydisp.Image,
-        'jpeg': ipydisp.Image,
-        'dot': type(None),
+        'png': Image,
         'pdf': type(None),
-        'svg': ipydisp.SVG,
+        'svg': SVG,
     }
 
     for filename, format, target in zip(filenames, formats, targets):
