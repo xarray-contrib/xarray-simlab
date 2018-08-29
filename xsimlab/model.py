@@ -43,7 +43,7 @@ class _ModelBuilder(object):
         self._processes_cls = processes_cls
         self._processes_obj = {k: cls() for k, cls in processes_cls.items()}
 
-        self._reverse_lookup = {cls: k for k, cls in processes_cls.items()}
+        self._reverse_lookup = self._get_reverse_lookup(processes_cls)
 
         self._input_vars = None
 
@@ -52,6 +52,24 @@ class _ModelBuilder(object):
 
         # a cache for group keys
         self._group_keys = {}
+
+    def _get_reverse_lookup(self, processes_cls):
+        """Return a dictionary with process classes as keys and process names
+        as values.
+
+        Additionally, the returned dictionary maps all parent classes
+        to one (str) or several (list) process names.
+
+        """
+        reverse_lookup = defaultdict(list)
+
+        for p_name, p_cls in processes_cls.items():
+            # exclude `object` base class from lookup
+            for cls in p_cls.mro()[:-1]:
+                reverse_lookup[cls].append(p_name)
+
+        return {k: v[0] if len(v) == 1 else v
+                for k, v in reverse_lookup.items()}
 
     def bind_processes(self, model_obj):
         for p_name, p_obj in self._processes_obj.items():
@@ -90,6 +108,17 @@ class _ModelBuilder(object):
                     "Process class '{}' missing in Model but required "
                     "by foreign variable '{}' declared in process '{}'"
                     .format(target_p_cls.__name__, var.name, p_name)
+                )
+
+            elif isinstance(target_p_name, list):
+                raise ValueError(
+                    "Process class {!r} required by foreign variable '{}.{}' "
+                    "is used (possibly via one its child classes) by multiple "
+                    "processes: {}"
+                    .format(
+                        target_p_cls.__name__, p_name, var.name,
+                        ', '.join(['{!r}'.format(n) for n in target_p_name])
+                    )
                 )
 
             store_key, od_key = self._get_var_key(target_p_name, target_var)
