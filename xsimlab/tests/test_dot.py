@@ -8,6 +8,8 @@ try:
     from IPython.display import Image, SVG
     ipython_installed = True
 except ImportError:
+    Image = None,
+    SVG = None
     ipython_installed = False
 
 from xsimlab.dot import to_graphviz, dot_graph, _hash_variable
