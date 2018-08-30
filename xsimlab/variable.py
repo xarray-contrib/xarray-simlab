@@ -2,7 +2,7 @@ from enum import Enum
 import itertools
 
 import attr
-from attr._make import _CountingAttr as CountingAttr_
+from attr._make import _CountingAttr
 
 
 class VarType(Enum):
@@ -18,39 +18,19 @@ class VarIntent(Enum):
     INOUT = 'inout'
 
 
-class _CountingAttr(CountingAttr_):
-    """A hack to add a custom 'compute' decorator for on-request computation
-    of on_demand variables.
+def compute(self, method):
+    """A decorator that, when applied to an on-demand variable, returns a
+    value for that variable.
 
-    Hope there will be a chance to have a cleaner solution,
-    see https://github.com/python-attrs/attrs/issues/340.
     """
-    def __init__(self, metadata):
-        # reduce the risk of breaking the code when argument list of
-        # CountingAttr changes (assumes attr.attrib have similar arg list)
-        attrib_args = dict(zip(attr.attrib.__code__.co_varnames,
-                               attr.attrib.__defaults__))
-        attrib_args.update({
-            'default': attr.NOTHING,
-            'validator': None,
-            'repr': False,
-            'cmp': False,
-            'hash': None,
-            'init': False,
-            'converter': None,
-            'metadata': metadata,
-            'type': None
-        })
+    self.metadata['compute'] = method
 
-        init_arg_names = CountingAttr_.__init__.__code__.co_varnames[1:]
-        args = [attrib_args[k] for k in init_arg_names]
+    return method
 
-        super(_CountingAttr, self).__init__(*args)
 
-    def compute(self, method):
-        self.metadata['compute'] = method
-
-        return method
+# monkey patch, waiting for cleaner solution:
+# https://github.com/python-attrs/attrs/issues/340
+_CountingAttr.compute = compute
 
 
 def _as_dim_tuple(dims):
@@ -204,7 +184,7 @@ def on_demand(dims=(), group=None, description='', attrs=None):
                 'attrs': attrs or {},
                 'description': description}
 
-    return _CountingAttr(metadata)
+    return attr.attrib(metadata=metadata, init=False, cmp=False, repr=False)
 
 
 def foreign(other_process_cls, var_name, intent='in'):
