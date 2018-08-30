@@ -2,7 +2,7 @@ from enum import Enum
 import itertools
 
 import attr
-from attr._make import _CountingAttr as CountingAttr_
+from attr._make import _CountingAttr
 
 
 class VarType(Enum):
@@ -18,15 +18,19 @@ class VarIntent(Enum):
     INOUT = 'inout'
 
 
-class _CountingAttr(CountingAttr_):
-    """A hack to add a custom 'compute' decorator for on-request computation
-    of on_demand variables.
+def compute(self, method):
+    """A decorator that, when applied to an on-demand variable, returns a
+    value for that variable.
+
     """
+    self.metadata['compute'] = method
 
-    def compute(self, method):
-        self.metadata['compute'] = method
+    return method
 
-        return method
+
+# monkey patch, waiting for cleaner solution:
+# https://github.com/python-attrs/attrs/issues/340
+_CountingAttr.compute = compute
 
 
 def _as_dim_tuple(dims):
@@ -180,17 +184,7 @@ def on_demand(dims=(), group=None, description='', attrs=None):
                 'attrs': attrs or {},
                 'description': description}
 
-    return _CountingAttr(
-        default=attr.NOTHING,
-        validator=None,
-        repr=False,
-        cmp=False,
-        hash=None,
-        init=False,
-        converter=None,
-        metadata=metadata,
-        type=None,
-    )
+    return attr.attrib(metadata=metadata, init=False, cmp=False, repr=False)
 
 
 def foreign(other_process_cls, var_name, intent='in'):
