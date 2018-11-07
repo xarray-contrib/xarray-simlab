@@ -3,8 +3,13 @@
 Release Notes
 =============
 
-v0.2.1 (unreleased)
--------------------
+v0.2.1 (7 November 2018)
+------------------------
+
+Bug fixes
+~~~~~~~~~
+
+- Fix an issue after a change in attrs 0.18.2 (:issue:`47`).
 
 v0.2.0 (9 May 2018)
 -------------------
