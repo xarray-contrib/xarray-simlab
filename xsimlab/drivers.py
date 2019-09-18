@@ -225,7 +225,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
                 var_name = '__'.join(key)
                 xr_vars[var_name] = self._to_xr_variable(key, clock)
 
-        out_ds = self.dataset.update(xr_vars, inplace=False)
+        out_ds = self.dataset.update(xr_vars)
 
         # remove output_vars attributes in output dataset
         for clock in self.output_vars:
