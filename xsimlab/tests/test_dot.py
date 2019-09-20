@@ -94,8 +94,11 @@ def test_to_graphviz_attributes(model):
                     reason="IPython is not installed")
 @pytest.mark.parametrize('format,typ', [
     ('png', Image),
-    pytest.mark.xfail(('jpeg', Image),
-                      reason='jpeg not always supported in dot'),
+    pytest.param(
+        'jpeg', Image,
+        marks=pytest.mark.xfail(
+            reason='jpeg not always supported in dot')
+    ),
     ('dot', type(None)),
     ('pdf', type(None)),
     ('svg', SVG),
@@ -134,8 +137,11 @@ def test_dot_graph_no_ipython(model):
                     reason="IPython is not installed")
 @pytest.mark.parametrize('format,typ', [
     ('png', Image),
-    pytest.mark.xfail(('jpeg', Image),
-                      reason='jpeg not always supported in dot'),
+    pytest.param(
+        'jpeg', Image,
+        marks=pytest.mark.xfail(
+            reason='jpeg not always supported in dot')
+    ),
     ('dot', type(None)),
     ('pdf', type(None)),
     ('svg', SVG),

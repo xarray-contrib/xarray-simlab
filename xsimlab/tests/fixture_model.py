@@ -19,7 +19,7 @@ class Profile(object):
         self.u_change = np.zeros_like(self.u)
 
     def run_step(self, *args):
-        self.u_change[:] = np.sum((d for d in self.u_diffs))
+        self.u_change[:] = sum((d for d in self.u_diffs))
 
     def finalize_step(self):
         self.u += self.u_change
