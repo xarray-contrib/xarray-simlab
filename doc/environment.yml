@@ -3,16 +3,16 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - attrs=18.2.0
-  - python=3.6
-  - numpy=1.14.5
+  - attrs=19.1.0
+  - python=3.7
+  - numpy=1.16.0
   - pandas=0.23.3
-  - xarray=0.10.9
-  - ipython=6.4.0
-  - matplotlib=2.2.2
+  - xarray=0.13.0
+  - ipython=7.8.0
+  - matplotlib=3.0.2
   - graphviz
   - python-graphviz
-  - nbconvert=5.2.1
-  - sphinx=1.7.6
-  - nbsphinx=0.3.3
-  - pandoc=1.19.2
+  - nbconvert=5.6.0
+  - sphinx=1.8.5
+  - nbsphinx=0.4.2
+  - pandoc=2.7.3
