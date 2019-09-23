@@ -1,7 +1,7 @@
 import pytest
 
 import xsimlab as xs
-from xsimlab.tests.fixture_model import AddOnDemand, InitProfile
+from xsimlab.tests.fixture_model import AddOnDemand, InitProfile, Profile
 
 
 class TestModelBuilder(object):
