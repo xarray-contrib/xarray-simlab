@@ -145,6 +145,34 @@ class _ModelBuilder(object):
                 if od_key is not None:
                     p_obj.__xsimlab_od_keys__[var.name] = od_key
 
+    def ensure_no_intent_conflict(self):
+        """Raise an error if more than one variable with
+        intent='out' targets the same variable.
+
+        """
+        filter_out = lambda var: (
+            var.metadata['intent'] == VarIntent.OUT and
+            var.metadata['var_type'] != VarType.ON_DEMAND
+        )
+
+        targets = defaultdict(list)
+
+        for p_name, p_obj in self._processes_obj.items():
+            for var in filter_variables(p_obj, func=filter_out).values():
+                target_key = p_obj.__xsimlab_store_keys__.get(var.name)
+                targets[target_key].append((p_name, var.name))
+
+        conflicts = {k: v for k, v in targets.items() if len(v) > 1}
+
+        if conflicts:
+            conflicts_str = {k: ' and '.join(["'{}.{}'".format(*i) for i in v])
+                             for k, v in conflicts.items()}
+            msg = '\n'.join(["'{}.{}' set by: {}".format(*k, v)
+                             for k, v in conflicts_str.items()])
+
+            raise ValueError(
+                "Conflict(s) found in given variable intents:\n" + msg)
+
     def get_all_variables(self):
         """Get all variables in the model as a list of
         ``(process_name, var_name)`` tuples.
@@ -363,6 +391,8 @@ class Model(AttrMapping, ContextMixin):
 
         self._all_vars = builder.get_all_variables()
         self._all_vars_dict = None
+
+        builder.ensure_no_intent_conflict()
 
         self._input_vars = builder.get_input_variables()
         self._input_vars_dict = None
