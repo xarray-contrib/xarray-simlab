@@ -1,7 +1,7 @@
 import pytest
 
 import xsimlab as xs
-from xsimlab.tests.fixture_model import AddOnDemand, InitProfile
+from xsimlab.tests.fixture_model import AddOnDemand, InitProfile, Profile
 
 
 class TestModelBuilder(object):
@@ -99,6 +99,22 @@ class TestModelBuilder(object):
     def test_get_stage_processes(self, model):
         expected = [model['roll'], model['profile']]
         assert model._p_run_step == expected
+
+    def test_process_inheritance(self, model):
+        @xs.process
+        class InheritedProfile(Profile):
+            pass
+
+        new_model = model.update_processes(
+            {'profile': InheritedProfile})
+
+        assert type(new_model['profile']) is InheritedProfile
+        assert isinstance(new_model['profile'], Profile)
+
+        with pytest.raises(ValueError) as excinfo:
+            invalid_model = model.update_processes(
+                {'profile2': InheritedProfile})
+        assert "multiple processes" in str(excinfo.value)
 
 
 class TestModel(object):
