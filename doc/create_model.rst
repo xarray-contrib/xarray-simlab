@@ -291,3 +291,52 @@ In this latter case, users will have to provide initial values of
    possible to modify these instances by adding, updating or removing
    processes. Both methods ``.update_processes()`` and
    ``.drop_processes()`` always return new instances of ``Model``.
+
+Customize existing processes
+----------------------------
+
+Sometimes we only want to update an existing model with very minor
+changes.
+
+As an example, let's update ``model2`` by using a fixed grid (i.e.,
+with hard-coded values for grid spacing and length). One way to
+achieve this is to create a small new process class that sets
+the values of ``spacing`` and ``length``:
+
+.. literalinclude:: scripts/advection_model.py
+   :lines: 151-158
+
+However, one drawback of this "additive" approach is that the number
+of processes in a model might become unnecessarily high:
+
+.. literalinclude:: scripts/advection_model.py
+   :lines: 161-161
+
+Alternatively, it is possible to write a process class that inherits
+from ``UniformGrid1D``, in which we can re-declare variables *and/or*
+re-define "runtime" methods:
+
+.. literalinclude:: scripts/advection_model.py
+   :lines: 164-172
+
+We can here directly update the model and replace the original process
+``UniformGrid1D`` by the inherited class ``FixedGrid``. Foreign
+variables that refer to ``UniformGrid1D`` will still correctly point
+to the ``grid`` process in the updated model:
+
+.. literalinclude:: scripts/advection_model.py
+   :lines: 175-175
+
+.. warning::
+
+   This feature is experimental! It may be removed in a next version of
+   xarray-simlab.
+
+   In particular, linking foreign variables in a model is ambiguous
+   when both conditions below are met:
+
+   - two different processes in a model inherit from a common class
+     (except ``object``)
+
+   - a third process in the same model has a foreign variable that
+     links to that common class

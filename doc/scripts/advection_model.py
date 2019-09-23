@@ -146,3 +146,30 @@ model3 = model2.update_processes({'source': SourcePoint,
 
 
 model4 = model2.drop_processes('init')
+
+
+@xs.process
+class FixedGridParams(object):
+    spacing = xs.foreign(UniformGrid1D, 'spacing', intent='out')
+    length = xs.foreign(UniformGrid1D, 'length', intent='out')
+
+    def initialize(self):
+        self.spacing = 0.01
+        self.length = 1.
+
+
+model5 = model2.update_processes({'fixed_grid_params': FixedGridParams})
+
+
+@xs.process
+class FixedGrid(UniformGrid1D):
+    spacing = xs.variable(description='uniform spacing', intent='out')
+    length = xs.variable(description='total length', intent='out')
+
+    def initialize(self):
+        self.spacing = 0.01
+        self.length = 1.
+        super(FixedGrid, self).initialize()
+
+
+model6 = model2.update_processes({'grid': FixedGrid})
