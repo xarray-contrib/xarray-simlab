@@ -6,6 +6,16 @@ Release Notes
 v0.3.0 (Unreleased)
 -------------------
 
+Breaking changes
+~~~~~~~~~~~~~~~~
+
+- It is now possible to use class inheritance to customize a process
+  without re-writing the class from scratch and without breaking the
+  links between (foreign) variables when replacing the process in a
+  model (:issue:`45`). Although it should work just fine in most
+  cases, there are potential caveats. This should be considered as an
+  experimental, possibly breaking change.
+
 Enhancements
 ~~~~~~~~~~~~
 
