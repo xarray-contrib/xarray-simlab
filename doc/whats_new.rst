@@ -6,6 +6,13 @@ Release Notes
 v0.3.0 (Unreleased)
 -------------------
 
+Enhancements
+~~~~~~~~~~~~
+
+- Ensure that there is no ``intent`` conflict between the variables
+  declared in a model. This check is explicit at Model creation and a
+  more meaningful error message is shown when it fails (:issue:`57`).
+
 
 v0.2.1 (7 November 2018)
 ------------------------

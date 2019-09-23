@@ -52,6 +52,15 @@ class TestModelBuilder(object):
         assert all([p_name in model for p_name, _ in model.all_vars])
         assert ('profile', 'u') in model.all_vars
 
+    def test_ensure_no_intent_conflict(self, model):
+        @xs.process
+        class Foo(object):
+            u = xs.foreign(Profile, 'u', intent='out')
+
+        with pytest.raises(ValueError) as excinfo:
+            invalid_model = model.update_processes({'foo': Foo})
+        assert "Conflict(s)" in str(excinfo.value)
+
     def test_get_input_variables(self, model):
         expected = {('init_profile', 'n_points'),
                     ('roll', 'shift'),
