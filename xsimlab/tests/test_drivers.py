@@ -119,6 +119,11 @@ class TestXarraySimulationDriver(object):
             actual[0] = -9999
             assert not np.array_equal(actual, expected)
 
+    def test_get_output_dataset(self, in_dataset, xarray_driver):
+        # regression test: make sure a copy of input dataset is used
+        out_ds = xarray_driver.run_model()
+        assert not in_dataset.identical(out_ds)
+
     def test_run_model(self, in_dataset, out_dataset, xarray_driver):
         out_ds_actual = xarray_driver.run_model()
 

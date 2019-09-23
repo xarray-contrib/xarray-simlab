@@ -3,8 +3,8 @@ Internal utilties; not for external use.
 
 """
 import threading
-from collections import (Mapping, KeysView, ItemsView, ValuesView,
-                         OrderedDict)
+from collections import OrderedDict
+from collections.abc import Mapping, KeysView, ItemsView, ValuesView
 from contextlib import suppress
 from importlib import import_module
 
