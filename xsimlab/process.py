@@ -1,3 +1,4 @@
+from collections import OrderedDict
 from enum import Enum
 import inspect
 import sys
@@ -345,7 +346,7 @@ class _ProcessExecutor:
     def __init__(self, cls):
         self.cls = cls
 
-        self.runtime_methods = {}
+        self.runtime_methods = OrderedDict()
 
         for stage in SimulationStage:
             if not has_method(self.cls, stage.value):
