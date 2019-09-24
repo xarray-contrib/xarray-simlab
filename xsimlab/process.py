@@ -1,6 +1,7 @@
 from enum import Enum
-from inspect import isclass
+import inspect
 import sys
+import warnings
 
 import attr
 
@@ -25,7 +26,7 @@ def ensure_process_decorated(cls):
 
 
 def get_process_cls(obj_or_cls):
-    if not isclass(obj_or_cls):
+    if not inspect.isclass(obj_or_cls):
         cls = type(obj_or_cls)
     else:
         cls = obj_or_cls
@@ -36,7 +37,7 @@ def get_process_cls(obj_or_cls):
 
 
 def get_process_obj(obj_or_cls):
-    if isclass(obj_or_cls):
+    if inspect.isclass(obj_or_cls):
         cls = obj_or_cls
         obj = cls()
     else:
@@ -286,7 +287,7 @@ class _RuntimeMethodExecutor:
         if args is None:
             args = []
         elif isinstance(args, str):
-            args = [k.strip() for k in argnames.split(',') if k]
+            args = [k.strip() for k in args.split(',') if k]
         elif isinstance(args, (list, tuple)):
             args = tuple(args)
         else:
@@ -298,6 +299,37 @@ class _RuntimeMethodExecutor:
         args = [runtime_context[k] for k in self.args]
 
         return self.meth(obj, *args)
+
+
+def runtime(meth=None, args=None):
+    """Function decorator applied to a method of a process class that is
+    called during simulation runtime.
+
+    Parameters
+    ----------
+    meth : callable, optional
+        The method to wrap (leave it to None if you use this function
+        as a decorator).
+    args : string or list or tuple, optional
+        Variable(s) (e.g., time step duration, current step) that will
+        be passed as positional arguments of the method during
+        simulation runtime.
+
+    Returns
+    -------
+    runtime_method
+       The same method that can be properly called during simulation
+       runtime.
+
+    """
+    def wrapper(func):
+        func.__xsimlab_executor__ = _RuntimeMethodExecutor(func, args)
+        return func
+
+    if meth is not None:
+        return wrapper(meth)
+    else:
+        return wrapper
 
 
 class SimulationStage(Enum):
@@ -320,19 +352,35 @@ class _ProcessExecutor:
                 continue
 
             meth = getattr(self.cls, stage.value)
+            executor = getattr(meth, '__xsimlab_executor__', None)
 
-            # TODO: handle @runtime(args=None) decorator
+            if executor is None:
+                nparams = len(inspect.signature(meth).parameters)
 
-            # TODO: remove (depreciated, for backward compatibility)
-            if stage == SimulationStage.RUN_STEP:
-                args = ['dt']
-            else:
-                args = None
+                if stage == SimulationStage.RUN_STEP and nparams == 2:
+                    # TODO: remove (depreciated)
+                    warnings.warn("`run_step(self, dt)` accepting by default "
+                                  "one positional argument is depreciated and "
+                                  "will be removed in a future version of "
+                                  "xarray-simlab. Use the `@runtime` "
+                                  "decorator.",
+                                  FutureWarning)
+                    args = ['dt']
 
-            self.runtime_methods[stage] = _RuntimeMethodExecutor(meth, args)
+                elif nparams > 1:
+                    raise TypeError("Process runtime methods with positional "
+                                    "parameters should be decorated with "
+                                    "`@runtime`")
+
+                else:
+                    args = None
+
+                executor = _RuntimeMethodExecutor(meth, args=args)
+
+            self.runtime_methods[stage] = executor
 
     @property
-    def stages_implemented(self):
+    def stages(self):
         return [k.value for k in self.runtime_methods]
 
     def execute(self, obj, stage, runtime_context):
