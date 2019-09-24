@@ -274,7 +274,7 @@ def _make_property_group(var):
     return property(fget=getter_store_or_on_demand, doc=var_details(var))
 
 
-class _ProcessBuilder(object):
+class _ProcessBuilder:
     """Used to iteratively create a new process class.
 
     The original class must be already "attr-yfied", i.e., it must

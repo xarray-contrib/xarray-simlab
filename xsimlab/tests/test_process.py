@@ -13,7 +13,7 @@ from xsimlab.tests.fixture_process import ExampleProcess, SomeProcess
 
 
 def test_ensure_process_decorated():
-    class NotAProcess(object):
+    class NotAProcess:
         pass
 
     with pytest.raises(NotAProcessClassError) as excinfo:
@@ -88,21 +88,21 @@ def test_process_properties_readonly(p_cls, var_name, prop_is_read_only):
 def test_process_properties_errors():
     with pytest.raises(ValueError) as excinfo:
         @xs.process
-        class Process1(object):
+        class Process1:
             invalid_var = xs.foreign(ExampleProcess, 'group_var')
 
     assert "links to group variable" in str(excinfo.value)
 
     with pytest.raises(ValueError) as excinfo:
         @xs.process
-        class Process2(object):
+        class Process2:
             invalid_var = xs.foreign(ExampleProcess, 'out_var', intent='out')
 
     assert "both have intent='out'" in str(excinfo.value)
 
     with pytest.raises(KeyError) as excinfo:
         @xs.process
-        class Process3(object):
+        class Process3:
             var = xs.on_demand()
 
     assert "No compute method found" in str(excinfo.value)
@@ -138,7 +138,7 @@ def test_process_properties_values(processes_with_store):
 def test_process_decorator():
     with pytest.raises(NotImplementedError):
         @xs.process(autodoc=True)
-        class Dummy(object):
+        class Dummy:
             pass
 
 

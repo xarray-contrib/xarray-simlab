@@ -4,7 +4,7 @@ import xsimlab as xs
 
 
 @xs.process
-class AdvectionLax1D(object):
+class AdvectionLax1D:
     """Wrap 1-dimensional advection in a single Process."""
 
     spacing = xs.variable(description='grid spacing')
@@ -36,7 +36,7 @@ model1 = xs.Model({'advect': AdvectionLax1D})
 
 
 @xs.process
-class UniformGrid1D(object):
+class UniformGrid1D:
     """Create a 1-dimensional, equally spaced grid."""
 
     spacing = xs.variable(description='uniform spacing')
@@ -48,7 +48,7 @@ class UniformGrid1D(object):
 
 
 @xs.process
-class ProfileU(object):
+class ProfileU:
     """Compute the evolution of the profile of quantity `u`."""
 
     u_vars = xs.group('u_vars')
@@ -63,7 +63,7 @@ class ProfileU(object):
 
 
 @xs.process
-class AdvectionLax(object):
+class AdvectionLax:
     """Advection using finite difference (Lax method) on
     a fixed grid with periodic boundary conditions.
 
@@ -84,7 +84,7 @@ class AdvectionLax(object):
 
 
 @xs.process
-class InitUGauss(object):
+class InitUGauss:
     """Initialize `u` profile using a Gaussian pulse."""
 
     loc = xs.variable(description='location of initial pulse')
@@ -103,7 +103,7 @@ model2 = xs.Model({'grid': UniformGrid1D,
 
 
 @xs.process
-class SourcePoint(object):
+class SourcePoint:
     """Source point for quantity `u`.
 
     The location of the source point is adjusted to coincide with
@@ -131,7 +131,7 @@ class SourcePoint(object):
 
 
 @xs.process
-class InitUFlat(object):
+class InitUFlat:
     """Flat initial profile of `u`."""
 
     x = xs.foreign(UniformGrid1D, 'x')
@@ -149,7 +149,7 @@ model4 = model2.drop_processes('init')
 
 
 @xs.process
-class FixedGridParams(object):
+class FixedGridParams:
     spacing = xs.foreign(UniformGrid1D, 'spacing', intent='out')
     length = xs.foreign(UniformGrid1D, 'length', intent='out')
 

@@ -39,7 +39,7 @@ def import_required(mod_name, error_msg):
         raise RuntimeError(error_msg)
 
 
-class AttrMapping(object):
+class AttrMapping:
     """A class similar to `collections.abc.Mapping`,
     which also allows getting keys with attribute access.
 
@@ -135,7 +135,7 @@ class AttrMapping(object):
         return sorted(set(dir(type(self)) + extra_attrs))
 
 
-class ContextMixin(object):
+class ContextMixin:
     """Functionality for objects that put themselves in a context using
     the `with` statement.
 

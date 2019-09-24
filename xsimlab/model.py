@@ -24,7 +24,7 @@ def _flatten_keys(key_seq):
     return flat_keys
 
 
-class _ModelBuilder(object):
+class _ModelBuilder:
     """Used to iteratively build a new model.
 
     This builder implements the following tasks:

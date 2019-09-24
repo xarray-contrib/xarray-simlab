@@ -23,7 +23,7 @@ def xarray_driver(in_dataset, model):
     return XarraySimulationDriver(in_dataset, model, store, out_store)
 
 
-class TestBaseDriver(object):
+class TestBaseDriver:
 
     def test_bind_store(self, base_driver):
         base_driver.store[('init_profile', 'n_points')] = 10
@@ -63,7 +63,7 @@ def test_get_dims_from_variable(array, clock, expected):
     assert _get_dims_from_variable(array, var, clock) == expected
 
 
-class TestXarraySimulationDriver(object):
+class TestXarraySimulationDriver:
 
     def test_constructor(self, in_dataset, model):
         store = {}

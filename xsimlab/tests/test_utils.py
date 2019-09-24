@@ -29,7 +29,7 @@ def test_import_required():
     assert err_msg in str(excinfo.value)
 
 
-class TestAttrMapping(object):
+class TestAttrMapping:
 
     @pytest.fixture
     def attr_mapping(self):

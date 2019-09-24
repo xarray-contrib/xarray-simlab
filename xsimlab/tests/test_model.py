@@ -4,7 +4,7 @@ import xsimlab as xs
 from xsimlab.tests.fixture_model import AddOnDemand, InitProfile, Profile
 
 
-class TestModelBuilder(object):
+class TestModelBuilder:
 
     def test_bind_processes(self, model):
         assert model._processes['profile'].__xsimlab_model__ is model
@@ -54,7 +54,7 @@ class TestModelBuilder(object):
 
     def test_ensure_no_intent_conflict(self, model):
         @xs.process
-        class Foo(object):
+        class Foo:
             u = xs.foreign(Profile, 'u', intent='out')
 
         with pytest.raises(ValueError) as excinfo:
@@ -92,12 +92,12 @@ class TestModelBuilder(object):
 
     def test_sort_processes_cycle(self, model):
         @xs.process
-        class Foo(object):
+        class Foo:
             in_var = xs.variable()
             out_var = xs.variable(intent='out')
 
         @xs.process
-        class Bar(object):
+        class Bar:
             in_foreign = xs.foreign(Foo, 'out_var')
             out_foreign = xs.foreign(Foo, 'in_var', intent='out')
 
@@ -126,7 +126,7 @@ class TestModelBuilder(object):
         assert "multiple processes" in str(excinfo.value)
 
 
-class TestModel(object):
+class TestModel:
 
     def test_constructor(self):
         with pytest.raises(TypeError) as excinfo:
