@@ -58,8 +58,10 @@ script:
       conda install -c conda-forge sphinx_rtd_theme;
       cd doc;
       sphinx-build -n -j auto -b html -d _build/doctrees . _build/html;
+    elif [[ "$CONDA_ENV" == *"dev" ]]; then
+      pytest xsimlab --verbose;
     else
-      py.test xsimlab --cov=xsimlab --cov-report term-missing --verbose;
+      pytest xsimlab --cov=xsimlab --cov-report term-missing --verbose;
     fi
 
 after_success:
