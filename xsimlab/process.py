@@ -1,3 +1,4 @@
+from enum import Enum
 from inspect import isclass
 import sys
 
@@ -5,7 +6,7 @@ import attr
 
 from .variable import VarIntent, VarType
 from .formatting import repr_process, var_details
-from .utils import variables_dict
+from .utils import has_method, variables_dict
 
 
 class NotAProcessClassError(ValueError):
@@ -274,6 +275,75 @@ def _make_property_group(var):
     return property(fget=getter_store_or_on_demand, doc=var_details(var))
 
 
+class _RuntimeMethodExecutor:
+    """Used to execute a process 'runtime' method in the context of a
+    simulation.
+
+    """
+    def __init__(self, meth, args=None):
+        self.meth = meth
+
+        if args is None:
+            args = []
+        elif isinstance(args, str):
+            args = [k.strip() for k in argnames.split(',') if k]
+        elif isinstance(args, (list, tuple)):
+            args = tuple(args)
+        else:
+            raise ValueError("args must be either a string, a list or a tuple")
+
+        self.args = tuple(args)
+
+    def execute(self, obj, runtime_context):
+        args = [runtime_context[k] for k in self.args]
+
+        return self.meth(obj, *args)
+
+
+class SimulationStage(Enum):
+    INITIALIZE = 'initialize'
+    RUN_STEP = 'run_step'
+    FINALIZE_STEP = 'finalize_step'
+    FINALIZE = 'finalize'
+
+
+class _ProcessExecutor:
+    """Used to execute a process during simulation runtime."""
+
+    def __init__(self, cls):
+        self.cls = cls
+
+        self.runtime_methods = {}
+
+        for stage in SimulationStage:
+            if not has_method(self.cls, stage.value):
+                continue
+
+            meth = getattr(self.cls, stage.value)
+
+            # TODO: handle @runtime(args=None) decorator
+
+            # TODO: remove (depreciated, for backward compatibility)
+            if stage == SimulationStage.RUN_STEP:
+                args = ['dt']
+            else:
+                args = None
+
+            self.runtime_methods[stage] = _RuntimeMethodExecutor(meth, args)
+
+    @property
+    def stages_implemented(self):
+        return [k.value for k in self.runtime_methods]
+
+    def execute(self, obj, stage, runtime_context):
+        executor = self.runtime_methods.get(stage)
+
+        if executor is None:
+            return None
+        else:
+            return executor.execute(obj, runtime_context)
+
+
 class _ProcessBuilder:
     """Used to iteratively create a new process class.
 
@@ -291,6 +361,7 @@ class _ProcessBuilder:
     def __init__(self, attr_cls):
         self._cls = attr_cls
         self._cls.__xsimlab_process__ = True
+        self._cls.__xsimlab_executor__ = _ProcessExecutor(self._cls)
         self._cls_dict = {}
 
     def add_properties(self, var_type):

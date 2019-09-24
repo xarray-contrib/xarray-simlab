@@ -21,8 +21,8 @@ def variables_dict(process_cls):
                        if 'var_type' in v.metadata)
 
 
-def has_method(obj, meth):
-    return callable(getattr(obj, meth, False))
+def has_method(obj_or_cls, meth):
+    return callable(getattr(obj_or_cls, meth, False))
 
 
 def maybe_to_list(obj):
