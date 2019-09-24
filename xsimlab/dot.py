@@ -45,7 +45,7 @@ def _get_target_keys(p_obj, var_name):
     )
 
 
-class _GraphBuilder(object):
+class _GraphBuilder:
 
     def __init__(self, model, graph_attr):
         self.model = model

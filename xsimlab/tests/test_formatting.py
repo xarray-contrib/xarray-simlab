@@ -44,7 +44,7 @@ def test_process_repr(example_process_obj, processes_with_store,
     assert repr_process(process_in_model) == example_process_in_model_repr
 
     @xs.process
-    class Dummy(object):
+    class Dummy:
         def initialize(self):
             pass
 

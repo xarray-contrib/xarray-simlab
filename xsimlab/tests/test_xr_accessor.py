@@ -71,7 +71,7 @@ def test_flatten_outputs_error():
     assert "Cannot interpret" in str(excinfo.value)
 
 
-class TestSimlabAccessor(object):
+class TestSimlabAccessor:
 
     _clock_key = xr_accessor.SimlabAccessor._clock_key
     _master_clock_key = xr_accessor.SimlabAccessor._master_clock_key

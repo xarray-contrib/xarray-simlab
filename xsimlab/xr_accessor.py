@@ -120,7 +120,7 @@ def _flatten_outputs(output_vars):
 
 
 @register_dataset_accessor('xsimlab')
-class SimlabAccessor(object):
+class SimlabAccessor:
     """Simlab extension to :class:`xarray.Dataset`."""
 
     _clock_key = '__xsimlab_output_clock__'

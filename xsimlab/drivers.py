@@ -6,7 +6,7 @@ import xarray as xr
 from .utils import variables_dict
 
 
-class BaseSimulationDriver(object):
+class BaseSimulationDriver:
     """Base class that provides a minimal interface for creating
     simulation drivers (should be inherited).
 

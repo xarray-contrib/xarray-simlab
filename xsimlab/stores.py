@@ -4,7 +4,7 @@ from copy import copy
 import numpy as np
 
 
-class InMemoryOutputStore(object):
+class InMemoryOutputStore:
     """A simple, in-memory store for model outputs.
 
     It basically consists of a Python dictionary with lists as values,

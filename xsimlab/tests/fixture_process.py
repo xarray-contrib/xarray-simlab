@@ -7,7 +7,7 @@ import xsimlab as xs
 
 
 @xs.process
-class SomeProcess(object):
+class SomeProcess:
     """Just used for foreign variables in ExampleProcess."""
     some_var = xs.variable(group='some_group', intent='out')
     some_od_var = xs.on_demand(group='some_group')
@@ -18,14 +18,14 @@ class SomeProcess(object):
 
 
 @xs.process
-class AnotherProcess(object):
+class AnotherProcess:
     """Just used for foreign variables in ExampleProcess."""
     another_var = xs.variable()
     some_var = xs.foreign(SomeProcess, 'some_var')
 
 
 @xs.process
-class ExampleProcess(object):
+class ExampleProcess:
     """A process with complete interface for testing."""
     in_var = xs.variable(dims=['x', ('x', 'y')], description='input variable')
     out_var = xs.variable(group='example_group', intent='out')
@@ -96,7 +96,7 @@ def _init_process(p_cls, p_name, model, store, store_keys=None, od_keys=None):
 
 @pytest.fixture
 def processes_with_store():
-    class FakeModel(object):
+    class FakeModel:
         def __init__(self):
             self._processes = {}
 

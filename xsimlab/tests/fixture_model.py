@@ -10,7 +10,7 @@ from xsimlab.xr_accessor import SimlabAccessor
 
 
 @xs.process
-class Profile(object):
+class Profile:
     u = xs.variable(dims='x', description='quantity u', intent='inout')
     u_diffs = xs.group('diff')
     u_opp = xs.on_demand(dims='x')
@@ -33,7 +33,7 @@ class Profile(object):
 
 
 @xs.process
-class InitProfile(object):
+class InitProfile:
     n_points = xs.variable(description='nb. of profile points')
     u = xs.foreign(Profile, 'u', intent='out')
 
@@ -43,7 +43,7 @@ class InitProfile(object):
 
 
 @xs.process
-class Roll(object):
+class Roll:
     shift = xs.variable(description=('shift profile by a nb. of points'),
                         attrs={'units': 'unitless'})
     u = xs.foreign(Profile, 'u')
@@ -54,7 +54,7 @@ class Roll(object):
 
 
 @xs.process
-class Add(object):
+class Add:
     offset = xs.variable(description=('offset * dt added every time step '
                                       'to profile u'))
     u_diff = xs.variable(group='diff', intent='out')
@@ -64,7 +64,7 @@ class Add(object):
 
 
 @xs.process
-class AddOnDemand(object):
+class AddOnDemand:
     offset = xs.variable(description='offset added to profile u')
     u_diff = xs.on_demand(group='diff')
 
