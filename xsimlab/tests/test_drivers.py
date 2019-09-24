@@ -87,15 +87,6 @@ class TestXarraySimulationDriver:
         for k in expected:
             assert_array_equal(xarray_driver.output_save_steps[k], expected[k])
 
-    def test_time_step_lengths(self, xarray_driver):
-        assert_array_equal(xarray_driver._get_time_steps(), [2, 2, 2, 2])
-
-    def test_split_data_vars_clock(self, xarray_driver):
-        ds_in, ds_in_clock = xarray_driver._split_clock_inputs()
-
-        assert 'add__offset' in ds_in_clock and 'add__offset' not in ds_in
-        assert 'roll__shift' in ds_in and 'roll__shift' not in ds_in_clock
-
     @pytest.mark.parametrize('var_key,is_scalar', [
         (('init_profile', 'n_points'), True),
         (('add', 'offset'), False)
