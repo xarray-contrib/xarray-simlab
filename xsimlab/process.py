@@ -310,7 +310,7 @@ def runtime(meth=None, args=None):
     meth : callable, optional
         The method to wrap (leave it to None if you use this function
         as a decorator).
-    args : string or list or tuple, optional
+    args : str or list or tuple, optional
         Variable(s) (e.g., time step duration, current step) that will
         be passed as positional arguments of the method during
         simulation runtime.

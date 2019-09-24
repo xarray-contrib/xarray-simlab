@@ -105,10 +105,6 @@ class TestModelBuilder:
             xs.Model({'foo': Foo, 'bar': Bar})
         assert "Cycle detected" in str(excinfo.value)
 
-    def test_get_stage_processes(self, model):
-        expected = [model['roll'], model['profile']]
-        assert model._p_run_step == expected
-
     def test_process_inheritance(self, model):
         @xs.process
         class InheritedProfile(Profile):
