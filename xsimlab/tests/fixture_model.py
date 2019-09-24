@@ -18,7 +18,7 @@ class Profile:
     def initialize(self):
         self.u_change = np.zeros_like(self.u)
 
-    def run_step(self, *args):
+    def run_step(self):
         self.u_change[:] = sum((d for d in self.u_diffs))
 
     def finalize_step(self):
@@ -49,7 +49,7 @@ class Roll:
     u = xs.foreign(Profile, 'u')
     u_diff = xs.variable(dims='x', group='diff', intent='out')
 
-    def run_step(self, *args):
+    def run_step(self):
         self.u_diff = np.roll(self.u, self.shift) - self.u
 
 
@@ -59,6 +59,7 @@ class Add:
                                       'to profile u'))
     u_diff = xs.variable(group='diff', intent='out')
 
+    @xs.runtime(args='dt')
     def run_step(self, dt):
         self.u_diff = self.offset * dt
 
