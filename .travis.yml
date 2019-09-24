@@ -65,6 +65,4 @@ script:
     fi
 
 after_success:
-  - if [[ "$CONDA_ENV" != *"dev" ]]; then
-      coveralls
-    fi
+  - coveralls
