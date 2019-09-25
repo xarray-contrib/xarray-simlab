@@ -135,6 +135,60 @@ def test_process_properties_values(processes_with_store):
     assert set(example_process.group_var) == {1, 4}
 
 
+def test_runtime_decorator_noargs():
+    @xs.runtime
+    def meth(self):
+        return 1
+
+    assert meth.__xsimlab_executor__.execute(None, {}) == 1
+
+
+@pytest.mark.parametrize('args', ['p1,p2', ['p1', 'p2'], ('p1', 'p2')])
+def test_runtime_decorator(args):
+    @xs.runtime(args=args)
+    def meth(self, a, b):
+        return a + b
+
+    d = {'p1': 1, 'p2': 2, 'other': 3}
+
+    assert meth.__xsimlab_executor__.execute(None, d) == 3
+
+
+def test_runtime_decorator_raise():
+    with pytest.raises(ValueError) as excinfo:
+        @xs.runtime(args=1)
+        def meth(self):
+            pass
+
+    assert "args must be either" in str(excinfo.value)
+
+
+def test_runtime_function():
+    def meth(self):
+        return 1
+
+    rmeth = xs.runtime(meth)
+
+    assert rmeth.__xsimlab_executor__.execute(None, {}) == 1
+
+
+def test_process_executor_raise():
+    # TODO: remove (depreciated)
+    with pytest.warns(FutureWarning):
+        @xs.process
+        class P:
+            def run_step(self, dt):
+                pass
+
+    with pytest.raises(TypeError) as excinfo:
+        @xs.process
+        class P:
+            def run_step(self, a, b):
+                pass
+
+        assert "Process runtime methods" in str(excinfo.value)
+
+
 def test_process_decorator():
     with pytest.raises(NotImplementedError):
         @xs.process(autodoc=True)
