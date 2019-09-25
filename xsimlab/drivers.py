@@ -1,9 +1,37 @@
+from collections.abc import Mapping
 import copy
 
 import numpy as np
 import xarray as xr
 
 from .utils import variables_dict
+
+
+class RuntimeContext(Mapping):
+    """A mapping providing runtime information at the current time step."""
+
+    _context_keys = ('step', 'step_duration', 'step_start', 'step_end')
+
+    def __init__(self):
+        self._context = {k: 0 for k in self._context_keys}
+
+    def update(self, **kwargs):
+        for k, v in kwargs.items():
+            self.__setitem__(k, v)
+
+    def __getitem__(self, key):
+        return self._context[key]
+
+    def __setitem__(self, key, value):
+        if key not in self._context_keys:
+            raise KeyError("Invalid key {!r}, should be one of {!r}"
+                           .format(key, self._context_keys))
+
+    def __len__(self):
+        return len(self._context)
+
+    def __iter__(self):
+        return iter(self._context)
 
 
 class BaseSimulationDriver:
@@ -224,14 +252,20 @@ class XarraySimulationDriver(BaseSimulationDriver):
 
     def _get_runtime_datasets(self):
         mclock_dim = self.master_clock_dim
+        mclock_coord = self.dataset[mclock_dim]
 
         ds_init = self.dataset.drop_dims(mclock_dim)
 
-        clock_diff = self.dataset[mclock_dim].diff(mclock_dim, label='lower')
+        step_data_vars = {
+            '_clock_start': mclock_coord,
+            '_clock_end': mclock_coord.roll({mclock_dim: 1},
+                                            roll_coords=False),
+            '_clock_diff': mclock_coord.diff(mclock_dim, label='lower')
+        }
 
         ds_all_steps = (self.dataset.drop(ds_init.data_vars.keys())
                                     .isel({mclock_dim: slice(0, -1)})
-                                    .assign({'clock_diff': clock_diff}))
+                                    .assign(step_data_vars))
 
         ds_gby_steps = ds_all_steps.groupby(mclock_dim)
 
@@ -248,17 +282,22 @@ class XarraySimulationDriver(BaseSimulationDriver):
 
         """
         ds_init, ds_gby_steps = self._get_runtime_datasets()
+        runtime_context = RuntimeContext()
 
         self._set_input_vars(ds_init)
 
         self.model.execute('initialize', {})
 
         for istep, (clock, ds_step) in enumerate(ds_gby_steps):
-            dt = ds_step['clock_diff'].values
+
+            runtime_context.update(step=istep,
+                                   step_start=ds_step['_clock_start'].values,
+                                   step_end=ds_step['_clock_end'].values,
+                                   step_duration=ds_step['_clock_diff'].values)
 
             self._set_input_vars(ds_step)
 
-            self.model.execute('run_step', {'dt': dt})
+            self.model.execute('run_step', runtime_context)
             self._maybe_save_output_vars(istep)
             self.model.execute('finalize_step', {})
 

@@ -59,7 +59,7 @@ class Add:
                                       'to profile u'))
     u_diff = xs.variable(group='diff', intent='out')
 
-    @xs.runtime(args='dt')
+    @xs.runtime(args='invalid')
     def run_step(self, dt):
         self.u_diff = self.offset * dt
 
