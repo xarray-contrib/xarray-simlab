@@ -10,10 +10,17 @@ from .utils import variables_dict
 class RuntimeContext(Mapping):
     """A mapping providing runtime information at the current time step."""
 
-    _context_keys = ('step', 'step_duration', 'step_start', 'step_end')
+    _context_keys = ('sim_start',
+                     'sim_end',
+                     'step',
+                     'step_start',
+                     'step_end',
+                     'step_duration')
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         self._context = {k: 0 for k in self._context_keys}
+
+        self.update(**kwargs)
 
     def update(self, **kwargs):
         for k, v in kwargs.items():
@@ -26,6 +33,8 @@ class RuntimeContext(Mapping):
         if key not in self._context_keys:
             raise KeyError("Invalid key {!r}, should be one of {!r}"
                            .format(key, self._context_keys))
+
+        self._context[key] = value
 
     def __len__(self):
         return len(self._context)
@@ -254,16 +263,22 @@ class XarraySimulationDriver(BaseSimulationDriver):
         mclock_dim = self.master_clock_dim
         mclock_coord = self.dataset[mclock_dim]
 
-        ds_init = self.dataset.drop_dims(mclock_dim)
+        init_data_vars = {
+            '_sim_start': mclock_coord[0],
+            '_sim_end': mclock_coord[-1]
+        }
+
+        ds_init = (self.dataset.assign(init_data_vars)
+                               .drop_dims(mclock_dim))
 
         step_data_vars = {
             '_clock_start': mclock_coord,
-            '_clock_end': mclock_coord.roll({mclock_dim: 1},
-                                            roll_coords=False),
+            '_clock_end': mclock_coord.shift({mclock_dim: 1}),
             '_clock_diff': mclock_coord.diff(mclock_dim, label='lower')
         }
 
-        ds_all_steps = (self.dataset.drop(ds_init.data_vars.keys())
+        ds_all_steps = (self.dataset.drop(ds_init.data_vars.keys(),
+                                          errors='ignore')
                                     .isel({mclock_dim: slice(0, -1)})
                                     .assign(step_data_vars))
 
@@ -282,15 +297,19 @@ class XarraySimulationDriver(BaseSimulationDriver):
 
         """
         ds_init, ds_gby_steps = self._get_runtime_datasets()
-        runtime_context = RuntimeContext()
+
+        runtime_context = RuntimeContext(
+            sim_start=ds_init['_sim_start'].values,
+            sim_end=ds_init['_sim_end'].values
+        )
 
         self._set_input_vars(ds_init)
 
-        self.model.execute('initialize', {})
+        self.model.execute('initialize', runtime_context)
 
-        for istep, (clock, ds_step) in enumerate(ds_gby_steps):
+        for step, (_, ds_step) in enumerate(ds_gby_steps):
 
-            runtime_context.update(step=istep,
+            runtime_context.update(step=step,
                                    step_start=ds_step['_clock_start'].values,
                                    step_end=ds_step['_clock_end'].values,
                                    step_duration=ds_step['_clock_diff'].values)
@@ -298,10 +317,10 @@ class XarraySimulationDriver(BaseSimulationDriver):
             self._set_input_vars(ds_step)
 
             self.model.execute('run_step', runtime_context)
-            self._maybe_save_output_vars(istep)
-            self.model.execute('finalize_step', {})
+            self._maybe_save_output_vars(step)
+            self.model.execute('finalize_step', runtime_context)
 
         self._maybe_save_output_vars(-1)
-        self.model.execute('finalize', {})
+        self.model.execute('finalize', runtime_context)
 
         return self._get_output_dataset()

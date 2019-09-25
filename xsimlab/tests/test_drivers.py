@@ -118,4 +118,23 @@ class TestXarraySimulationDriver:
     def test_run_model(self, in_dataset, out_dataset, xarray_driver):
         out_ds_actual = xarray_driver.run_model()
 
+        assert out_ds_actual is not out_dataset
         assert_identical(out_ds_actual, out_dataset)
+
+    def test_runtime_context(self, in_dataset, model):
+        @xs.process
+        class BadProcess:
+
+            @xs.runtime(args='bad')
+            def run_step(self, bad):
+                pass
+
+        bad_model = model.update_processes({'bad': BadProcess})
+
+        driver = XarraySimulationDriver(in_dataset, bad_model,
+                                        {}, InMemoryOutputStore())
+
+        with pytest.raises(KeyError) as excinfo:
+            driver.run_model()
+
+        assert str(excinfo.value) == "'bad'"
