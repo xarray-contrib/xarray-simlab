@@ -321,7 +321,7 @@ def runtime(meth=None, args=None):
         - ``step`` : current step number
         - ``step_start`` : current step start (date)time
         - ``step_end``: current step end (date)time
-        - ``step_duration``: current step duration
+        - ``step_delta``: current step duration
 
     Returns
     -------

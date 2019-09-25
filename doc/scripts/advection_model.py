@@ -22,7 +22,7 @@ class AdvectionLax1D:
         self.x = np.arange(0, self.length, self.spacing)
         self.u = np.exp(-1 / self.scale**2 * (self.x - self.loc)**2)
 
-    @xs.runtime(args='step_duration')
+    @xs.runtime(args='step_delta')
     def run_step(self, dt):
         factor = (self.v * dt) / (2 * self.spacing)
         u_left = np.roll(self.u, 1)
@@ -74,7 +74,7 @@ class AdvectionLax:
     u = xs.foreign(ProfileU, 'u')
     u_advected = xs.variable(dims='x', intent='out', group='u_vars')
 
-    @xs.runtime(args='step_duration')
+    @xs.runtime(args='step_delta')
     def run_step(self, dt):
         factor = self.v / (2 * self.grid_spacing)
 
@@ -128,7 +128,7 @@ class SourcePoint:
         src_array[self.nearest_node] = self.flux
         return src_array
 
-    @xs.runtime(args='step_duration')
+    @xs.runtime(args='step_delta')
     def run_step(self, dt):
         self.u_source = self.source_rate * dt
 

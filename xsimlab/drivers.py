@@ -15,7 +15,7 @@ class RuntimeContext(Mapping):
                      'step',
                      'step_start',
                      'step_end',
-                     'step_duration')
+                     'step_delta')
 
     def __init__(self, **kwargs):
         self._context = {k: 0 for k in self._context_keys}
@@ -312,7 +312,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
             runtime_context.update(step=step,
                                    step_start=ds_step['_clock_start'].values,
                                    step_end=ds_step['_clock_end'].values,
-                                   step_duration=ds_step['_clock_diff'].values)
+                                   step_delta=ds_step['_clock_diff'].values)
 
             self._set_input_vars(ds_step)
 
