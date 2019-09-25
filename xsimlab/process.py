@@ -312,15 +312,22 @@ def runtime(meth=None, args=None):
         The method to wrap (leave it to None if you use this function
         as a decorator).
     args : str or list or tuple, optional
-        Variable(s) (e.g., time step duration, current step) that will
-        be passed as positional arguments of the method during
-        simulation runtime.
+        One or several labels of values that will be passed as
+        positional argument(s) of the method during simulation runtime.
+        The following labels are defined:
+
+        - ``sim_start`` : simulation start (date)time
+        - ``sim_end`` : simulation end (date)time
+        - ``step`` : current step number
+        - ``step_start`` : current step start (date)time
+        - ``step_end``: current step end (date)time
+        - ``step_duration``: current step duration
 
     Returns
     -------
     runtime_method
-       The same method that can be properly called during simulation
-       runtime.
+       The same method that can be called during a simulation
+       with runtime data.
 
     """
     def wrapper(func):

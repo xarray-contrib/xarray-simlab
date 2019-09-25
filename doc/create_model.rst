@@ -106,6 +106,12 @@ A fourth method ``.finalize()`` could also be implemented, but it is
 not needed in this case. This method is called once at the end of the
 simulation, e.g., for some clean-up.
 
+Each of these methods can be decorated with :func:`~xsimlab.runtime`
+to pass some useful information during simulation runtime (e.g.,
+current time step number, current time or time step duration), which
+may be need for the computation. Without this decorator, runtime
+methods must have no other parameter than ``self``.
+
 Getting / setting variable values
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

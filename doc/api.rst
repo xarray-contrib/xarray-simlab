@@ -127,6 +127,14 @@ Process introspection and variables
    variable_info
    filter_variables
 
+Process runtime methods
+-----------------------
+
+.. autosummary::
+   :toctree: _api_generated/
+
+   runtime
+
 Variable
 ========
 
