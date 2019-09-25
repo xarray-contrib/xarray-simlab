@@ -530,22 +530,6 @@ class Model(AttrMapping, ContextMixin):
             executor = p_obj.__xsimlab_executor__
             executor.execute(p_obj, SimulationStage(stage), runtime_context)
 
-    def initialize(self):
-        """Run the 'initialize' stage of a simulation."""
-        self.execute('initialize', {})
-
-    def run_step(self, step):
-        """Run a single 'run_step()' stage of a simulation."""
-        self.execute('run_step', {'dt': step})
-
-    def finalize_step(self):
-        """Run a single 'finalize_step' stage of a simulation."""
-        self.execute('finalize_step', {})
-
-    def finalize(self):
-        """Run the 'finalize' stage of a simulation."""
-        self.execute('finalize', {})
-
     def clone(self):
         """Clone the Model, i.e., create a new Model instance with the same
         process classes but different instances.

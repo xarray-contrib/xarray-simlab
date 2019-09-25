@@ -104,10 +104,7 @@ interfaces.
 .. autosummary::
    :toctree: _api_generated/
 
-   Model.initialize
-   Model.run_step
-   Model.finalize_step
-   Model.finalize
+   Model.execute
 
 Process
 =======
