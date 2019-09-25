@@ -15,6 +15,17 @@ Breaking changes
   model (:issue:`45`). Although it should work just fine in most
   cases, there are potential caveats. This should be considered as an
   experimental, possibly breaking change.
+- ``Model.initialize``, ``Model.run_step``, ``Model.finalize_step``
+  and ``Model.finalize`` have been removed in favor of
+  ``Model.execute`` (:issue:`59`).
+
+Deprecations
+~~~~~~~~~~~~
+
+- ``run_step`` methods defined in process classes won't accept anymore
+  current step duration as a positional argument by default. Use the
+  ``runtime`` decorator if you need current step duration (and/or
+  other runtime information) inside the method (:issue:`59`).
 
 Enhancements
 ~~~~~~~~~~~~
@@ -22,7 +33,8 @@ Enhancements
 - Ensure that there is no ``intent`` conflict between the variables
   declared in a model. This check is explicit at Model creation and a
   more meaningful error message is shown when it fails (:issue:`57`).
-
+- Added ``runtime`` decorator to pass simulation runtime information
+  to the (runtime) methods defined in process classes (:issue:`59`).
 
 v0.2.1 (7 November 2018)
 ------------------------

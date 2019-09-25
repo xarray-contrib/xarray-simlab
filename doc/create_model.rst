@@ -94,9 +94,8 @@ methods that will be called during simulation runtime:
   simulation. Here it is used to set the x-coordinate values of the
   grid and the initial values of ``u`` along the grid (Gaussian
   pulse).
-- ``.run_step()`` will be called at each time step iteration and have
-  the current time step duration as required argument. This is where
-  the Lax method is implemented.
+- ``.run_step()`` will be called at each time step iteration. This is
+  where the Lax method is implemented.
 - ``.finalize_step()`` will be called at each time step iteration too
   but after having called ``run_step`` for all other processes (if
   any). Its intended use is mainly to ensure that state variables like
