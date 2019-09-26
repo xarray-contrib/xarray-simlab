@@ -373,7 +373,7 @@ class _ProcessExecutor:
                                   "xarray-simlab. Use the `@runtime` "
                                   "decorator.",
                                   FutureWarning)
-                    args = ['dt']
+                    args = ['step_delta']
 
                 elif nparams > 1:
                     raise TypeError("Process runtime methods with positional "
