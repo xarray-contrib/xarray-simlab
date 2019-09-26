@@ -36,6 +36,12 @@ Enhancements
 - Added ``runtime`` decorator to pass simulation runtime information
   to the (runtime) methods defined in process classes (:issue:`59`).
 
+Bug fixes
+~~~~~~~~~
+
+- Fixed compatibility with xarray 0.13.0 (:issue:`54`).
+- Fixed compatibility with pytest >= 4 (:issue:`56`).
+
 v0.2.1 (7 November 2018)
 ------------------------
 
