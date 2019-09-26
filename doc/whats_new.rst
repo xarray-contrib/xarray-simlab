@@ -35,6 +35,8 @@ Enhancements
   more meaningful error message is shown when it fails (:issue:`57`).
 - Added ``runtime`` decorator to pass simulation runtime information
   to the (runtime) methods defined in process classes (:issue:`59`).
+- Better documentation with a minimal, yet illustrative example based
+  on Game of Life (:issue:`61`).
 
 Bug fixes
 ~~~~~~~~~
