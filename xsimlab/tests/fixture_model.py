@@ -18,7 +18,7 @@ class Profile:
     def initialize(self):
         self.u_change = np.zeros_like(self.u)
 
-    def run_step(self, *args):
+    def run_step(self):
         self.u_change[:] = sum((d for d in self.u_diffs))
 
     def finalize_step(self):
@@ -49,7 +49,7 @@ class Roll:
     u = xs.foreign(Profile, 'u')
     u_diff = xs.variable(dims='x', group='diff', intent='out')
 
-    def run_step(self, *args):
+    def run_step(self):
         self.u_diff = np.roll(self.u, self.shift) - self.u
 
 
@@ -59,6 +59,7 @@ class Add:
                                       'to profile u'))
     u_diff = xs.variable(group='diff', intent='out')
 
+    @xs.runtime(args='step_delta')
     def run_step(self, dt):
         self.u_diff = self.offset * dt
 
@@ -136,13 +137,13 @@ def in_dataset():
 
 @pytest.fixture
 def out_dataset(in_dataset):
-    out_ds = in_dataset
+    out_ds = in_dataset.copy()
 
     del out_ds.attrs[SimlabAccessor._output_vars_key]
     del out_ds.clock.attrs[SimlabAccessor._output_vars_key]
     del out_ds.out.attrs[SimlabAccessor._output_vars_key]
     out_ds['profile__u_opp'] = ('x', [-10., -10., -10., -10., -11.])
-    out_ds['profile_u'] = (
+    out_ds['profile__u'] = (
         ('clock', 'x'),
         np.array([[1., 0., 0., 0., 0.],
                   [1., 2., 1., 1., 1.],
@@ -151,7 +152,7 @@ def out_dataset(in_dataset):
                   [10., 10., 10., 10., 11.]]),
         {'description': 'quantity u'}
     )
-    out_ds['roll_u_diff'] = (
+    out_ds['roll__u_diff'] = (
         ('out', 'x'),
         np.array([[-1., 1., 0., 0., 0.],
                   [0., 0., -1., 1., 0.],

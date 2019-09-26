@@ -1,11 +1,14 @@
-from inspect import isclass
+from collections import OrderedDict
+from enum import Enum
+import inspect
 import sys
+import warnings
 
 import attr
 
 from .variable import VarIntent, VarType
 from .formatting import repr_process, var_details
-from .utils import variables_dict
+from .utils import has_method, variables_dict
 
 
 class NotAProcessClassError(ValueError):
@@ -24,7 +27,7 @@ def ensure_process_decorated(cls):
 
 
 def get_process_cls(obj_or_cls):
-    if not isclass(obj_or_cls):
+    if not inspect.isclass(obj_or_cls):
         cls = type(obj_or_cls)
     else:
         cls = obj_or_cls
@@ -35,7 +38,7 @@ def get_process_cls(obj_or_cls):
 
 
 def get_process_obj(obj_or_cls):
-    if isclass(obj_or_cls):
+    if inspect.isclass(obj_or_cls):
         cls = obj_or_cls
         obj = cls()
     else:
@@ -274,6 +277,129 @@ def _make_property_group(var):
     return property(fget=getter_store_or_on_demand, doc=var_details(var))
 
 
+class _RuntimeMethodExecutor:
+    """Used to execute a process 'runtime' method in the context of a
+    simulation.
+
+    """
+    def __init__(self, meth, args=None):
+        self.meth = meth
+
+        if args is None:
+            args = []
+        elif isinstance(args, str):
+            args = [k.strip() for k in args.split(',') if k]
+        elif isinstance(args, (list, tuple)):
+            args = tuple(args)
+        else:
+            raise ValueError("args must be either a string, a list or a tuple")
+
+        self.args = tuple(args)
+
+    def execute(self, obj, runtime_context):
+        args = [runtime_context[k] for k in self.args]
+
+        return self.meth(obj, *args)
+
+
+def runtime(meth=None, args=None):
+    """Function decorator applied to a method of a process class that is
+    called during simulation runtime.
+
+    Parameters
+    ----------
+    meth : callable, optional
+        The method to wrap (leave it to None if you use this function
+        as a decorator).
+    args : str or list or tuple, optional
+        One or several labels of values that will be passed as
+        positional argument(s) of the method during simulation runtime.
+        The following labels are defined:
+
+        - ``sim_start`` : simulation start (date)time
+        - ``sim_end`` : simulation end (date)time
+        - ``step`` : current step number
+        - ``step_start`` : current step start (date)time
+        - ``step_end``: current step end (date)time
+        - ``step_delta``: current step duration
+
+    Returns
+    -------
+    runtime_method
+       The same method that can be called during a simulation
+       with runtime data.
+
+    """
+    def wrapper(func):
+        func.__xsimlab_executor__ = _RuntimeMethodExecutor(func, args)
+        return func
+
+    if meth is not None:
+        return wrapper(meth)
+    else:
+        return wrapper
+
+
+class SimulationStage(Enum):
+    INITIALIZE = 'initialize'
+    RUN_STEP = 'run_step'
+    FINALIZE_STEP = 'finalize_step'
+    FINALIZE = 'finalize'
+
+
+class _ProcessExecutor:
+    """Used to execute a process during simulation runtime."""
+
+    def __init__(self, cls):
+        self.cls = cls
+
+        self.runtime_methods = OrderedDict()
+
+        for stage in SimulationStage:
+            if not has_method(self.cls, stage.value):
+                continue
+
+            meth = getattr(self.cls, stage.value)
+            executor = getattr(meth, '__xsimlab_executor__', None)
+
+            if executor is None:
+                nparams = len(inspect.signature(meth).parameters)
+
+                if stage == SimulationStage.RUN_STEP and nparams == 2:
+                    # TODO: remove (depreciated)
+                    warnings.warn("`run_step(self, dt)` accepting by default "
+                                  "one positional argument is depreciated and "
+                                  "will be removed in a future version of "
+                                  "xarray-simlab. Use the `@runtime` "
+                                  "decorator.",
+                                  FutureWarning)
+                    args = ['step_delta']
+
+                elif nparams > 1:
+                    raise TypeError("Process runtime methods with positional "
+                                    "parameters should be decorated with "
+                                    "`@runtime`")
+
+                else:
+                    args = None
+
+                executor = _RuntimeMethodExecutor(meth, args=args)
+
+            self.runtime_methods[stage] = executor
+
+    @property
+    def stages(self):
+        return [k.value for k in self.runtime_methods]
+
+    def execute(self, obj, stage, runtime_context):
+        executor = self.runtime_methods.get(stage)
+
+        if executor is None:
+            return None
+        else:
+            return executor.execute(obj, runtime_context)
+
+
 class _ProcessBuilder:
     """Used to iteratively create a new process class.
 
@@ -291,6 +417,7 @@ class _ProcessBuilder:
     def __init__(self, attr_cls):
         self._cls = attr_cls
         self._cls.__xsimlab_process__ = True
+        self._cls.__xsimlab_executor__ = _ProcessExecutor(self._cls)
         self._cls_dict = {}
 
     def add_properties(self, var_type):

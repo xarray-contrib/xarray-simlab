@@ -1,9 +1,46 @@
+from collections.abc import Mapping
 import copy
 
 import numpy as np
 import xarray as xr
 
 from .utils import variables_dict
+
+
+class RuntimeContext(Mapping):
+    """A mapping providing runtime information at the current time step."""
+
+    _context_keys = ('sim_start',
+                     'sim_end',
+                     'step',
+                     'step_start',
+                     'step_end',
+                     'step_delta')
+
+    def __init__(self, **kwargs):
+        self._context = {k: 0 for k in self._context_keys}
+
+        self.update(**kwargs)
+
+    def update(self, **kwargs):
+        for k, v in kwargs.items():
+            self.__setitem__(k, v)
+
+    def __getitem__(self, key):
+        return self._context[key]
+
+    def __setitem__(self, key, value):
+        if key not in self._context_keys:
+            raise KeyError("Invalid key {!r}, should be one of {!r}"
+                           .format(key, self._context_keys))
+
+        self._context[key] = value
+
+    def __len__(self):
+        return len(self._context)
+
+    def __iter__(self):
+        return iter(self._context)
 
 
 class BaseSimulationDriver:
@@ -151,22 +188,6 @@ class XarraySimulationDriver(BaseSimulationDriver):
 
         return save_steps
 
-    def _get_time_steps(self):
-        """Return a xarray.DataArray of duration between two
-        consecutive time steps."""
-        mclock = self.dataset[self.master_clock_dim]
-        return mclock.diff(self.master_clock_dim).values
-
-    def _split_clock_inputs(self):
-        """Return two datasets with time-independent and time-dependent
-        inputs."""
-        ds_in = self.dataset.filter(
-            lambda var: self.master_clock_dim not in var.dims)
-        ds_in_clock = self.dataset.filter(
-            lambda var: self.master_clock_dim in var.dims)
-
-        return ds_in, ds_in_clock
-
     def _set_input_vars(self, dataset):
         for p_name, var_name in self.model.input_vars:
             xr_var_name = p_name + '__' + var_name
@@ -238,6 +259,33 @@ class XarraySimulationDriver(BaseSimulationDriver):
 
         return out_ds
 
+    def _get_runtime_datasets(self):
+        mclock_dim = self.master_clock_dim
+        mclock_coord = self.dataset[mclock_dim]
+
+        init_data_vars = {
+            '_sim_start': mclock_coord[0],
+            '_sim_end': mclock_coord[-1]
+        }
+
+        ds_init = (self.dataset.assign(init_data_vars)
+                               .drop_dims(mclock_dim))
+
+        step_data_vars = {
+            '_clock_start': mclock_coord,
+            '_clock_end': mclock_coord.shift({mclock_dim: 1}),
+            '_clock_diff': mclock_coord.diff(mclock_dim, label='lower')
+        }
+
+        ds_all_steps = (self.dataset.drop(ds_init.data_vars.keys(),
+                                          errors='ignore')
+                                    .isel({mclock_dim: slice(0, -1)})
+                                    .assign(step_data_vars))
+
+        ds_gby_steps = ds_all_steps.groupby(mclock_dim)
+
+        return ds_init, ds_gby_steps
+
     def run_model(self):
         """Run the model and return a new Dataset with all the simulation
         inputs and outputs.
@@ -248,24 +296,31 @@ class XarraySimulationDriver(BaseSimulationDriver):
           'finalize_step' stages or at the end of the simulation.
 
         """
-        ds_in, ds_in_clock = self._split_clock_inputs()
-        has_clock_inputs = bool(ds_in_clock.data_vars)
+        ds_init, ds_gby_steps = self._get_runtime_datasets()
 
-        dt_array = self._get_time_steps()
+        runtime_context = RuntimeContext(
+            sim_start=ds_init['_sim_start'].values,
+            sim_end=ds_init['_sim_end'].values
+        )
 
-        self._set_input_vars(ds_in)
-        self.model.initialize()
+        self._set_input_vars(ds_init)
 
-        for istep, dt in enumerate(dt_array):
-            if has_clock_inputs:
-                ds_in_step = ds_in_clock.isel(**{self.master_clock_dim: istep})
-                self._set_input_vars(ds_in_step)
+        self.model.execute('initialize', runtime_context)
 
-            self.model.run_step(dt)
-            self._maybe_save_output_vars(istep)
-            self.model.finalize_step()
+        for step, (_, ds_step) in enumerate(ds_gby_steps):
+
+            runtime_context.update(step=step,
+                                   step_start=ds_step['_clock_start'].values,
+                                   step_end=ds_step['_clock_end'].values,
+                                   step_delta=ds_step['_clock_diff'].values)
+
+            self._set_input_vars(ds_step)
+
+            self.model.execute('run_step', runtime_context)
+            self._maybe_save_output_vars(step)
+            self.model.execute('finalize_step', runtime_context)
 
         self._maybe_save_output_vars(-1)
-        self.model.finalize()
+        self.model.execute('finalize', runtime_context)
 
         return self._get_output_dataset()

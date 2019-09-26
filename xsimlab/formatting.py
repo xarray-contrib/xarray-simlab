@@ -120,11 +120,8 @@ def repr_process(process):
     if not var_section_details:
         var_section_details = "    *empty*"
 
-    stages_implemented = [
-        "    {}".format(m)
-        for m in ['initialize', 'run_step', 'finalize_step', 'finalize']
-        if has_method(process, m)
-    ]
+    stages_implemented = ["    {}".format(s)
+                          for s in process.__xsimlab_executor__.stages]
 
     stages_section_summary = "Simulation stages:"
     if stages_implemented:

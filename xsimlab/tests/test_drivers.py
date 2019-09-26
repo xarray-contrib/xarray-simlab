@@ -87,15 +87,6 @@ class TestXarraySimulationDriver:
         for k in expected:
             assert_array_equal(xarray_driver.output_save_steps[k], expected[k])
 
-    def test_time_step_lengths(self, xarray_driver):
-        assert_array_equal(xarray_driver._get_time_steps(), [2, 2, 2, 2])
-
-    def test_split_data_vars_clock(self, xarray_driver):
-        ds_in, ds_in_clock = xarray_driver._split_clock_inputs()
-
-        assert 'add__offset' in ds_in_clock and 'add__offset' not in ds_in
-        assert 'roll__shift' in ds_in and 'roll__shift' not in ds_in_clock
-
     @pytest.mark.parametrize('var_key,is_scalar', [
         (('init_profile', 'n_points'), True),
         (('add', 'offset'), False)
@@ -127,4 +118,23 @@ class TestXarraySimulationDriver:
     def test_run_model(self, in_dataset, out_dataset, xarray_driver):
         out_ds_actual = xarray_driver.run_model()
 
+        assert out_ds_actual is not out_dataset
         assert_identical(out_ds_actual, out_dataset)
+
+    def test_runtime_context(self, in_dataset, model):
+        @xs.process
+        class BadProcess:
+
+            @xs.runtime(args='bad')
+            def run_step(self, bad):
+                pass
+
+        bad_model = model.update_processes({'bad': BadProcess})
+
+        driver = XarraySimulationDriver(in_dataset, bad_model,
+                                        {}, InMemoryOutputStore())
+
+        with pytest.raises(KeyError) as excinfo:
+            driver.run_model()
+
+        assert str(excinfo.value) == "'bad'"

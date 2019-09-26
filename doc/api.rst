@@ -104,10 +104,7 @@ interfaces.
 .. autosummary::
    :toctree: _api_generated/
 
-   Model.initialize
-   Model.run_step
-   Model.finalize_step
-   Model.finalize
+   Model.execute
 
 Process
 =======
@@ -129,6 +126,14 @@ Process introspection and variables
    process_info
    variable_info
    filter_variables
+
+Process runtime methods
+-----------------------
+
+.. autosummary::
+   :toctree: _api_generated/
+
+   runtime
 
 Variable
 ========

@@ -3,7 +3,7 @@ from inspect import isclass
 
 from .variable import VarIntent, VarType
 from .process import (ensure_process_decorated, filter_variables,
-                      get_target_variable)
+                      get_target_variable, SimulationStage)
 from .utils import AttrMapping, ContextMixin, has_method, variables_dict
 from .formatting import repr_model
 
@@ -365,15 +365,6 @@ class _ModelBuilder:
         )
         return self._sorted_processes
 
-    def get_stage_processes(self, stage):
-        """Return a (sorted) list of all process objects that implement the
-        method relative to a given simulation stage {'initialize', 'run_step',
-        'finalize_step', 'finalize'}.
-
-        """
-        return [p_obj for p_obj in self._sorted_processes.values()
-                if has_method(p_obj, stage)]
-
 
 class Model(AttrMapping, ContextMixin):
     """An immutable collection of process units that together form a
@@ -428,11 +419,6 @@ class Model(AttrMapping, ContextMixin):
 
         self._dep_processes = builder.get_process_dependencies()
         self._processes = builder.get_sorted_processes()
-
-        self._p_initialize = builder.get_stage_processes('initialize')
-        self._p_run_step = builder.get_stage_processes('run_step')
-        self._p_finalize_step = builder.get_stage_processes('finalize_step')
-        self._p_finalize = builder.get_stage_processes('finalize')
 
         super(Model, self).__init__(self._processes)
         self._initialized = True
@@ -526,25 +512,23 @@ class Model(AttrMapping, ContextMixin):
                          show_inputs=show_inputs,
                          show_variables=show_variables)
 
-    def initialize(self):
-        """Run the 'initialize' stage of a simulation."""
-        for p in self._p_initialize:
-            p.initialize()
+    def execute(self, stage, runtime_context):
+        """Run one stage of a simulation.
 
-    def run_step(self, step):
-        """Run a single 'run_step()' stage of a simulation."""
-        for p in self._p_run_step:
-            p.run_step(step)
+        This shouldn't be called directly, except for debugging purpose.
 
-    def finalize_step(self):
-        """Run a single 'finalize_step' stage of a simulation."""
-        for p in self._p_finalize_step:
-            p.finalize_step()
+        Parameters
+        ----------
+        stage : str
+            Name of the simulation stage.
+        runtime_context : dict
+            Dictionary containing runtime variables (e.g., time step
+            duration, current step).
 
-    def finalize(self):
-        """Run the 'finalize' stage of a simulation."""
-        for p in self._p_finalize:
-            p.finalize()
+        """
+        for p_obj in self._processes.values():
+            executor = p_obj.__xsimlab_executor__
+            executor.execute(p_obj, SimulationStage(stage), runtime_context)
 
     def clone(self):
         """Clone the Model, i.e., create a new Model instance with the same
