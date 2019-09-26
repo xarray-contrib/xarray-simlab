@@ -94,12 +94,12 @@ by Jake VanderPlas.
 
     >>> output_dataset
     <xarray.Dataset>
-    Dimensions:     (point: 2, step: 9, x: 10, y: 10)
+    Dimensions:     (point_xy: 2, step: 9, x: 10, y: 10)
     Coordinates:
       * step        (step) int64 0 1 2 3 4 5 6 7 8
-    Dimensions without coordinates: point, x, y
+    Dimensions without coordinates: point_xy, x, y
     Data variables:
-        init__pos   (point) int64 4 5
+        init__pos   (point_xy) int64 4 5
         gol__world  (step, x, y) bool False False False False ... False False False
 
 4. Perform model setup, pre-processing, run, post-processing and
