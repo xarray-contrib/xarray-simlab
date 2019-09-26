@@ -3,44 +3,132 @@
 About xarray-simlab
 ===================
 
-xarray-simlab provides a framework for easily building custom computational
-models from a set of modular components (i.e., Python classes), called
+xarray-simlab provides a framework to easily build custom
+computational models from a collection of modular components, called
 processes.
 
-The framework handles issues that scientists who are developing models
-should not care too much about, like the model interface and the
-overall workflow management. Both are automatically determined from
-the succint, declarative-like interfaces of the model processes.
+It also provides an extension to `xarray <https://xarray.pydata.org>`_
+(i.e., labeled arrays and datasets), that connects it to a wide range
+of libraries of the SciPy / PyData stack for processing, analysis,
+visualization, etc.
 
-Notably via its xarray extension, xarray-simlab has already deep
-integration with the SciPy / PyData stack. Next versions will
-hopefully handle other technical issues like command line integration,
-interactive visualization and/or running many simulations in parallel,
-e.g., in the context of sensitivity analyses or inversion procedures.
+In a nutshell
+-------------
+
+The Conway's Game of Life example shown below is adapted from this
+`blog post <https://jakevdp.github.io/blog/2013/08/07/conways-game-of-life/>`_
+by Jake VanderPlas.
+
+1. Create new model components by writing compact Python classes,
+   i.e., very much like dataclasses_ (note: more features and Python <
+   3.7 support are also available through the `attrs
+   <https://www.attrs.org>`_ library):
+
+.. ipython::
+
+    In [1]: import numpy as np
+       ...: import xsimlab as xs
+       ...:
+       ...:
+       ...: @xs.process
+       ...: class GameOfLife:
+       ...:     world = xs.variable(dims=('x', 'y'), intent='inout')
+       ...:
+       ...:     def run_step(self):
+       ...:         nbrs_count = sum(
+       ...:             np.roll(np.roll(self.world, i, 0), j, 1)
+       ...:             for i in (-1, 0, 1) for j in (-1, 0, 1)
+       ...:             if (i != 0 or j != 0)
+       ...:         )
+       ...:         self._world_next = (nbrs_count == 3) | (self.world & (nbrs_count == 2))
+       ...:
+       ...:     def finalize_step(self):
+       ...:         self.world[:] = self._world_next
+       ...:
+       ...:
+       ...: @xs.process
+       ...: class Glider:
+       ...:     pos = xs.variable(dims='point_xy', description='glider position')
+       ...:     world = xs.foreign(GameOfLife, 'world', intent='out')
+       ...:
+       ...:     def initialize(self):
+       ...:         x, y = self.pos
+       ...:
+       ...:         kernel = [[1, 0, 0],
+       ...:                   [0, 1, 1],
+       ...:                   [1, 1, 0]]
+       ...:
+       ...:         self.world = np.zeros((10, 10), dtype=bool)
+       ...:         self.world[x:x+3, y:y+3] = kernel
+
+2. Create a new model just by providing a dictionary of model components:
+
+.. ipython::
+
+    In [2]: model = xs.Model({'gol': GameOfLife,
+       ...:                   'init': Glider})
+
+3. Create an input :py:class:`xarray.Dataset`, run the model and get an
+   output Dataset:
+
+.. ipython::
+
+    In [3]: input_dataset = xs.create_setup(
+       ...:     model=model,
+       ...:     clocks={'step': np.arange(9)},
+       ...:     input_vars={'init__pos': ('point_xy', [4, 5])},
+       ...:     output_vars={'step': 'gol__world'}
+       ...: )
+       ...:
+       ...: output_dataset = input_dataset.xsimlab.run(model=model)
+       ...:
+       ...: output_dataset
+
+4. Perform model setup, pre-processing, run, post-processing and
+   visualization in a functional style, using method chaining:
+
+.. ipython::
+
+    @savefig gol.png width=4in
+    In [5]: import matplotlib.pyplot as plt
+       ...:
+       ...: with model:
+       ...:     (input_dataset
+       ...:      .xsimlab.update_vars(
+       ...:          input_vars={'init__pos': ('point_xy', [2, 2])}
+       ...:      )
+       ...:      .xsimlab.run()
+       ...:      .gol__world.plot.imshow(
+       ...:          col='step', col_wrap=3, figsize=(5, 5),
+       ...:          xticks=[], yticks=[],
+       ...:          add_colorbar=False, cmap=plt.cm.binary)
+       ...:     )
+
+.. _dataclasses: https://docs.python.org/3/library/dataclasses.html
 
 Motivation
 ----------
 
-xarray-simlab is being developped with the idea of reducing the gap between the
-environments used for building and running computational models and the ones
-used for processing and analyzing simulation results. If the latter environments
-become more powerful and interactive, progress has still to be done for the
-former ones.
+xarray-simlab is a tool for *fast model development* and *easy,
+interactive model exploration*. It aims at empowering scientists to do
+better research in less time, collaborate efficiently and make new
+discoveries.
 
-xarray-simlab also encourages building new models from re-usable sets of
-components in order to avoid reinventing the wheel. In many cases we want to
-customize existing models (e.g., adding a new feature or slightly modifying
-the behavior) instead of building new models from scratch. This modular
-framework allows to do that with minimal effort. By implementing models using
-a large number of small components that can be easily plugged in/out, we
-eliminate the need of hard-coding changes that we want to apply to a model,
-which often leads to over-complicated code and interface.
+**Fast model development**: xarray-simlab allows building new models
+from re-usable sets of components, with minimal effort. Models are
+created dynamically and instantly just by plugging in/out components,
+always keeping the model structure and interface tidy even in
+situations where the model development workflow is highly experimental
+or organic.
 
-The design of this tool is thus mainly focused on both fast model development
-and easy, interactive model exploration. Ultimately, this would optimize the
-iterative back-and-forth process between ideas that we have on how to model a
-particular phenomenon and insights that we get from the exploration of model
-behavior.
+**Interactive model exploration**: xarray-simlab is being developed
+with the idea of reducing the gap between the environments used for
+building and running computational models and the ones used for
+processing, analyzing and visualizing simulation results. Users may
+fully leverage powerful environments like jupyter_ at all stages of
+their modeling workflow.
+
+.. _jupyter: https://jupyter.org/
 
 Sources of inspiration
 ----------------------
@@ -49,8 +137,8 @@ xarray-simlab leverages the great number of packages that are part of the
 Python scientific ecosystem. More specifically, the packages below have been
 great sources of inspiration for this project.
 
-- xarray_: xarray-simlab actually provides an xarray extension for setting and
-  running models.
+- xarray_: xarray-simlab actually provides an xarray extension for
+  setting up and running models.
 - attrs_: a package that allows writing Python classes without
   boilerplate. xarray-simlab uses and extends attrs for writing
   processes as succinct Python classes.
@@ -73,8 +161,6 @@ great sources of inspiration for this project.
   processes. In this project we actually borrow some code from dask
   for resolving process dependencies and for model visualization.
 
-.. _attrs: https://github.com/python-attrs/attrs
-.. _xarray: https://github.com/pydata/xarray
 .. _dask: https://github.com/dask/dask
 .. _luigi: https://github.com/spotify/luigi
 .. _django: https://github.com/django/django

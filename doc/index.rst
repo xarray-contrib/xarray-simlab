@@ -4,8 +4,8 @@ xarray-simlab: xarray extension for computer model simulations
 **xarray-simlab** is a Python library that provides both a generic
 framework for building computational models in a modular fashion and a
 `xarray`_ extension for setting and running simulations using the
-:py:class:`xarray.Dataset` structure. It is designed for interactive
-and exploratory modeling.
+:py:class:`xarray.Dataset` structure. It is designed for fast,
+interactive and exploratory modeling.
 
 .. _xarray: http://xarray.pydata.org
 
