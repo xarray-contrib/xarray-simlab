@@ -4,6 +4,7 @@ import attr
 import pytest
 
 import xsimlab as xs
+from xsimlab.process import get_process_obj
 
 
 @xs.process
@@ -49,7 +50,7 @@ class ExampleProcess:
 
 @pytest.fixture
 def example_process_obj():
-    return ExampleProcess()
+    return get_process_obj(ExampleProcess)
 
 
 @pytest.fixture(scope='session')
@@ -85,7 +86,7 @@ def in_var_details():
 
 
 def _init_process(p_cls, p_name, model, store, store_keys=None, od_keys=None):
-    p_obj = p_cls()
+    p_obj = get_process_obj(p_cls)
     p_obj.__xsimlab_name__ = p_name
     p_obj.__xsimlab_model__ = model
     p_obj.__xsimlab_store__ = store

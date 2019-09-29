@@ -33,24 +33,11 @@ def _get_embedded_process_cls(cls):
                                         .format(cls=cls))
 
 
-def ensure_process_decorated(cls):
-    try:
-        cls = cls.__xsimlab_cls__
-    except AttributeError:
-        pass
-
-    if not getattr(cls, "__xsimlab_process__", False):
-        raise NotAProcessClassError("{cls!r} is not a "
-                                    "process-decorated class.".format(cls=cls))
-
-
 def get_process_cls(obj_or_cls):
     if not inspect.isclass(obj_or_cls):
         cls = type(obj_or_cls)
     else:
         cls = obj_or_cls
-
-    ensure_process_decorated(cls)
 
     return _get_embedded_process_cls(cls)
 
