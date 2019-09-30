@@ -1,4 +1,5 @@
 from io import StringIO
+import inspect
 
 import pytest
 
@@ -209,6 +210,28 @@ def test_process_decorator():
         @xs.process(autodoc=True)
         class Dummy:
             pass
+
+
+def test_process_no_model():
+    params = inspect.signature(ExampleProcess.__init__).parameters
+
+    expected_params = ['self', 'in_var', 'inout_var', 'in_foreign_var',
+                       'in_foreign_var2', 'in_foreign_od_var', 'group_var']
+
+    assert list(params.keys()) == expected_params
+
+    @xs.process
+    class P:
+        invar = xs.variable()
+        outvar = xs.variable(intent='out')
+
+        def initialize(self):
+            self.outvar = self.invar + 2
+
+    p = P(invar=1)
+    p.initialize()
+
+    assert p.outvar == 3
 
 
 def test_process_info(example_process_obj, example_process_repr):
