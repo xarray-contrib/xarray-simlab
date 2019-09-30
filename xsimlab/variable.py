@@ -132,8 +132,15 @@ def variable(dims=(), intent='in', group=None, default=attr.NOTHING,
                 'attrs': attrs or {},
                 'description': description}
 
+    if VarIntent(intent) == VarIntent.OUT:
+        _init = False
+        _repr = False
+    else:
+        _init = True
+        _repr = True
+
     return attr.attrib(metadata=metadata, default=default, validator=validator,
-                       init=False, cmp=False, repr=False)
+                       init=_init, cmp=False, repr=_repr)
 
 
 def on_demand(dims=(), group=None, description='', attrs=None):
@@ -229,7 +236,14 @@ def foreign(other_process_cls, var_name, intent='in'):
                 'intent': VarIntent(intent),
                 'description': description}
 
-    return attr.attrib(metadata=metadata, init=False, cmp=False, repr=False)
+    if VarIntent(intent) == VarIntent.OUT:
+        _init = False
+        _repr = False
+    else:
+        _init = True
+        _repr = True
+
+    return attr.attrib(metadata=metadata, init=_init, cmp=False, repr=_repr)
 
 
 def group(name):
@@ -260,4 +274,5 @@ def group(name):
                 'intent': VarIntent.IN,
                 'description': description}
 
-    return attr.attrib(metadata=metadata, init=False, cmp=False, repr=False)
+    return attr.attrib(metadata=metadata, init=True, cmp=False, repr=True,
+                       default=tuple())
