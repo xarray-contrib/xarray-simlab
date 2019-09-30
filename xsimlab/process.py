@@ -361,7 +361,7 @@ class _ProcessExecutor:
             return executor.execute(obj, runtime_context)
 
 
-def _process_post_init(obj):
+def _process_cls_init(obj):
     """Set the following instance attributes with None or empty values
     (proper values will be set later at model creation):
 
@@ -390,27 +390,13 @@ def _process_post_init(obj):
     obj.__xsimlab_od_keys__ = {}
 
 
-def _get_attributes_no_init(attributes):
-    new_attributes = OrderedDict()
-
-    for k, attrib in attributes.items():
-        new_attributes[k] = attr.attrib(
-            metadata=attrib.metadata,
-            default=attrib.default,
-            validator=attrib.validator,
-            init=False,
-            cmp=False,
-            repr=False
-        )
-
-    return new_attributes
-
-
 class _ProcessBuilder:
-    """Used to iteratively create a new process class.
+    """Used to iteratively create a new process class from an existing
+    "dataclass", i.e., a class decorated with ``attr.attrs``.
 
-    The original class must be already "attr-yfied", i.e., it must
-    correspond to a class returned by `attr.attrs`.
+    The process class is a direct child of the given dataclass, with
+    attributes (fields) redefined and properties created so that it
+    can be used within a model.
 
     """
     _make_prop_funcs = {
@@ -421,39 +407,59 @@ class _ProcessBuilder:
     }
 
     def __init__(self, attr_cls):
-        attributes = _get_attributes_no_init(attr.fields_dict(attr_cls))
+        self._base_cls = attr_cls
+        self._p_cls_dict = {}
 
-        setattr(attr_cls, '__attrs_post_init__', _process_post_init)
+    def _reset_attributes(self):
+        new_attributes = OrderedDict()
 
-        self._cls = attr.make_class(attr_cls.__name__,
-                                    attributes,
-                                    bases=(attr_cls,))
+        for k, attrib in attr.fields_dict(self._base_cls).items():
+            new_attributes[k] = attr.attrib(
+                metadata=attrib.metadata,
+                validator=attrib.validator,
+                default=attr.NOTHING,
+                init=False,
+                cmp=False,
+                repr=False
+            )
 
-        self._cls.__xsimlab_process__ = True
-        self._cls.__xsimlab_executor__ = _ProcessExecutor(self._cls)
-        self._cls_dict = {}
+        return new_attributes
 
-    def add_properties(self, var_type):
-        make_prop_func = self._make_prop_funcs[var_type]
+    def _make_process_subclass(self):
+        p_cls = attr.make_class(self._base_cls.__name__,
+                                self._reset_attributes(),
+                                bases=(self._base_cls,),
+                                init=False,
+                                repr=False)
 
-        for var_name, var in filter_variables(self._cls, var_type).items():
-            self._cls_dict[var_name] = make_prop_func(var)
+        setattr(p_cls, '__init__', _process_cls_init)
+        setattr(p_cls, '__repr__', repr_process)
+        setattr(p_cls, '__xsimlab_process__', True)
+        setattr(p_cls, '__xsimlab_executor__', _ProcessExecutor(p_cls))
 
-    def add_repr(self):
-        self._cls_dict['__repr__'] = repr_process
+        return p_cls
+
+    def add_properties(self):
+        for var_name, var in attr.fields_dict(self._base_cls).items():
+            var_type = var.metadata.get('var_type')
+
+            if var_type is not None:
+                make_prop_func = self._make_prop_funcs[var_type]
+
+                self._p_cls_dict[var_name] = make_prop_func(var)
 
     def render_docstrings(self):
-        # self._cls_dict['__doc__'] = "Process-ified class."
+        # self._p_cls_dict['__doc__'] = "Process-ified class."
         raise NotImplementedError("autodoc is not yet implemented.")
 
     def build_class(self):
-        cls = self._cls
+        p_cls = self._make_process_subclass()
 
         # Attach properties (and docstrings)
-        for name, value in self._cls_dict.items():
-            setattr(cls, name, value)
+        for name, value in self._p_cls_dict.items():
+            setattr(p_cls, name, value)
 
-        return cls
+        return p_cls
 
 
 def process(maybe_cls=None, autodoc=False):
@@ -492,15 +498,12 @@ def process(maybe_cls=None, autodoc=False):
 
         builder = _ProcessBuilder(attr_cls)
 
-        for var_type in VarType:
-            builder.add_properties(var_type)
+        builder.add_properties()
 
         if autodoc:
             builder.render_docstrings()
 
-        builder.add_repr()
-
-        attr_cls.__xsimlab_cls__ = builder.build_class()
+        setattr(attr_cls, '__xsimlab_cls__', builder.build_class())
 
         return attr_cls
 
