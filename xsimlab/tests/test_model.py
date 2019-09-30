@@ -1,6 +1,7 @@
 import pytest
 
 import xsimlab as xs
+from xsimlab.process import get_process_cls
 from xsimlab.tests.fixture_model import AddOnDemand, InitProfile, Profile
 
 
@@ -113,7 +114,7 @@ class TestModelBuilder:
         new_model = model.update_processes(
             {'profile': InheritedProfile})
 
-        assert type(new_model['profile']) is InheritedProfile
+        assert type(new_model['profile']) is get_process_cls(InheritedProfile)
         assert isinstance(new_model['profile'], Profile)
 
         with pytest.raises(ValueError) as excinfo:
@@ -125,10 +126,6 @@ class TestModelBuilder:
 class TestModel:
 
     def test_constructor(self):
-        with pytest.raises(TypeError) as excinfo:
-            xs.Model({'init_profile': InitProfile()})
-        assert "values must be classes" in str(excinfo.value)
-
         with pytest.raises(KeyError) as excinfo:
             xs.Model({'init_profile': InitProfile})
         assert "Process class 'Profile' missing" in str(excinfo.value)

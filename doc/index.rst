@@ -35,6 +35,7 @@ Documentation index
 * :doc:`create_model`
 * :doc:`inspect_model`
 * :doc:`run_model`
+* :doc:`testing`
 
 .. toctree::
    :maxdepth: 1
@@ -45,6 +46,7 @@ Documentation index
    create_model
    inspect_model
    run_model
+   testing
 
 **Help & Reference**
 

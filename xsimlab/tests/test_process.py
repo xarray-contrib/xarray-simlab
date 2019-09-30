@@ -1,10 +1,11 @@
 from io import StringIO
+import inspect
 
 import pytest
 
 import xsimlab as xs
 from xsimlab.variable import VarIntent, VarType
-from xsimlab.process import (ensure_process_decorated, filter_variables,
+from xsimlab.process import (filter_variables,
                              get_process_cls, get_process_obj,
                              get_target_variable, NotAProcessClassError,
                              process_info, variable_info)
@@ -12,23 +13,30 @@ from xsimlab.utils import variables_dict
 from xsimlab.tests.fixture_process import ExampleProcess, SomeProcess
 
 
-def test_ensure_process_decorated():
+def test_get_process_cls(example_process_obj):
+    p_cls = get_process_cls(ExampleProcess)
+    assert get_process_cls(example_process_obj) is p_cls
+
+
+def test_get_process_obj(example_process_obj):
+    p_cls = get_process_cls(ExampleProcess)
+    assert type(get_process_obj(ExampleProcess)) is p_cls
+
+    # get_process_obj returns a new instance
+    assert get_process_obj(example_process_obj) is not example_process_obj
+
+
+def test_get_process_raise():
     class NotAProcess:
         pass
 
     with pytest.raises(NotAProcessClassError) as excinfo:
-        ensure_process_decorated(NotAProcess)
+        get_process_cls(NotAProcess)
     assert "is not a process-decorated class" in str(excinfo.value)
 
-
-def test_get_process_cls(example_process_obj):
-    assert get_process_cls(ExampleProcess) is ExampleProcess
-    assert get_process_cls(example_process_obj) is ExampleProcess
-
-
-def test_get_process_obj(example_process_obj):
-    assert get_process_obj(example_process_obj) is example_process_obj
-    assert type(get_process_obj(ExampleProcess)) is ExampleProcess
+    with pytest.raises(NotAProcessClassError) as excinfo:
+        get_process_obj(NotAProcess)
+    assert "is not a process-decorated class" in str(excinfo.value)
 
 
 @pytest.mark.parametrize('kwargs,expected', [
@@ -50,26 +58,30 @@ def test_filter_variables(kwargs, expected):
     assert set(filter_variables(ExampleProcess, **kwargs)) == expected
 
 
-@pytest.mark.parametrize('var_name,expected_p_cls,expected_var_name', [
+@pytest.mark.parametrize('var_name,expected_cls,expected_var_name', [
     ('in_var', ExampleProcess, 'in_var'),
     ('in_foreign_var', SomeProcess, 'some_var'),
     ('in_foreign_var2', SomeProcess, 'some_var')  # test foreign of foreign
 ])
-def test_get_target_variable(var_name, expected_p_cls, expected_var_name):
-    var = variables_dict(ExampleProcess)[var_name]
+def test_get_target_variable(var_name, expected_cls, expected_var_name):
+    _ExampleProcess = get_process_cls(ExampleProcess)
+    expected_p_cls = get_process_cls(expected_cls)
+
+    var = variables_dict(_ExampleProcess)[var_name]
     expected_var = variables_dict(expected_p_cls)[expected_var_name]
 
-    actual_p_cls, actual_var = get_target_variable(var)
+    actual_cls, actual_var = get_target_variable(var)
 
-    if expected_p_cls is ExampleProcess:
-        assert actual_p_cls is None
+    if expected_p_cls is _ExampleProcess:
+        assert actual_cls is None
     else:
+        actual_p_cls = get_process_cls(actual_cls)
         assert actual_p_cls is expected_p_cls
 
     assert actual_var is expected_var
 
 
-@pytest.mark.parametrize('p_cls,var_name,prop_is_read_only', [
+@pytest.mark.parametrize('cls,var_name,prop_is_read_only', [
     (ExampleProcess, 'in_var', True),
     (ExampleProcess, 'in_foreign_var', True),
     (ExampleProcess, 'group_var', True),
@@ -78,7 +90,9 @@ def test_get_target_variable(var_name, expected_p_cls, expected_var_name):
     (ExampleProcess, 'out_var', False),
     (ExampleProcess, 'out_foreign_var', False)
 ])
-def test_process_properties_readonly(p_cls, var_name, prop_is_read_only):
+def test_process_properties_readonly(cls, var_name, prop_is_read_only):
+    p_cls = get_process_cls(cls)
+
     if prop_is_read_only:
         assert getattr(p_cls, var_name).fset is None
     else:
@@ -112,7 +126,9 @@ def test_process_properties_docstrings(in_var_details):
     # order of lines in string is not ensured (printed from a dictionary)
     to_lines = lambda details_str: sorted(details_str.split('\n'))
 
-    assert to_lines(ExampleProcess.in_var.__doc__) == to_lines(in_var_details)
+    _ExampleProcess = get_process_cls(ExampleProcess)
+
+    assert to_lines(_ExampleProcess.in_var.__doc__) == to_lines(in_var_details)
 
 
 def test_process_properties_values(processes_with_store):
@@ -194,6 +210,28 @@ def test_process_decorator():
         @xs.process(autodoc=True)
         class Dummy:
             pass
+
+
+def test_process_no_model():
+    params = inspect.signature(ExampleProcess.__init__).parameters
+
+    expected_params = ['self', 'in_var', 'inout_var', 'in_foreign_var',
+                       'in_foreign_var2', 'in_foreign_od_var', 'group_var']
+
+    assert list(params.keys()) == expected_params
+
+    @xs.process
+    class P:
+        invar = xs.variable()
+        outvar = xs.variable(intent='out')
+
+        def initialize(self):
+            self.outvar = self.invar + 2
+
+    p = P(invar=1)
+    p.initialize()
+
+    assert p.outvar == 3
 
 
 def test_process_info(example_process_obj, example_process_repr):

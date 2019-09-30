@@ -20,10 +20,17 @@ class NotAProcessClassError(ValueError):
     pass
 
 
-def ensure_process_decorated(cls):
-    if not getattr(cls, "__xsimlab_process__", False):
-        raise NotAProcessClassError("{cls!r} is not a "
-                                    "process-decorated class.".format(cls=cls))
+def _get_embedded_process_cls(cls):
+    if getattr(cls, "__xsimlab_process__", False):
+        return cls
+
+    else:
+        try:
+            return cls.__xsimlab_cls__
+        except AttributeError:
+            raise NotAProcessClassError("{cls!r} is not a "
+                                        "process-decorated class."
+                                        .format(cls=cls))
 
 
 def get_process_cls(obj_or_cls):
@@ -32,22 +39,16 @@ def get_process_cls(obj_or_cls):
     else:
         cls = obj_or_cls
 
-    ensure_process_decorated(cls)
-
-    return cls
+    return _get_embedded_process_cls(cls)
 
 
 def get_process_obj(obj_or_cls):
     if inspect.isclass(obj_or_cls):
         cls = obj_or_cls
-        obj = cls()
     else:
         cls = type(obj_or_cls)
-        obj = obj_or_cls
 
-    ensure_process_decorated(cls)
-
-    return obj
+    return _get_embedded_process_cls(cls)()
 
 
 def filter_variables(process, var_type=None, intent=None, group=None,
@@ -135,46 +136,6 @@ def get_target_variable(var):
                                .format(cycle))
 
     return target_process_cls, target_var
-
-
-def _attrify_class(cls):
-    """Return a `cls` after having passed through :func:`attr.attrs`.
-
-    This pulls out and converts `attr.ib` declared as class attributes
-    into :class:`attr.Attribute` objects and it also adds
-    dunder-methods such as `__init__`.
-
-    The following instance attributes are also defined with None or
-    empty values (proper values will be set later at model creation):
-
-    __xsimlab_model__ : obj
-        :class:`Model` instance to which the process instance is attached.
-    __xsimlab_name__ : str
-        Name given for this process in the model.
-    __xsimlab_store__ : dict or object
-        Simulation data store.
-    __xsimlab_store_keys__ : dict
-        Dictionary that maps variable names to their corresponding key
-        (or list of keys for group variables) in the store.
-        Such keys consist of pairs like `('foo', 'bar')` where
-        'foo' is the name of any process in the same model and 'bar' is
-        the name of a variable declared in that process.
-    __xsimlab_od_keys__ : dict
-        Dictionary that maps variable names to the location of their target
-        on-demand variable (or a list of locations for group variables).
-        Locations are tuples like store keys.
-
-    """
-    def init_process(self):
-        self.__xsimlab_model__ = None
-        self.__xsimlab_name__ = None
-        self.__xsimlab_store__ = None
-        self.__xsimlab_store_keys__ = {}
-        self.__xsimlab_od_keys__ = {}
-
-    setattr(cls, '__attrs_post_init__', init_process)
-
-    return attr.attrs(cls)
 
 
 def _make_property_variable(var):
@@ -400,11 +361,42 @@ class _ProcessExecutor:
             return executor.execute(obj, runtime_context)
 
 
-class _ProcessBuilder:
-    """Used to iteratively create a new process class.
+def _process_cls_init(obj):
+    """Set the following instance attributes with None or empty values
+    (proper values will be set later at model creation):
 
-    The original class must be already "attr-yfied", i.e., it must
-    correspond to a class returned by `attr.attrs`.
+    __xsimlab_model__ : obj
+        :class:`Model` instance to which the process instance is attached.
+    __xsimlab_name__ : str
+        Name given for this process in the model.
+    __xsimlab_store__ : dict or object
+        Simulation data store.
+    __xsimlab_store_keys__ : dict
+        Dictionary that maps variable names to their corresponding key
+        (or list of keys for group variables) in the store.
+        Such keys consist of pairs like `('foo', 'bar')` where
+        'foo' is the name of any process in the same model and 'bar' is
+        the name of a variable declared in that process.
+    __xsimlab_od_keys__ : dict
+        Dictionary that maps variable names to the location of their target
+        on-demand variable (or a list of locations for group variables).
+        Locations are tuples like store keys.
+
+    """
+    obj.__xsimlab_model__ = None
+    obj.__xsimlab_name__ = None
+    obj.__xsimlab_store__ = None
+    obj.__xsimlab_store_keys__ = {}
+    obj.__xsimlab_od_keys__ = {}
+
+
+class _ProcessBuilder:
+    """Used to iteratively create a new process class from an existing
+    "dataclass", i.e., a class decorated with ``attr.attrs``.
+
+    The process class is a direct child of the given dataclass, with
+    attributes (fields) redefined and properties created so that it
+    can be used within a model.
 
     """
     _make_prop_funcs = {
@@ -415,32 +407,59 @@ class _ProcessBuilder:
     }
 
     def __init__(self, attr_cls):
-        self._cls = attr_cls
-        self._cls.__xsimlab_process__ = True
-        self._cls.__xsimlab_executor__ = _ProcessExecutor(self._cls)
-        self._cls_dict = {}
+        self._base_cls = attr_cls
+        self._p_cls_dict = {}
 
-    def add_properties(self, var_type):
-        make_prop_func = self._make_prop_funcs[var_type]
+    def _reset_attributes(self):
+        new_attributes = OrderedDict()
 
-        for var_name, var in filter_variables(self._cls, var_type).items():
-            self._cls_dict[var_name] = make_prop_func(var)
+        for k, attrib in attr.fields_dict(self._base_cls).items():
+            new_attributes[k] = attr.attrib(
+                metadata=attrib.metadata,
+                validator=attrib.validator,
+                default=attr.NOTHING,
+                init=False,
+                cmp=False,
+                repr=False
+            )
 
-    def add_repr(self):
-        self._cls_dict['__repr__'] = repr_process
+        return new_attributes
+
+    def _make_process_subclass(self):
+        p_cls = attr.make_class(self._base_cls.__name__,
+                                self._reset_attributes(),
+                                bases=(self._base_cls,),
+                                init=False,
+                                repr=False)
+
+        setattr(p_cls, '__init__', _process_cls_init)
+        setattr(p_cls, '__repr__', repr_process)
+        setattr(p_cls, '__xsimlab_process__', True)
+        setattr(p_cls, '__xsimlab_executor__', _ProcessExecutor(p_cls))
+
+        return p_cls
+
+    def add_properties(self):
+        for var_name, var in attr.fields_dict(self._base_cls).items():
+            var_type = var.metadata.get('var_type')
+
+            if var_type is not None:
+                make_prop_func = self._make_prop_funcs[var_type]
+
+                self._p_cls_dict[var_name] = make_prop_func(var)
 
     def render_docstrings(self):
-        # self._cls_dict['__doc__'] = "Process-ified class."
+        # self._p_cls_dict['__doc__'] = "Process-ified class."
         raise NotImplementedError("autodoc is not yet implemented.")
 
     def build_class(self):
-        cls = self._cls
+        p_cls = self._make_process_subclass()
 
         # Attach properties (and docstrings)
-        for name, value in self._cls_dict.items():
-            setattr(cls, name, value)
+        for name, value in self._p_cls_dict.items():
+            setattr(p_cls, name, value)
 
-        return cls
+        return p_cls
 
 
 def process(maybe_cls=None, autodoc=False):
@@ -475,19 +494,18 @@ def process(maybe_cls=None, autodoc=False):
 
     """
     def wrap(cls):
-        attr_cls = _attrify_class(cls)
+        attr_cls = attr.attrs(cls)
 
         builder = _ProcessBuilder(attr_cls)
 
-        for var_type in VarType:
-            builder.add_properties(var_type)
+        builder.add_properties()
 
         if autodoc:
             builder.render_docstrings()
 
-        builder.add_repr()
+        setattr(attr_cls, '__xsimlab_cls__', builder.build_class())
 
-        return builder.build_class()
+        return attr_cls
 
     if maybe_cls is None:
         return wrap

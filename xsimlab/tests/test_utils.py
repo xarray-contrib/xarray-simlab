@@ -2,6 +2,7 @@ import attr
 import pytest
 
 from xsimlab import utils
+from xsimlab.process import get_process_cls
 from xsimlab.tests.fixture_process import ExampleProcess
 
 
@@ -13,8 +14,10 @@ def test_variables_dict():
 
 
 def test_has_method():
-    assert utils.has_method(ExampleProcess(), 'compute_od_var')
-    assert not utils.has_method(ExampleProcess(), 'invalid_meth')
+    _ExampleProcess = get_process_cls(ExampleProcess)
+
+    assert utils.has_method(_ExampleProcess(), 'compute_od_var')
+    assert not utils.has_method(_ExampleProcess(), 'invalid_meth')
 
 
 def test_maybe_to_list():

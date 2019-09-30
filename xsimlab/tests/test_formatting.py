@@ -4,6 +4,7 @@ import xsimlab as xs
 from xsimlab.formatting import (maybe_truncate, pretty_print,
                                 repr_process, repr_model,
                                 var_details, wrap_indent)
+from xsimlab.process import get_process_obj
 
 
 def test_maybe_truncate():
@@ -60,7 +61,7 @@ def test_process_repr(example_process_obj, processes_with_store,
         run_step
     """)
 
-    assert repr_process(Dummy()) == expected
+    assert repr_process(get_process_obj(Dummy)) == expected
 
 
 def test_model_repr(simple_model, simple_model_repr):

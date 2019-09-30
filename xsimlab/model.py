@@ -2,7 +2,7 @@ from collections import OrderedDict, defaultdict
 from inspect import isclass
 
 from .variable import VarIntent, VarType
-from .process import (ensure_process_decorated, filter_variables,
+from .process import (filter_variables, get_process_cls,
                       get_target_variable, SimulationStage)
 from .utils import AttrMapping, ContextMixin, has_method, variables_dict
 from .formatting import repr_model
@@ -43,7 +43,7 @@ class _ModelBuilder:
         self._processes_cls = processes_cls
         self._processes_obj = {k: cls() for k, cls in processes_cls.items()}
 
-        self._reverse_lookup = self._get_reverse_lookup(processes_cls)
+        self._reverse_lookup = self._get_reverse_lookup(self._processes_cls)
 
         self._input_vars = None
 
@@ -391,20 +391,13 @@ class Model(AttrMapping, ContextMixin):
 
         Raises
         ------
-        :exc:`TypeError`
-            If values in ``processes`` are not classes.
         :exc:`NoteAProcessClassError`
             If values in ``processes`` are not classes decorated with
             :func:`process`.
 
         """
-        for cls in processes.values():
-            if not isclass(cls):
-                raise TypeError("Dictionary values must be classes, "
-                                "found {}".format(cls))
-            ensure_process_decorated(cls)
-
-        builder = _ModelBuilder(processes)
+        builder = _ModelBuilder({k: get_process_cls(v)
+                                 for k, v in processes.items()})
 
         builder.bind_processes(self)
         builder.set_process_keys()

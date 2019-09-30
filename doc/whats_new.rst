@@ -37,6 +37,9 @@ Enhancements
   to the (runtime) methods defined in process classes (:issue:`59`).
 - Better documentation with a minimal, yet illustrative example based
   on Game of Life (:issue:`61`).
+- A class decorated with ``process`` can now be instantiated
+  independently of any Model object. This is very useful for testing
+  and debugging (:issue:`63`).
 
 Bug fixes
 ~~~~~~~~~
