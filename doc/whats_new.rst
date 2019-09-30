@@ -3,8 +3,8 @@
 Release Notes
 =============
 
-v0.3.0 (Unreleased)
--------------------
+v0.3.0 (30 September 2019)
+--------------------------
 
 Breaking changes
 ~~~~~~~~~~~~~~~~
