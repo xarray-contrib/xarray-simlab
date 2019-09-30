@@ -140,7 +140,7 @@ def variable(dims=(), intent='in', group=None, default=attr.NOTHING,
         _repr = True
 
     return attr.attrib(metadata=metadata, default=default, validator=validator,
-                       init=_init, cmp=False, repr=_repr)
+                       init=_init, cmp=False, repr=_repr, kw_only=True)
 
 
 def on_demand(dims=(), group=None, description='', attrs=None):
@@ -243,7 +243,8 @@ def foreign(other_process_cls, var_name, intent='in'):
         _init = True
         _repr = True
 
-    return attr.attrib(metadata=metadata, init=_init, cmp=False, repr=_repr)
+    return attr.attrib(metadata=metadata, init=_init, cmp=False, repr=_repr,
+                       kw_only=True)
 
 
 def group(name):
@@ -275,4 +276,4 @@ def group(name):
                 'description': description}
 
     return attr.attrib(metadata=metadata, init=True, cmp=False, repr=True,
-                       default=tuple())
+                       default=tuple(), kw_only=True)
