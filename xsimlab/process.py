@@ -3,6 +3,7 @@ from enum import Enum
 import inspect
 import sys
 import warnings
+import textwrap
 
 import attr
 
@@ -449,9 +450,25 @@ class _ProcessBuilder:
                 self._p_cls_dict[var_name] = make_prop_func(var)
 
     def render_docstrings(self):
-        # self._p_cls_dict['__doc__'] = "Process-ified class."
-        raise NotImplementedError("autodoc is not yet implemented.")
-
+        
+        docstring = '\nParameters\n----------\n'
+        
+        for key, value in attr.fields_dict(self._base_cls).items():
+            intent = str(value.metadata['intent']).split('.')[1].lower()
+            data_type = str(value.validator).split("'")[1]+' ' if value.validator != None else ''
+            
+            if value.metadata['description'] == '':
+                docstring += f"{key} : {data_type}({intent})\n    (no description given)\n"
+            else:
+                wrapped_description = textwrap.fill(value.metadata['description'], subsequent_indent = '    ', break_long_words = True)
+                docstring += f"{key} : {data_type}({intent})\n    {wrapped_description}\n"
+        
+        if self._base_cls.__doc__ is not None:
+            self._base_cls.__doc__ += f"\n{docstring}"
+            
+        else:
+            self._base_cls.__doc__ = docstring
+        
     def build_class(self):
         p_cls = self._make_process_subclass()
 
@@ -462,7 +479,7 @@ class _ProcessBuilder:
         return p_cls
 
 
-def process(maybe_cls=None, autodoc=False):
+def process(maybe_cls=None, autodoc=True):
     """A class decorator that adds everything needed to use the class
     as a process.
 
