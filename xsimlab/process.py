@@ -450,25 +450,34 @@ class _ProcessBuilder:
                 self._p_cls_dict[var_name] = make_prop_func(var)
 
     def render_docstrings(self):
-        
+
         docstring = '\nParameters\n----------\n'
-        
+
         for key, value in attr.fields_dict(self._base_cls).items():
-            intent = str(value.metadata['intent']).split('.')[1].lower()
-            data_type = str(value.validator).split("'")[1]+' ' if value.validator != None else ''
-            
-            if value.metadata['description'] == '':
-                docstring += f"{key} : {data_type}({intent})\n    (no description given)\n"
+            try:
+                intent = str(value.metadata['intent']).split('.')[1].lower()
+            except KeyError:
+                print("intent key error")
+            data_type = str(value.validator).split("'")[1] + ' ' if value.validator is not None else ''
+
+            try:
+                if value.metadata['description'] == '':
+                    docstring += f"{key} : {data_type}({intent})\n    (no description given)\n"
+            except KeyError:
+                    print("description key error (in no description given)")
             else:
-                wrapped_description = textwrap.fill(value.metadata['description'], subsequent_indent = '    ', break_long_words = True)
+                try:
+                    wrapped_description = textwrap.fill(value.metadata['description'], subsequent_indent = '    ', break_long_words = True)
+                except KeyError:
+                    print("description key error (description given)")
                 docstring += f"{key} : {data_type}({intent})\n    {wrapped_description}\n"
-        
+
         if self._base_cls.__doc__ is not None:
             self._base_cls.__doc__ += f"\n{docstring}"
-            
+
         else:
             self._base_cls.__doc__ = docstring
-        
+
     def build_class(self):
         p_cls = self._make_process_subclass()
 
