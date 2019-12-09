@@ -98,6 +98,33 @@ def var_details(var):
     return description + "\n\n" + details + '\n'
 
 
+def add_attribute_section(process, placeholder='{{attributes}}'):
+    data_type = "object"  # placeholder until issue #34 is solved
+
+    fmt_vars = []
+
+    for vname, var in variables_dict(process).items():
+        var_header = f"{vname} : {data_type}"
+        var_content = textwrap.indent(var_details(var), " " * 4)
+
+        fmt_vars.append(f"{var_header}\n{var_content}")
+
+    fmt_section = textwrap.indent("Attributes\n"
+                                  "----------\n"
+                                  + "\n".join(fmt_vars),
+                                  " " * 4)
+
+    current_doc = process.__doc__ or ""
+
+    if placeholder in current_doc:
+        new_doc = current_doc.replace(placeholder,
+                                      fmt_section[4:])
+    else:
+        new_doc = f"{current_doc}\n{fmt_section}\n"
+
+    return new_doc
+
+
 def repr_process(process):
     process_cls = type(process)
 

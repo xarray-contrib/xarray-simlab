@@ -8,7 +8,7 @@ import textwrap
 import attr
 
 from .variable import VarIntent, VarType
-from .formatting import repr_process, var_details
+from .formatting import add_attribute_section, repr_process, var_details
 from .utils import has_method, variables_dict
 
 
@@ -450,33 +450,10 @@ class _ProcessBuilder:
                 self._p_cls_dict[var_name] = make_prop_func(var)
 
     def render_docstrings(self):
+        new_doc = add_attribute_section(self._base_cls)
 
-        docstring = '\nParameters\n----------\n'
-
-        for key, value in attr.fields_dict(self._base_cls).items():
-            try:
-                intent = str(value.metadata['intent']).split('.')[1].lower()
-            except KeyError:
-                print("intent key error")
-            data_type = str(value.validator).split("'")[1] + ' ' if value.validator is not None else ''
-
-            try:
-                if value.metadata['description'] == '':
-                    docstring += f"{key} : {data_type}({intent})\n    (no description given)\n"
-            except KeyError:
-                    print("description key error (in no description given)")
-            else:
-                try:
-                    wrapped_description = textwrap.fill(value.metadata['description'], subsequent_indent = '    ', break_long_words = True)
-                except KeyError:
-                    print("description key error (description given)")
-                docstring += f"{key} : {data_type}({intent})\n    {wrapped_description}\n"
-
-        if self._base_cls.__doc__ is not None:
-            self._base_cls.__doc__ += f"\n{docstring}"
-
-        else:
-            self._base_cls.__doc__ = docstring
+        self._base_cls.__doc__ = new_doc
+        self._p_cls_dict['__doc__'] = new_doc
 
     def build_class(self):
         p_cls = self._make_process_subclass()
