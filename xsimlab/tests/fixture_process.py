@@ -40,7 +40,7 @@ class ExampleProcess:
 
     group_var = xs.group('some_group')
 
-    other_attrib = attr.attrib(init=False, cmp=False, repr=False)
+    other_attrib = attr.attrib(init=False, repr=False)
     other_attr = "this is not a xsimlab variable attribute"
 
     @od_var.compute

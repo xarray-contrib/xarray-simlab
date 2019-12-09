@@ -571,5 +571,12 @@ class Model(AttrMapping, ContextMixin):
                          if k not in keys}
         return type(self)(processes_cls)
 
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return NotImplemented
+        return all([k1 == k2 and type(v1) is type(v2)
+                    for (k1, v1), (k2, v2) in
+                    zip(self._processes.items(), other._processes.items())])
+
     def __repr__(self):
         return repr_model(self)
