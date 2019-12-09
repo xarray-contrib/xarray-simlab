@@ -6,6 +6,8 @@ Release Notes
 v0.4.0 (Unreleased)
 -------------------
 
+- Remove ``attrs`` 19.2.0 depreciation warning (:issue:`68`).
+
 v0.3.0 (30 September 2019)
 --------------------------
 
