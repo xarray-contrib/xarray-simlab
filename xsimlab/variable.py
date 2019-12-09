@@ -140,7 +140,7 @@ def variable(dims=(), intent='in', group=None, default=attr.NOTHING,
         _repr = True
 
     return attr.attrib(metadata=metadata, default=default, validator=validator,
-                       init=_init, cmp=False, repr=_repr, kw_only=True)
+                       init=_init, repr=_repr, kw_only=True)
 
 
 def on_demand(dims=(), group=None, description='', attrs=None):
@@ -191,7 +191,7 @@ def on_demand(dims=(), group=None, description='', attrs=None):
                 'attrs': attrs or {},
                 'description': description}
 
-    return attr.attrib(metadata=metadata, init=False, cmp=False, repr=False)
+    return attr.attrib(metadata=metadata, init=False, repr=False)
 
 
 def foreign(other_process_cls, var_name, intent='in'):
@@ -243,8 +243,7 @@ def foreign(other_process_cls, var_name, intent='in'):
         _init = True
         _repr = True
 
-    return attr.attrib(metadata=metadata, init=_init, cmp=False, repr=_repr,
-                       kw_only=True)
+    return attr.attrib(metadata=metadata, init=_init, repr=_repr, kw_only=True)
 
 
 def group(name):
@@ -275,5 +274,5 @@ def group(name):
                 'intent': VarIntent.IN,
                 'description': description}
 
-    return attr.attrib(metadata=metadata, init=True, cmp=False, repr=True,
+    return attr.attrib(metadata=metadata, init=True, repr=True,
                        default=tuple(), kw_only=True)
