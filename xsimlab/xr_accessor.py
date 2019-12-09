@@ -446,7 +446,7 @@ class SimlabAccessor:
             if (p_name, var_name) not in model.input_vars:
                 drop_variables.append(xr_var_name)
 
-        ds = self._ds.drop(drop_variables)
+        ds = self._ds.drop_vars(drop_variables)
 
         # update output variable attributes
         for clock, out_vars in self.output_vars.items():
