@@ -428,6 +428,7 @@ class _ProcessBuilder:
         p_cls = attr.make_class(self._base_cls.__name__,
                                 self._reset_attributes(),
                                 bases=(self._base_cls,),
+                                eq=False,
                                 init=False,
                                 repr=False)
 
