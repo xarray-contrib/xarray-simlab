@@ -419,7 +419,6 @@ class _ProcessBuilder:
                 validator=attrib.validator,
                 default=attr.NOTHING,
                 init=False,
-                cmp=False,
                 repr=False
             )
 
