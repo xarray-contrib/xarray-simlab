@@ -6,8 +6,8 @@ Install xarray-simlab
 Required dependencies
 ---------------------
 
-- Python 3.5 or later.
-- `attrs <http://www.attrs.org>`__ (18.1.0 or later)
+- Python 3.6 or later.
+- `attrs <http://www.attrs.org>`__ (18.2.0 or later)
 - `numpy <http://www.numpy.org/>`__
 - `xarray <http://xarray.pydata.org>`__ (0.10.0 or later)
 
@@ -55,8 +55,8 @@ using conda_ to install them::
 A good practice (especially for development purpose) is to install the
 packages in a separate environment, e.g. using conda::
 
-    $ conda create -n simlab_py36 python=3.6 attrs xarray numpy pip -c conda-forge
-    $ source activate simlab_py36
+    $ conda create -n xsimlab python attrs xarray numpy pip -c conda-forge
+    $ source activate xsimlab
 
 Then you can clone the xarray-simlab git repository and install it
 using ``pip`` locally::

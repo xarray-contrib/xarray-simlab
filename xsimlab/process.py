@@ -179,9 +179,9 @@ def _make_property_variable(var):
         target_str = target_var.name
 
     if target_type == VarType.GROUP:
-        raise ValueError("Variable {var!r} links to group variable {target!r}, "
-                         "which is not supported. Declare {var!r} as a group "
-                         "variable instead."
+        raise ValueError("Variable {var!r} links to group variable "
+                         "{target!r}, which is not supported. Declare {var!r} "
+                         "as a group variable instead."
                          .format(var=var.name, target=target_str))
 
     elif (var_type == VarType.FOREIGN and
@@ -243,6 +243,7 @@ class _RuntimeMethodExecutor:
     simulation.
 
     """
+
     def __init__(self, meth, args=None):
         self.meth = meth
 
