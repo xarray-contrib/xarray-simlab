@@ -128,7 +128,7 @@ def variable(dims=(), intent='in', group=None, default=attr.NOTHING,
     metadata = {'var_type': VarType.VARIABLE,
                 'dims': _as_dim_tuple(dims),
                 'intent': VarIntent(intent),
-                'group': group,
+                'groups': group,
                 'attrs': attrs or {},
                 'description': description}
 
@@ -187,7 +187,7 @@ def on_demand(dims=(), group=None, description='', attrs=None):
     metadata = {'var_type': VarType.ON_DEMAND,
                 'dims': _as_dim_tuple(dims),
                 'intent': VarIntent.OUT,
-                'group': group,
+                'groups': group,
                 'attrs': attrs or {},
                 'description': description}
 
@@ -270,7 +270,7 @@ def group(name):
                    "belong to group {!r}".format(name))
 
     metadata = {'var_type': VarType.GROUP,
-                'group': name,
+                'groups': name,
                 'intent': VarIntent.IN,
                 'description': description}
 

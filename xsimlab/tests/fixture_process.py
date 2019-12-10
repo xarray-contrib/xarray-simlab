@@ -80,7 +80,7 @@ def in_var_details():
     - type : variable
     - intent : in
     - dims : (('x',), ('x', 'y'))
-    - group : None
+    - groups : None
     - attrs : {}
     """)
 
