@@ -1,9 +1,9 @@
-name: test_env_py36-xarray-dev
+name: test_env_py37-xarray-dev
 channels:
   - conda-forge
 dependencies:
   - attrs>=19.2.0
-  - python=3.6
+  - python=3.7
   - pytest
   - numpy
   - pip:

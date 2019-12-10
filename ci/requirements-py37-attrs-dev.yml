@@ -1,14 +1,12 @@
-name: test_env_py35
+name: test_env_py37-attrs-dev
 channels:
   - conda-forge
 dependencies:
-  - attrs>=19.2.0
-  - python=3.5
+  - python=3.7
   - pytest
   - numpy
   - xarray
-  - graphviz
-  - python-graphviz
   - pip:
+    - git+https://github.com/python-attrs/attrs.git
     - coveralls
     - pytest-cov
