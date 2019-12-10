@@ -277,7 +277,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
             '_clock_diff': mclock_coord.diff(mclock_dim, label='lower')
         }
 
-        ds_all_steps = (self.dataset.drop(ds_init.data_vars.keys(),
+        ds_all_steps = (self.dataset.drop(list(ds_init.data_vars.keys()),
                                           errors='ignore')
                                     .isel({mclock_dim: slice(0, -1)})
                                     .assign(step_data_vars))
