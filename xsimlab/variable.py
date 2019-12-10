@@ -1,5 +1,6 @@
 from enum import Enum
 import itertools
+import warnings
 
 import attr
 from attr._make import _CountingAttr
@@ -53,7 +54,9 @@ def _as_dim_tuple(dims):
         dims = [dims]
 
     # check ndim uniqueness could be simpler but provides detailed error msg
-    fget_ndim = lambda dims: len(dims)
+    def fget_ndim(dims):
+        return len(dims)
+
     dims_sorted = sorted(dims, key=fget_ndim)
     ndim_groups = [list(g)
                    for _, g in itertools.groupby(dims_sorted, fget_ndim)]
@@ -70,8 +73,29 @@ def _as_dim_tuple(dims):
     return tuple(dims)
 
 
-def variable(dims=(), intent='in', group=None, default=attr.NOTHING,
-             validator=None, description='', attrs=None):
+def _as_group_tuple(groups, group):
+    if groups is None:
+        groups = []
+    elif isinstance(groups, str):
+        groups = [groups]
+    else:
+        groups = list(groups)
+
+    if group is not None:
+        warnings.warn(
+            "Setting variable group using `group` is depreciated; "
+            "use `groups`.",
+            FutureWarning,
+            stacklevel=2
+        )
+        if group not in groups:
+            groups.append(group)
+
+    return tuple(groups)
+
+
+def variable(dims=(), intent='in', group=None, groups=None,
+             default=attr.NOTHING, validator=None, description='', attrs=None):
     """Create a variable.
 
     Variables store useful metadata such as dimension labels, a short
@@ -100,7 +124,9 @@ def variable(dims=(), intent='in', group=None, default=attr.NOTHING,
         process may update the value of the variable).
         (default: input).
     group : str, optional
-        Variable group.
+        Variable group (depreciated, use ``groups`` instead).
+    groups : str or list, optional
+        Variable group(s).
     default : any, optional
         Single default value for the variable, ignored when ``intent='out'``
         (default: NOTHING). A default value may also be set using a decorator.
@@ -128,7 +154,7 @@ def variable(dims=(), intent='in', group=None, default=attr.NOTHING,
     metadata = {'var_type': VarType.VARIABLE,
                 'dims': _as_dim_tuple(dims),
                 'intent': VarIntent(intent),
-                'groups': group,
+                'groups': _as_group_tuple(groups, group),
                 'attrs': attrs or {},
                 'description': description}
 
@@ -143,7 +169,7 @@ def variable(dims=(), intent='in', group=None, default=attr.NOTHING,
                        init=_init, repr=_repr, kw_only=True)
 
 
-def on_demand(dims=(), group=None, description='', attrs=None):
+def on_demand(dims=(), group=None, groups=None, description='', attrs=None):
     """Create a variable that is computed on demand.
 
     Instead of being computed systematically at every step of a simulation
@@ -173,6 +199,9 @@ def on_demand(dims=(), group=None, description='', attrs=None):
         the variable accepts different numbers of dimensions.
         This should not include a time dimension, which may always be added.
     group : str, optional
+        Variable group (depreciated, use ``groups`` instead).
+    groups : str or list, optional
+        Variable group(s).
     description : str, optional
         Short description of the variable.
     attrs : dict, optional
@@ -187,7 +216,7 @@ def on_demand(dims=(), group=None, description='', attrs=None):
     metadata = {'var_type': VarType.ON_DEMAND,
                 'dims': _as_dim_tuple(dims),
                 'intent': VarIntent.OUT,
-                'groups': group,
+                'groups': _as_group_tuple(groups, group),
                 'attrs': attrs or {},
                 'description': description}
 
@@ -258,7 +287,7 @@ def group(name):
 
     Parameters
     ----------
-    group : str
+    name : str
         Name of the group.
 
     See Also
@@ -270,7 +299,7 @@ def group(name):
                    "belong to group {!r}".format(name))
 
     metadata = {'var_type': VarType.GROUP,
-                'groups': name,
+                'group': name,
                 'intent': VarIntent.IN,
                 'description': description}
 

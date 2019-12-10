@@ -1,7 +1,7 @@
 import pytest
 
 from xsimlab.tests.fixture_process import ExampleProcess
-from xsimlab.variable import _as_dim_tuple, foreign
+from xsimlab.variable import _as_dim_tuple, _as_group_tuple, foreign
 
 
 @pytest.mark.parametrize("dims,expected", [
@@ -25,6 +25,24 @@ def test_as_dim_tuple_invalid():
         _as_dim_tuple(invalid_dims)
     assert "following combinations" in str(excinfo.value)
     assert "('x',), ('y',) and ('x', 'y'), ('y', 'x')" in str(excinfo.value)
+
+
+@pytest.mark.parametrize("groups,group,expected", [
+    (None, None, ()),
+    ('group1', None, ('group1',)),
+    (['group1', 'group2'], None, ('group1', 'group2')),
+    ('group1', 'group2', ('group1', 'group2')),
+    ('group1', 'group1', ('group1',))
+])
+def test_as_group_tuple(groups, group, expected):
+    if group is not None:
+        with pytest.warns(FutureWarning):
+            actual = _as_group_tuple(groups, group)
+
+    else:
+        actual = _as_group_tuple(groups, group)
+
+    assert actual == expected
 
 
 def test_foreign():
