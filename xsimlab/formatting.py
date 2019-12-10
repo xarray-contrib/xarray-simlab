@@ -81,13 +81,12 @@ def _summarize_var(var, process, col_width):
     return left_col + right_col
 
 
-def var_details(var):
-    max_line_length = 70
-
+def var_details(var, max_line_length=70):
     var_metadata = var.metadata.copy()
 
     description = textwrap.fill(var_metadata.pop('description').capitalize(),
                                 width=max_line_length)
+    description = description if description else "(no description given)"
 
     detail_items = [('type', var_metadata.pop('var_type').value),
                     ('intent', var_metadata.pop('intent').value)]
@@ -105,7 +104,8 @@ def add_attribute_section(process, placeholder='{{attributes}}'):
 
     for vname, var in variables_dict(process).items():
         var_header = f"{vname} : {data_type}"
-        var_content = textwrap.indent(var_details(var), " " * 4)
+        var_content = textwrap.indent(var_details(var, max_line_length=62),
+                                      " " * 4)
 
         fmt_vars.append(f"{var_header}\n{var_content}")
 

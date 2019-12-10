@@ -3,7 +3,6 @@ from enum import Enum
 import inspect
 import sys
 import warnings
-import textwrap
 
 import attr
 
@@ -453,7 +452,6 @@ class _ProcessBuilder:
         new_doc = add_attribute_section(self._base_cls)
 
         self._base_cls.__doc__ = new_doc
-        self._p_cls_dict['__doc__'] = new_doc
 
     def build_class(self):
         p_cls = self._make_process_subclass()
