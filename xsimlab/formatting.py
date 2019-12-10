@@ -51,7 +51,7 @@ def _summarize_var(var, process, col_width):
         var_intent_str = '[inout]'
 
     if var_type == VarType.GROUP:
-        var_info = '{} group {!r}'.format(link_symbol, var.metadata['groups'])
+        var_info = '{} group {!r}'.format(link_symbol, var.metadata['group'])
 
     elif var_type == VarType.FOREIGN:
         key = process.__xsimlab_store_keys__.get(var_name)

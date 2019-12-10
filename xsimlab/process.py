@@ -92,7 +92,7 @@ def filter_variables(process, var_type=None, intent=None, group=None,
 
     if group is not None:
         vars = {k: v for k, v in vars.items()
-                if v.metadata.get('groups') == group}
+                if group in v.metadata.get('groups', [])}
 
     if func is not None:
         vars = {k: v for k, v in vars.items() if func(v)}
