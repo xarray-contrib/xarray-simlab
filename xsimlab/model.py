@@ -124,7 +124,7 @@ class _ModelBuilder:
             store_key, od_key = self._get_var_key(target_p_name, target_var)
 
         elif var_type == VarType.GROUP:
-            var_group = var.metadata['groups']
+            var_group = var.metadata['group']
             store_key, od_key = self._get_group_var_keys(var_group)
 
         return store_key, od_key
@@ -140,12 +140,8 @@ class _ModelBuilder:
         store_keys = []
         od_keys = []
 
-        def filter_group(var):
-            return (var.metadata.get('groups') == group and
-                    var.metadata['var_type'] != VarType.GROUP)
-
         for p_name, p_obj in self._processes_obj.items():
-            for var in filter_variables(p_obj, func=filter_group).values():
+            for var in filter_variables(p_obj, group=group).values():
                 store_key, od_key = self._get_var_key(p_name, var)
 
                 if store_key is not None:
