@@ -69,12 +69,12 @@ class TestXarraySimulationDriver:
         store = {}
         out_store = InMemoryOutputStore()
 
-        invalid_ds = in_dataset.drop_vars('clock')
+        invalid_ds = in_dataset.drop('clock')
         with pytest.raises(ValueError) as excinfo:
             XarraySimulationDriver(invalid_ds, model, store, out_store)
         assert "Missing master clock" in str(excinfo.value)
 
-        invalid_ds = in_dataset.drop_vars('init_profile__n_points')
+        invalid_ds = in_dataset.drop('init_profile__n_points')
         with pytest.raises(KeyError) as excinfo:
             XarraySimulationDriver(invalid_ds, model, store, out_store)
         assert "Missing variables" in str(excinfo.value)
