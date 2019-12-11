@@ -80,7 +80,7 @@ class BaseSimulationDriver:
                 raise RuntimeError("Cannot set value in store for "
                                    "static variable {!r} defined "
                                    "in process {!r}"
-                                   .format(p_name, var_name))
+                                   .format(var_name, p_name))
 
             self.store[key] = copy.copy(value)
 
