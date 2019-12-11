@@ -1,10 +1,9 @@
 from collections import OrderedDict, defaultdict
-from inspect import isclass
 
 from .variable import VarIntent, VarType
 from .process import (filter_variables, get_process_cls,
                       get_target_variable, SimulationStage)
-from .utils import AttrMapping, ContextMixin, has_method, variables_dict
+from .utils import AttrMapping, ContextMixin, variables_dict
 from .formatting import repr_model
 
 
@@ -39,6 +38,7 @@ class _ModelBuilder:
       step of a simulation
 
     """
+   
     def __init__(self, processes_cls):
         self._processes_cls = processes_cls
         self._processes_obj = {k: cls() for k, cls in processes_cls.items()}
@@ -140,11 +140,8 @@ class _ModelBuilder:
         store_keys = []
         od_keys = []
 
-        filter_group = lambda var: (var.metadata.get('group') == group and
-                                    var.metadata['var_type'] != VarType.GROUP)
-
         for p_name, p_obj in self._processes_obj.items():
-            for var in filter_variables(p_obj, func=filter_group).values():
+            for var in filter_variables(p_obj, group=group).values():
                 store_key, od_key = self._get_var_key(p_name, var)
 
                 if store_key is not None:
@@ -179,10 +176,9 @@ class _ModelBuilder:
         intent='out' targets the same variable.
 
         """
-        filter_out = lambda var: (
-            var.metadata['intent'] == VarIntent.OUT and
-            var.metadata['var_type'] != VarType.ON_DEMAND
-        )
+        def filter_out(var):
+            return (var.metadata['intent'] == VarIntent.OUT and
+                    var.metadata['var_type'] != VarType.ON_DEMAND)
 
         targets = defaultdict(list)
 
@@ -227,11 +223,12 @@ class _ModelBuilder:
           model inputs.
 
         """
-        filter_in = lambda var: (
-            var.metadata['var_type'] != VarType.GROUP and
-            var.metadata['intent'] != VarIntent.OUT
-        )
-        filter_out = lambda var: var.metadata['intent'] == VarIntent.OUT
+        def filter_in(var):
+            return (var.metadata['var_type'] != VarType.GROUP and
+                    var.metadata['intent'] != VarIntent.OUT)
+
+        def filter_out(var):
+            return var.metadata['intent'] == VarIntent.OUT
 
         in_keys = []
         out_keys = []
@@ -381,6 +378,7 @@ class Model(AttrMapping, ContextMixin):
     value before running the model.
 
     """
+
     def __init__(self, processes):
         """
         Parameters

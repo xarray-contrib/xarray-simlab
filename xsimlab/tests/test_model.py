@@ -48,6 +48,21 @@ class TestModelBuilder:
         assert actual_store_keys == expected_store_keys
         assert actual_od_keys == expected_od_keys
 
+    def test_multiple_groups(self):
+        @xs.process
+        class A:
+            v = xs.variable(groups=['g1', 'g2'])
+
+        @xs.process
+        class B:
+            g1 = xs.group('g1')
+            g2 = xs.group('g2')
+
+        m = xs.Model({'a': A, 'b': B})
+
+        assert m.b.__xsimlab_store_keys__['g1'] == [('a', 'v')]
+        assert m.b.__xsimlab_store_keys__['g2'] == [('a', 'v')]
+
     def test_get_all_variables(self, model):
         assert all([len(t) == 2 for t in model.all_vars])
         assert all([p_name in model for p_name, _ in model.all_vars])

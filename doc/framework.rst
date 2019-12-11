@@ -132,12 +132,12 @@ Group variables
 In some cases, using group variables may provide an elegant
 alternative to hard-coded links between processes.
 
-The membership of variables to a group is defined via their ``group``
-attribute. If you want to use in a separate process all the variables
-of a group, instead of explicitly declaring foreign variables you can
-declare a :func:`~xsimlab.group` variable. The latter behaves like an
-iterable of foreign variables pointing to each of the variables that
-are members of the group, across the model.
+The membership of variables to one or several groups is defined via their
+``groups`` attribute. If you want to use in a separate process all the variables
+of a group, instead of explicitly declaring foreign variables you can declare a
+:func:`~xsimlab.group` variable. The latter behaves like an iterable of foreign
+variables pointing to each of the variables that are members of the group,
+across the model.
 
 Note that group variables only support ``intent='in'``, i.e, group
 variables should only be used to get the values of multiple foreign

@@ -11,6 +11,18 @@ Breaking changes
 
 - Python 3.6 is now the oldest supported version (:issue:`70`).
 
+Depreciations
+~~~~~~~~~~~~~
+
+- Using the ``group`` parameter in ``xsimlab.variable`` and
+  ``xsimlab.on_demand`` is depreciated; use ``groups`` instead.
+
+Enhancements
+~~~~~~~~~~~~
+
+- It is now possible to assign multiple groups to a single variable
+  (:issue:`71`).
+
 Bug fixes
 ~~~~~~~~~
 
@@ -33,8 +45,8 @@ Breaking changes
   and ``Model.finalize`` have been removed in favor of
   ``Model.execute`` (:issue:`59`).
 
-Deprecations
-~~~~~~~~~~~~
+Depreciations
+~~~~~~~~~~~~~
 
 - ``run_step`` methods defined in process classes won't accept anymore
   current step duration as a positional argument by default. Use the

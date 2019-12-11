@@ -10,8 +10,8 @@ from xsimlab.process import get_process_obj
 @xs.process
 class SomeProcess:
     """Just used for foreign variables in ExampleProcess."""
-    some_var = xs.variable(group='some_group', intent='out')
-    some_od_var = xs.on_demand(group='some_group')
+    some_var = xs.variable(groups='some_group', intent='out')
+    some_od_var = xs.on_demand(groups='some_group')
 
     @some_od_var.compute
     def compute_some_od_var(self):
@@ -29,7 +29,7 @@ class AnotherProcess:
 class ExampleProcess:
     """A process with complete interface for testing."""
     in_var = xs.variable(dims=['x', ('x', 'y')], description='input variable')
-    out_var = xs.variable(group='example_group', intent='out')
+    out_var = xs.variable(groups='example_group', intent='out')
     inout_var = xs.variable(intent='inout')
     od_var = xs.on_demand()
 
@@ -80,7 +80,7 @@ def in_var_details():
     - type : variable
     - intent : in
     - dims : (('x',), ('x', 'y'))
-    - group : None
+    - groups : ()
     - attrs : {}
     """)
 
