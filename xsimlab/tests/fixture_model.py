@@ -44,7 +44,8 @@ class InitProfile:
 
 @xs.process
 class Roll:
-    shift = xs.variable(description=('shift profile by a nb. of points'),
+    shift = xs.variable(default=2,
+                        description=('shift profile by a nb. of points'),
                         attrs={'units': 'unitless'})
     u = xs.foreign(Profile, 'u')
     u_diff = xs.variable(dims='x', groups='diff', intent='out')
