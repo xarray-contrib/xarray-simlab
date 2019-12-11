@@ -415,7 +415,7 @@ class SimlabAccessor:
         Returns
         -------
         updated : Dataset
-            Another Dataset with new or replaced variables.
+            Another Dataset with new and/or replaced variables.
 
         See Also
         --------
