@@ -44,10 +44,11 @@ class InitProfile:
 
 @xs.process
 class Roll:
-    shift = xs.variable(description=('shift profile by a nb. of points'),
+    shift = xs.variable(default=2,
+                        description=('shift profile by a nb. of points'),
                         attrs={'units': 'unitless'})
     u = xs.foreign(Profile, 'u')
-    u_diff = xs.variable(dims='x', group='diff', intent='out')
+    u_diff = xs.variable(dims='x', groups='diff', intent='out')
 
     def run_step(self):
         self.u_diff = np.roll(self.u, self.shift) - self.u
@@ -57,7 +58,7 @@ class Roll:
 class Add:
     offset = xs.variable(description=('offset * dt added every time step '
                                       'to profile u'))
-    u_diff = xs.variable(group='diff', intent='out')
+    u_diff = xs.variable(groups='diff', intent='out')
 
     @xs.runtime(args='step_delta')
     def run_step(self, dt):
@@ -67,7 +68,7 @@ class Add:
 @xs.process
 class AddOnDemand:
     offset = xs.variable(description='offset added to profile u')
-    u_diff = xs.on_demand(group='diff')
+    u_diff = xs.on_demand(groups='diff')
 
     @u_diff.compute
     def _compute_u_diff(self):

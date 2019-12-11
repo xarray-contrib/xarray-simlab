@@ -11,6 +11,23 @@ Breaking changes
 
 - Python 3.6 is now the oldest supported version (:issue:`70`).
 
+Depreciations
+~~~~~~~~~~~~~
+
+- Using the ``group`` parameter in ``xsimlab.variable`` and
+  ``xsimlab.on_demand`` is depreciated; use ``groups`` instead.
+
+Enhancements
+~~~~~~~~~~~~
+
+- It is now possible to assign multiple groups to a single variable
+  (:issue:`71`).
+- The xarray interface may now handle default values that are defined in model
+  variables (:issue:`72`). A new method
+  :func:`xarray.Dataset.xsimlab.reset_vars` allows to (re)populate an input
+  Dataset with variables and their default values. :func:`~xsimlab.create_setup`
+  has also a new ``fill_default`` parameter.
+
 Bug fixes
 ~~~~~~~~~
 
@@ -33,8 +50,8 @@ Breaking changes
   and ``Model.finalize`` have been removed in favor of
   ``Model.execute`` (:issue:`59`).
 
-Deprecations
-~~~~~~~~~~~~
+Depreciations
+~~~~~~~~~~~~~
 
 - ``run_step`` methods defined in process classes won't accept anymore
   current step duration as a positional argument by default. Use the

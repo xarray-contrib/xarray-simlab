@@ -72,7 +72,7 @@ class AdvectionLax:
     v = xs.variable(dims=[(), 'x'], description='velocity')
     grid_spacing = xs.foreign(UniformGrid1D, 'spacing')
     u = xs.foreign(ProfileU, 'u')
-    u_advected = xs.variable(dims='x', intent='out', group='u_vars')
+    u_advected = xs.variable(dims='x', intent='out', groups='u_vars')
 
     @xs.runtime(args='step_delta')
     def run_step(self, dt):
@@ -115,7 +115,7 @@ class SourcePoint:
     loc = xs.variable(description='source location')
     flux = xs.variable(description='source flux')
     x = xs.foreign(UniformGrid1D, 'x')
-    u_source = xs.variable(dims='x', intent='out', group='u_vars')
+    u_source = xs.variable(dims='x', intent='out', groups='u_vars')
 
     @property
     def nearest_node(self):
