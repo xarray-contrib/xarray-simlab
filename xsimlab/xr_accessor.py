@@ -383,7 +383,7 @@ class SimlabAccessor:
         -------
         updated : Dataset
             Another Dataset with new or replaced variables (inputs) and/or
-            attributes (snaphots).
+            attributes (snapshots).
 
         See Also
         --------
