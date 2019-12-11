@@ -81,6 +81,7 @@ def in_var_details():
     - intent : in
     - dims : (('x',), ('x', 'y'))
     - groups : ()
+    - static : False
     - attrs : {}
     """)
 

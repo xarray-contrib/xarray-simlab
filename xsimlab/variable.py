@@ -95,7 +95,8 @@ def _as_group_tuple(groups, group):
 
 
 def variable(dims=(), intent='in', group=None, groups=None,
-             default=attr.NOTHING, validator=None, description='', attrs=None):
+             default=attr.NOTHING, validator=None, static=False,
+             description='', attrs=None):
     """Create a variable.
 
     Variables store useful metadata such as dimension labels, a short
@@ -144,6 +145,13 @@ def variable(dims=(), intent='in', group=None, groups=None,
         If a ``list`` is passed, its items are treated as validators and must
         all pass.
         The validator can also be set using decorator notation.
+    static : bool, optional
+        If True, the value of the (input) variable must be set once
+        before the simulation starts and cannot be further updated
+        externally (default: False).
+        Note that it doesn't prevent updating the value internally, i.e.,
+        from within the process class in which the variable is declared,
+        which is allowed if ``intent`` is set to 'out' or 'inout'.
     description : str, optional
         Short description of the variable.
     attrs : dict, optional
@@ -155,6 +163,7 @@ def variable(dims=(), intent='in', group=None, groups=None,
                 'dims': _as_dim_tuple(dims),
                 'intent': VarIntent(intent),
                 'groups': _as_group_tuple(groups, group),
+                'static': static,
                 'attrs': attrs or {},
                 'description': description}
 
