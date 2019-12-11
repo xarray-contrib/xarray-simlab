@@ -86,7 +86,8 @@ def var_details(var, max_line_length=70):
 
     description = textwrap.fill(var_metadata.pop('description').capitalize(),
                                 width=max_line_length)
-    description = description if description else "(no description given)"
+    if description == "":
+        description = "(no description given)"
 
     detail_items = [('type', var_metadata.pop('var_type').value),
                     ('intent', var_metadata.pop('intent').value)]
