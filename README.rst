@@ -77,7 +77,7 @@ by Jake VanderPlas.
                       'init': Glider})
 
 3. Create an input ``xarray.Dataset``, run the model and get an output
-   ``Dataset``:
+   ``xarray.Dataset``:
 
 .. code-block:: python
 
