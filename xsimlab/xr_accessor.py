@@ -2,6 +2,7 @@
 xarray extensions (accessors).
 
 """
+import attr
 import numpy as np
 from xarray import as_variable, Dataset, register_dataset_accessor
 
@@ -399,6 +400,42 @@ class SimlabAccessor:
         if output_vars is not None:
             for clock, out_vars in _flatten_outputs(output_vars).items():
                 ds.xsimlab._set_output_vars(model, clock, out_vars)
+
+        return ds
+
+    def reset_vars(self, model=None):
+        """Set or reset Dataset variables with model input default
+        values (if any).
+
+        Parameters
+        ----------
+        model : :class:`xsimlab.Model` object, optional
+            Reference model. If None, tries to get model from context.
+
+        Returns
+        -------
+        updated : Dataset
+            Another Dataset with new or replaced variables.
+
+        See Also
+        --------
+        :meth:`Dataset.xsimlab.update_vars`
+
+        """
+        model = _maybe_get_model_from_context(model)
+
+        ds = self._ds.copy()
+
+        input_vars_default = {}
+
+        for p_name, var_name in model.input_vars:
+            p_obj = model[p_name]
+            var = variables_dict(type(p_obj))[var_name]
+
+            if var.default is not attr.NOTHING:
+                input_vars_default[(p_name, var_name)] = var.default
+
+        ds.xsimlab._set_input_vars(model, input_vars_default)
 
         return ds
 
