@@ -205,6 +205,7 @@ def test_process_executor_raise():
         assert "Process runtime methods" in str(excinfo.value)
 
 
+@pytest.mark.xfail
 def test_process_decorator():
     with pytest.raises(NotImplementedError):
         @xs.process(autodoc=True)

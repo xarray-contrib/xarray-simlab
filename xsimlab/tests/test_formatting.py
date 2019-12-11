@@ -1,9 +1,11 @@
+import pytest
 from textwrap import dedent
 
 import xsimlab as xs
-from xsimlab.formatting import (maybe_truncate, pretty_print,
-                                repr_process, repr_model,
-                                var_details, wrap_indent)
+from xsimlab.formatting import (add_attribute_section, maybe_truncate,
+                                pretty_print, repr_process,
+                                repr_model, var_details,
+                                wrap_indent)
 from xsimlab.process import get_process_obj
 
 
@@ -35,6 +37,34 @@ def test_var_details(example_process_obj):
     assert "- type : variable" in var_details_str
     assert "- intent : in" in var_details_str
     assert "- dims : (('x',),)" in var_details_str
+
+
+@pytest.mark.xfail
+def test_add_attribute_section():
+    @xs.process()
+    class Dummy:
+        """This is a Dummy class
+    to test `add_attribute_section()`
+        """
+        var = xs.variable(dims='x', description='a variable')
+
+    expected = dedent("""This is a Dummy class
+    to test `add_attribute_section()`
+
+    Attributes
+    ----------
+    var : object
+        A variable
+
+        - type : variable
+        - intent : in
+        - dims : (('x',),)
+        - group : None
+        - attrs : {}
+
+    """)
+
+    assert add_attribute_section(Dummy) == expected
 
 
 def test_process_repr(example_process_obj, processes_with_store,
