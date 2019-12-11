@@ -599,8 +599,8 @@ def create_setup(model=None, clocks=None, master_clock=None,
         labels. if None is given instead, only one value will be saved at the
         end of the simulation.
     fill_default : bool, optional
-        If True (default), set default values (if any) for all model inputs
-        that are missing in ``input_vars``.
+        If True (default), automatically fill the dataset with all model
+        inputs missing in ``input_vars`` and their default value (if any).
 
     Returns
     -------
