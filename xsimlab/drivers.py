@@ -66,9 +66,29 @@ class BaseSimulationDriver:
         for p_obj in self.model.values():
             p_obj.__xsimlab_store__ = self.store
 
-    def update_store(self, input_vars):
-        """Update the simulation active data store with input variable
-        values.
+    def _set_in_store(self, input_vars, check_static=True):
+        for key in self.model.input_vars:
+            value = input_vars.get(key)
+
+            if value is None:
+                continue
+
+            p_name, var_name = key
+            var = variables_dict(self.model[p_name].__class__)[var_name]
+
+            if check_static and var.metadata.get('static', False):
+                raise RuntimeError("Cannot set value in store for "
+                                   "static variable {!r} defined "
+                                   "in process {!r}"
+                                   .format(p_name, var_name))
+
+            self.store[key] = copy.copy(value)
+
+    def initialize_store(self, input_vars):
+        """Pre-populate the simulation active data store with input
+        variable values.
+
+        This should be called before the simulation starts.
 
         ``input_vars`` is a dictionary where keys are store keys, i.e.,
         ``(process_name, var_name)`` tuples, and values are the input
@@ -82,11 +102,17 @@ class BaseSimulationDriver:
         inputs are silently ignored.
 
         """
-        for key in self.model.input_vars:
-            value = input_vars.get(key)
+        self._set_in_store(input_vars, check_static=False)
 
-            if value is not None:
-                self.store[key] = copy.copy(value)
+    def update_store(self, input_vars):
+        """Update the simulation active data store with input variable
+        values.
+
+        Like ``initialize_store``, but here meant to be called during
+        simulation runtime.
+
+        """
+        self._set_in_store(input_vars, check_static=True)
 
     def update_output_store(self, output_var_keys):
         """Update the simulation output store (i.e., append new values to the
@@ -188,19 +214,23 @@ class XarraySimulationDriver(BaseSimulationDriver):
 
         return save_steps
 
-    def _set_input_vars(self, dataset):
+    def _get_input_vars(self, dataset):
+        input_vars = {}
+
         for p_name, var_name in self.model.input_vars:
             xr_var_name = p_name + '__' + var_name
             xr_var = dataset.get(xr_var_name)
 
             if xr_var is not None:
-                data = xr_var.data.copy()
+                data = xr_var.data
 
                 if data.ndim == 0:
                     # convert array to scalar
                     data = data.item()
 
-                self.store[(p_name, var_name)] = data
+                input_vars[(p_name, var_name)] = data
+
+        return input_vars
 
     def _maybe_save_output_vars(self, istep):
         # TODO: optimize this for performance
@@ -303,7 +333,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
             sim_end=ds_init['_sim_end'].values
         )
 
-        self._set_input_vars(ds_init)
+        self.initialize_store(self._get_input_vars(ds_init))
 
         self.model.execute('initialize', runtime_context)
 
@@ -314,7 +344,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
                                    step_end=ds_step['_clock_end'].values,
                                    step_delta=ds_step['_clock_diff'].values)
 
-            self._set_input_vars(ds_step)
+            self.update_store(self._get_input_vars(ds_step))
 
             self.model.execute('run_step', runtime_context)
             self._maybe_save_output_vars(step)

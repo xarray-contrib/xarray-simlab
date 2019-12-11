@@ -91,11 +91,11 @@ class TestXarraySimulationDriver:
         (('init_profile', 'n_points'), True),
         (('add', 'offset'), False)
     ])
-    def test_set_input_vars(self, in_dataset, xarray_driver,
+    def test_get_input_vars(self, in_dataset, xarray_driver,
                             var_key, is_scalar):
-        xarray_driver._set_input_vars(in_dataset)
+        in_vars = xarray_driver._get_input_vars(in_dataset)
 
-        actual = xarray_driver.store[var_key]
+        actual = in_vars[var_key]
         expected = in_dataset['__'.join(var_key)].data
 
         if is_scalar:
@@ -105,10 +105,6 @@ class TestXarraySimulationDriver:
         else:
             assert_array_equal(actual, expected)
             assert not np.isscalar(actual)
-
-            # test copy
-            actual[0] = -9999
-            assert not np.array_equal(actual, expected)
 
     def test_get_output_dataset(self, in_dataset, xarray_driver):
         # regression test: make sure a copy of input dataset is used
