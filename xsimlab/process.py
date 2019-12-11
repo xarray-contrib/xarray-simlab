@@ -418,7 +418,7 @@ class _ProcessBuilder:
             new_attributes[k] = attr.attrib(
                 metadata=attrib.metadata,
                 validator=attrib.validator,
-                default=attr.NOTHING,
+                default=attrib.default,
                 init=False,
                 repr=False
             )

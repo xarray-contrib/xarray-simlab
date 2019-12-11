@@ -2,6 +2,7 @@
 xarray extensions (accessors).
 
 """
+import attr
 import numpy as np
 from xarray import as_variable, Dataset, register_dataset_accessor
 
@@ -382,7 +383,7 @@ class SimlabAccessor:
         -------
         updated : Dataset
             Another Dataset with new or replaced variables (inputs) and/or
-            attributes (snaphots).
+            attributes (snapshots).
 
         See Also
         --------
@@ -399,6 +400,42 @@ class SimlabAccessor:
         if output_vars is not None:
             for clock, out_vars in _flatten_outputs(output_vars).items():
                 ds.xsimlab._set_output_vars(model, clock, out_vars)
+
+        return ds
+
+    def reset_vars(self, model=None):
+        """Set or reset Dataset variables with model input default
+        values (if any).
+
+        Parameters
+        ----------
+        model : :class:`xsimlab.Model` object, optional
+            Reference model. If None, tries to get model from context.
+
+        Returns
+        -------
+        updated : Dataset
+            Another Dataset with new and/or replaced variables.
+
+        See Also
+        --------
+        :meth:`Dataset.xsimlab.update_vars`
+
+        """
+        model = _maybe_get_model_from_context(model)
+
+        ds = self._ds.copy()
+
+        input_vars_default = {}
+
+        for p_name, var_name in model.input_vars:
+            p_obj = model[p_name]
+            var = variables_dict(type(p_obj))[var_name]
+
+            if var.default is not attr.NOTHING:
+                input_vars_default[(p_name, var_name)] = var.default
+
+        ds.xsimlab._set_input_vars(model, input_vars_default)
 
         return ds
 
@@ -500,7 +537,7 @@ class SimlabAccessor:
 
 
 def create_setup(model=None, clocks=None, master_clock=None,
-                 input_vars=None, output_vars=None):
+                 input_vars=None, output_vars=None, fill_default=True):
     """Create a specific setup for model runs.
 
     This convenient function creates a new :class:`xarray.Dataset`
@@ -561,6 +598,9 @@ def create_setup(model=None, clocks=None, master_clock=None,
         new output values will be saved at each time given by the coordinate
         labels. if None is given instead, only one value will be saved at the
         end of the simulation.
+    fill_default : bool, optional
+        If True (default), automatically fill the dataset with all model
+        inputs missing in ``input_vars`` and their default value (if any).
 
     Returns
     -------
@@ -578,9 +618,16 @@ def create_setup(model=None, clocks=None, master_clock=None,
     """
     model = _maybe_get_model_from_context(model)
 
+    def maybe_fill_default(ds):
+        if fill_default:
+            return ds.xsimlab.reset_vars(model=model)
+        else:
+            return ds
+
     ds = (Dataset()
           .xsimlab.update_clocks(model=model, clocks=clocks,
                                  master_clock=master_clock)
+          .pipe(maybe_fill_default)
           .xsimlab.update_vars(model=model, input_vars=input_vars,
                                output_vars=output_vars))
 

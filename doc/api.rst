@@ -50,6 +50,7 @@ properties listed below. Proper use of this accessor should be like:
 
    Dataset.xsimlab.update_clocks
    Dataset.xsimlab.update_vars
+   Dataset.xsimlab.reset_vars
    Dataset.xsimlab.filter_vars
    Dataset.xsimlab.run
 

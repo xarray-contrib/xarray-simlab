@@ -22,6 +22,11 @@ Enhancements
 
 - It is now possible to assign multiple groups to a single variable
   (:issue:`71`).
+- The xarray interface may now handle default values that are defined in model
+  variables (:issue:`72`). A new method
+  :func:`xarray.Dataset.xsimlab.reset_vars` allows to (re)populate an input
+  Dataset with variables and their default values. :func:`~xsimlab.create_setup`
+  has also a new ``fill_default`` parameter.
 
 Bug fixes
 ~~~~~~~~~

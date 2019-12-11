@@ -218,6 +218,15 @@ class TestSimlabAccessor:
         assert not ds['roll__shift'].equals(in_dataset['roll__shift'])
         assert not ds['out'].identical(in_dataset['out'])
 
+    def test_reset_vars(self, model, in_dataset):
+        # add new variable
+        ds = xr.Dataset().xsimlab.reset_vars(model)
+        assert ds['roll__shift'] == 2
+
+        # overwrite existing variable
+        reset_ds = in_dataset.xsimlab.reset_vars(model)
+        assert reset_ds['roll__shift'] == 2
+
     def test_filter_vars(self, simple_model, in_dataset):
         in_dataset['not_a_xsimlab_model_input'] = 1
 
@@ -288,8 +297,12 @@ class TestSimlabAccessor:
 
 def test_create_setup(model, in_dataset):
     expected = xr.Dataset()
-    actual = create_setup(model=model)
+    actual = create_setup(model=model, fill_default=False)
     xr.testing.assert_identical(actual, expected)
+
+    expected = xr.Dataset({'roll__shift': 2})
+    actual = create_setup(model=model, fill_default=True)
+    xr.testing.assert_equal(actual, expected)
 
     ds = create_setup(
         model=model,
