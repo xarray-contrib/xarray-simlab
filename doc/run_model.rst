@@ -220,11 +220,14 @@ flat initial profile for :math:`u`) instead of ``model2`` :
     @savefig run_model4.png width=100%
     plot_u(out_ds4);
 
+.. _time_varying_inputs:
+
 Time-varying input values
 -------------------------
 
-All model inputs accept arrays which have a dimension that corresponds
-to the master clock.
+Except for static variables, all model inputs accept arrays which have a
+dimension that corresponds to the master clock. This is useful for adding
+external forcing.
 
 The example below is based on the last example above, but instead of
 being fixed, the flux of :math:`u` at the source point decreases over

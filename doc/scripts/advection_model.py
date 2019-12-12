@@ -7,14 +7,14 @@ import xsimlab as xs
 class AdvectionLax1D:
     """Wrap 1-dimensional advection in a single Process."""
 
-    spacing = xs.variable(description='grid spacing')
-    length = xs.variable(description='grid total length')
+    spacing = xs.variable(description='grid spacing', static=True)
+    length = xs.variable(description='grid total length', static=True)
     x = xs.variable(dims='x', intent='out')
 
     v = xs.variable(dims=[(), 'x'], description='velocity')
 
-    loc = xs.variable(description='location of initial profile')
-    scale = xs.variable(description='scale of initial profile')
+    loc = xs.variable(description='location of initial profile', static=True)
+    scale = xs.variable(description='scale of initial profile', static=True)
     u = xs.variable(dims='x', intent='out', description='quantity u',
                     attrs={'units': 'm'})
 
@@ -40,8 +40,8 @@ model1 = xs.Model({'advect': AdvectionLax1D})
 class UniformGrid1D:
     """Create a 1-dimensional, equally spaced grid."""
 
-    spacing = xs.variable(description='uniform spacing')
-    length = xs.variable(description='total length')
+    spacing = xs.variable(description='uniform spacing', static=True)
+    length = xs.variable(description='total length', static=True)
     x = xs.variable(dims='x', intent='out')
 
     def initialize(self):
@@ -89,8 +89,8 @@ class AdvectionLax:
 class InitUGauss:
     """Initialize `u` profile using a Gaussian pulse."""
 
-    loc = xs.variable(description='location of initial pulse')
-    scale = xs.variable(description='scale of initial pulse')
+    loc = xs.variable(description='location of initial pulse', static=True)
+    scale = xs.variable(description='scale of initial pulse', static=True)
     x = xs.foreign(UniformGrid1D, 'x')
     u = xs.foreign(ProfileU, 'u', intent='out')
 
