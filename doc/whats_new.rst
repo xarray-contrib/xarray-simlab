@@ -27,6 +27,8 @@ Enhancements
   :func:`xarray.Dataset.xsimlab.reset_vars` allows to (re)populate an input
   Dataset with variables and their default values. :func:`~xsimlab.create_setup`
   has also a new ``fill_default`` parameter.
+- Added static variables, i.e., variables that don't accept time-varying input
+  values (:issue:`73`).
 
 Bug fixes
 ~~~~~~~~~
