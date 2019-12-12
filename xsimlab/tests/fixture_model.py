@@ -1,6 +1,7 @@
 from collections import OrderedDict
 from textwrap import dedent
 
+import attr
 import numpy as np
 import xarray as xr
 import pytest
@@ -46,6 +47,7 @@ class InitProfile:
 @xs.process
 class Roll:
     shift = xs.variable(default=2,
+                        validator=attr.validators.instance_of(int),
                         description=('shift profile by a nb. of points'),
                         attrs={'units': 'unitless'})
     u = xs.foreign(Profile, 'u')
