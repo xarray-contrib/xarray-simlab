@@ -148,10 +148,10 @@ def variable(dims=(), intent='in', group=None, groups=None,
     static : bool, optional
         If True, the value of the (input) variable must be set once
         before the simulation starts and cannot be further updated
-        externally (default: False).
-        Note that it doesn't prevent updating the value internally, i.e.,
-        from within the process class in which the variable is declared,
-        which is allowed if ``intent`` is set to 'out' or 'inout'.
+        externally (default: False). Note that it doesn't prevent updating
+        the value internally, i.e., from within the process class in which
+        the variable is declared if ``intent`` is set to 'out' or 'inout',
+        or from another process class (foreign variable).
     description : str, optional
         Short description of the variable.
     attrs : dict, optional

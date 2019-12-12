@@ -67,22 +67,23 @@ be given as a list, like variable ``v`` which represents a velocity
 field that can be either constant (scalar) or variable (array) in
 space.
 
-.. note::
-
-   All variable objects also implicitly allow a time dimension.
-   See section :doc:`run_model`.
-
 Additionally, it is also possible to add a short ``description``
 and/or custom metadata like units with the ``attrs`` argument.
 
 Another important argument is ``intent``, which specifies how the
 process deals with the value of the variable. By default,
-``intent='in'`` means that the process just needs the value of the
+``intent='in'`` means that the process needs a value set for the
 variable for its computation ; this value should either be computed
 elsewhere by another process or be provided by the user as model
 input. By contrast, variables ``x`` and ``u`` have ``intent='out'``,
 which means that the process ``AdvectionLax1D`` itself initializes and
 computes a value for these two variables.
+
+Note also ``static=True`` set for ``spacing``, ``length``, ``loc`` and
+``scale``. This is to prevent providing time varying values as model inputs for
+those parameters. By default, it is possible to change the value of a variable
+during a simulation (external forcing), see section :ref:`time_varying_inputs`
+for an example. This is not always desirable, though.
 
 Process "runtime" methods
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -108,7 +109,7 @@ simulation, e.g., for some clean-up.
 Each of these methods can be decorated with :func:`~xsimlab.runtime`
 to pass some useful information during simulation runtime (e.g.,
 current time step number, current time or time step duration), which
-may be need for the computation. Without this decorator, runtime
+may be needed for the computation. Without this decorator, runtime
 methods must have no other parameter than ``self``.
 
 Getting / setting variable values
