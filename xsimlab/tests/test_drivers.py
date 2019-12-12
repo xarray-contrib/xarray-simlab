@@ -29,13 +29,31 @@ class TestBaseDriver:
         base_driver.store[('init_profile', 'n_points')] = 10
         assert base_driver.model.init_profile.n_points == 10
 
-    def test_update_store(self, base_driver):
-        n = [10, 100, 1000]
+    def test_set_store_ignore(self, base_driver):
+        input_vars = {('not-a-model', 'input'): 0}
+        base_driver.initialize_store(input_vars)
+
+        assert ('not-a-model', 'input') not in base_driver.store
+
+    def test_set_store_copy(self, base_driver):
+        n = np.array(10)
         input_vars = {('init_profile', 'n_points'): n}
-        base_driver.update_store(input_vars)
+        base_driver.initialize_store(input_vars)
 
         assert base_driver.store[('init_profile', 'n_points')] == n
         assert base_driver.store[('init_profile', 'n_points')] is not n
+
+    def test_initialize_store(self, base_driver):
+        input_vars = {('init_profile', 'n_points'): 10}
+        base_driver.initialize_store(input_vars)
+
+        assert base_driver.store[('init_profile', 'n_points')] == 10
+
+    def test_update_store(self, base_driver):
+        input_vars = {('init_profile', 'n_points'): 10}
+
+        with pytest.raises(RuntimeError, match=r".* static variable .*"):
+            base_driver.update_store(input_vars)
 
     def test_update_output_store(self, base_driver):
         base_driver.store[('init_profile', 'n_points')] = 5
@@ -53,7 +71,7 @@ class TestBaseDriver:
             base_driver.run_model()
 
 
-@pytest.mark.parametrize('array,clock,expected' , [
+@pytest.mark.parametrize('array,clock,expected', [
     (np.zeros((2, 2)), None, ('x', 'y')),
     (np.zeros((2, 2)), 'clock', ('x',)),
     (np.array(0), None, tuple())
