@@ -136,14 +136,13 @@ def variable(dims=(), intent='in', group=None, groups=None,
         other times too) to check the value given for the variable.
         The function must accept three arguments:
 
-        - the process instance (access other variables)
-        - the variable object (access metadata)
-        - a passed value (check input).
+        - the process instance (useful for accessing other variables)
+        - the variable object (useful for accessing variable metadata)
+        - the value to be validated.
 
         The function is expected to throw an exception in case of invalid
         value.
-        If a ``list`` is passed, its items are treated as validators and must
-        all pass.
+        If a ``list`` is passed, its items are all are treated as validators.
         The validator can also be set using decorator notation.
     static : bool, optional
         If True, the value of the (input) variable must be set once
@@ -157,6 +156,11 @@ def variable(dims=(), intent='in', group=None, groups=None,
     attrs : dict, optional
         Dictionnary of additional metadata (e.g., standard_name,
         units, math_symbol...).
+
+    See Also
+    --------
+    :func:`attr.ib`
+    :mod:`attr.validators`
 
     """
     metadata = {'var_type': VarType.VARIABLE,

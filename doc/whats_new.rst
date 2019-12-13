@@ -29,6 +29,10 @@ Enhancements
   has also a new ``fill_default`` parameter.
 - Added static variables, i.e., variables that don't accept time-varying input
   values (:issue:`73`).
+- Added support for the validation of variable values (given as inputs and/or
+  set through foreign variables), reusing :func:`attr.validate` (:issue:`74`).
+  Validation is optional and is controlled by the parameter ``validate`` added
+  to :func:`xarray.Dataset.xsimlab.run`.
 
 Bug fixes
 ~~~~~~~~~

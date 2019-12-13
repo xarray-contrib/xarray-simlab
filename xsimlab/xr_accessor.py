@@ -501,12 +501,12 @@ class SimlabAccessor:
             Reference model. If None, tries to get model from context.
         validate : {'nothing', 'inputs', 'all'}, optional
             Define what will be validated using the variable's validators
-            defined in ``model``'s processes (if any). It should one of the
+            defined in ``model``'s processes (if any). It should be one of the
             following options:
 
             - 'nothing': no validation is performed
-            - 'inputs': validate only values given as inputs
-            - 'all': validate both input values and values set by foreign
+            - 'inputs': validate only values given as inputs (default)
+            - 'all': validate both input values and values set through foreign
               variables in process classes
 
             The latter may significantly impact performance, but it may be
