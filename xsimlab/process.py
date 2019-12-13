@@ -470,10 +470,10 @@ def process(maybe_cls=None, autodoc=False):
 
     A process class usually implements:
 
-    - An interface as a set of variables defined as class attributes
-      (see :func:`variable`, :func:`on_demand`, :func:`foreign` and
-      :func:`group`). This decorator automatically adds properties to
-      get/set values for these variables.
+    - An interface as a set of variables defined as class attributes (see
+      :func:`variable`, :func:`on_demand`, :func:`foreign` and :func:`group`).
+      When the class is used within a :class:`Model` object, this decorator
+      automatically adds properties to get/set values for these variables.
 
     - One or more methods among ``initialize()``, ``run_step()``,
       ``finalize_step()`` and ``finalize()``, which are called at different
