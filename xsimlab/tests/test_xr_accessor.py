@@ -299,13 +299,13 @@ class TestSimlabAccessor:
                            match=r"slice indices must be integers.*"):
             in_dataset.xsimlab.run(model=model, validate='nothing')
 
-        # validation at initialization -> raises within attr.validate()
+        # input validation at initialization -> raises within attr.validate()
         with pytest.raises(TypeError, match=r".*'int'.*"):
             in_dataset.xsimlab.run(model=model, validate='inputs')
 
         in_dataset['roll__shift'] = ('clock', [1, 2.5, 1, 1, 1])
 
-        # validation at runtime -> raises within attr.validate()
+        # input validation at runtime -> raises within attr.validate()
         with pytest.raises(TypeError, match=r".*'int'.*"):
             in_dataset.xsimlab.run(model=model, validate='inputs')
 
@@ -313,11 +313,19 @@ class TestSimlabAccessor:
         class SetRollShift:
             shift = xs.foreign(Roll, 'shift', intent='out')
 
+            def initialize(self):
+                self.shift = 2.5
+
         m = model.update_processes({'set_shift': SetRollShift})
 
+        # no validation -> raises within np.roll()
+        with pytest.raises(TypeError,
+                           match=r"slice indices must be integers.*"):
+            in_dataset.xsimlab.run(model=m, validate='inputs')
+
         # internal validation -> raises within attr.validate()
-        # with pytest.raises(TypeError, match=r".*'int'.*"):
-        #     in_dataset.xsimlab.run(model=m, validate='all')
+        with pytest.raises(TypeError, match=r".*'int'.*"):
+            in_dataset.xsimlab.run(model=m, validate='all')
 
     def test_run_multi(self):
         ds = xr.Dataset()

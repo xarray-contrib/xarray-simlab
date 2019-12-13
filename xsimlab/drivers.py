@@ -354,6 +354,8 @@ class XarraySimulationDriver(BaseSimulationDriver):
         """
         ds_init, ds_gby_steps = self._get_runtime_datasets()
 
+        validate_all = self._validate_option == ValidateOption.ALL
+
         runtime_context = RuntimeContext(
             sim_start=ds_init['_sim_start'].values,
             sim_end=ds_init['_sim_end'].values
@@ -363,7 +365,9 @@ class XarraySimulationDriver(BaseSimulationDriver):
         self.initialize_store(in_vars)
         self._maybe_validate_inputs(in_vars)
 
-        self.model.execute('initialize', runtime_context)
+        self.model.execute('initialize',
+                           runtime_context,
+                           validate=validate_all)
 
         for step, (_, ds_step) in enumerate(ds_gby_steps):
 
@@ -376,9 +380,15 @@ class XarraySimulationDriver(BaseSimulationDriver):
             self.update_store(in_vars)
             self._maybe_validate_inputs(in_vars)
 
-            self.model.execute('run_step', runtime_context)
+            self.model.execute('run_step',
+                               runtime_context,
+                               validate=validate_all)
+
             self._maybe_save_output_vars(step)
-            self.model.execute('finalize_step', runtime_context)
+
+            self.model.execute('finalize_step',
+                               runtime_context,
+                               validate=validate_all)
 
         self._maybe_save_output_vars(-1)
         self.model.execute('finalize', runtime_context)

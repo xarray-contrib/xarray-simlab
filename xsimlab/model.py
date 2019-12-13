@@ -1,5 +1,7 @@
 from collections import OrderedDict, defaultdict
 
+import attr
+
 from .variable import VarIntent, VarType
 from .process import (filter_variables, get_process_cls,
                       get_target_variable, SimulationStage)
@@ -248,6 +250,28 @@ class _ModelBuilder:
 
         return self._input_vars
 
+    def get_processes_to_validate(self):
+        """Return a dictionary where keys are each process of the model and
+        values are lists of the names of other processes for which to trigger
+        validators right after its execution.
+
+        Allows triggering validators of foreign variables when a new value is
+        set.
+
+        """
+        processes_to_validate = {k: set() for k in self._processes_obj}
+
+        for p_name, p_obj in self._processes_obj.items():
+            out_foreign_vars = filter_variables(p_obj,
+                                                var_type=VarType.FOREIGN,
+                                                intent=VarIntent.OUT)
+
+            for var in out_foreign_vars.values():
+                pn, _ = p_obj.__xsimlab_store_keys__[var.name]
+                processes_to_validate[p_name].add(pn)
+
+        return {k: list(v) for k, v in processes_to_validate.items()}
+
     def get_process_dependencies(self):
         """Return a dictionary where keys are each process of the model and
         values are lists of the names of dependent processes (or empty
@@ -408,6 +432,8 @@ class Model(AttrMapping, ContextMixin):
         self._input_vars = builder.get_input_variables()
         self._input_vars_dict = None
 
+        self._processes_to_validate = builder.get_processes_to_validate()
+
         self._dep_processes = builder.get_process_dependencies()
         self._processes = builder.get_sorted_processes()
 
@@ -503,7 +529,7 @@ class Model(AttrMapping, ContextMixin):
                          show_inputs=show_inputs,
                          show_variables=show_variables)
 
-    def execute(self, stage, runtime_context):
+    def execute(self, stage, runtime_context, validate=False):
         """Run one stage of a simulation.
 
         This shouldn't be called directly, except for debugging purpose.
@@ -515,11 +541,21 @@ class Model(AttrMapping, ContextMixin):
         runtime_context : dict
             Dictionary containing runtime variables (e.g., time step
             duration, current step).
+        validate : bool, optional
+            If True, run the corresponding process variable's validators
+            each time when a process sets a value of a variable
+            declared in another process (default: False). This is
+            useful for debugging but it may significantly impact
+            performance.
 
         """
-        for p_obj in self._processes.values():
+        for p_name, p_obj in self._processes.items():
             executor = p_obj.__xsimlab_executor__
             executor.execute(p_obj, SimulationStage(stage), runtime_context)
+
+            if validate:
+                for pn in self._processes_to_validate[p_name]:
+                    attr.validate(self._processes[pn])
 
     def clone(self):
         """Clone the Model, i.e., create a new Model instance with the same
