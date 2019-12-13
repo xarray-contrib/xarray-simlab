@@ -132,16 +132,18 @@ def variable(dims=(), intent='in', group=None, groups=None,
         Single default value for the variable, ignored when ``intent='out'``
         (default: NOTHING). A default value may also be set using a decorator.
     validator : callable or list of callable, optional
-        Function that is called at simulation initialization (and possibly at
-        other times too) to check the value given for the variable.
+        Function that could be called before or during a simulation (or when
+        creating a new process instance) to check the value given
+        for the variable.
         The function must accept three arguments:
 
-        - the process instance (useful for accessing other variables)
-        - the variable object (useful for accessing variable metadata)
+        - the process instance (useful for accessing the value of other
+          variables in that process)
+        - the variable object (useful for accessing the variable metadata)
         - the value to be validated.
 
-        The function is expected to throw an exception in case of invalid
-        value.
+        The function should throw an exception in case where an invalid value
+        is given.
         If a ``list`` is passed, its items are all are treated as validators.
         The validator can also be set using decorator notation.
     static : bool, optional

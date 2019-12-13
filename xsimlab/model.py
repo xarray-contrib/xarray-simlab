@@ -255,8 +255,8 @@ class _ModelBuilder:
         values are lists of the names of other processes for which to trigger
         validators right after its execution.
 
-        Allows triggering validators of foreign variables when a new value is
-        set.
+        Useful for triggering validators of variables defined in other
+        processes when new values are set through foreign variables.
 
         """
         processes_to_validate = {k: set() for k in self._processes_obj}
@@ -542,11 +542,10 @@ class Model(AttrMapping, ContextMixin):
             Dictionary containing runtime variables (e.g., time step
             duration, current step).
         validate : bool, optional
-            If True, run the corresponding process variable's validators
-            each time when a process sets a value of a variable
-            declared in another process (default: False). This is
-            useful for debugging but it may significantly impact
-            performance.
+            If True, run the variable validators in the corresponding
+            processes after a process (maybe) sets values through its foreign
+            variables (default: False). This is useful for debugging but
+            it may significantly impact performance.
 
         """
         for p_name, p_obj in self._processes.items():
