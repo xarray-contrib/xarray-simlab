@@ -1,10 +1,18 @@
 from collections.abc import Mapping
 import copy
+from enum import Enum
 
+import attr
 import numpy as np
 import xarray as xr
 
 from .utils import variables_dict
+
+
+class ValidateOption(Enum):
+    NOTHING = 'nothing'
+    INPUTS = 'inputs'
+    ALL = 'all'
 
 
 class RuntimeContext(Mapping):
@@ -52,6 +60,7 @@ class BaseSimulationDriver:
     simulation output store.
 
     """
+
     def __init__(self, model, store, output_store):
         self.model = model
         self.store = store
@@ -125,6 +134,12 @@ class BaseSimulationDriver:
 
             self.output_store.append(key, value)
 
+    def validate(self, p_names):
+        """Run validators for all processes given in `p_names`."""
+
+        for pn in p_names:
+            attr.validate(self.model[pn])
+
     def run_model(self):
         """Main function of the driver used to run a simulation (must be
         implemented in sub-classes).
@@ -153,14 +168,17 @@ class XarraySimulationDriver(BaseSimulationDriver):
     """Simulation driver using xarray.Dataset objects as I/O.
 
     - Perform some sanity checks on the content of the given input Dataset.
-    - Set model inputs from data variables or coordinates in the input Dataset.
+    - Set (and maybe validate) model inputs from data variables or coordinates
+      in the input Dataset.
     - Save model outputs for given model variables, defined in specific
       attributes of the input Dataset, on time frequencies given by clocks
       defined as coordinates in the input Dataset.
     - Get simulation results as a new xarray.Dataset object.
 
     """
-    def __init__(self, dataset, model, store, output_store):
+
+    def __init__(self, dataset, model, store, output_store,
+                 validate=ValidateOption.INPUTS):
         self.dataset = dataset
         self.model = model
 
@@ -175,6 +193,8 @@ class XarraySimulationDriver(BaseSimulationDriver):
 
         self.output_vars = dataset.xsimlab.output_vars
         self.output_save_steps = self._get_output_save_steps()
+
+        self._validate_option = ValidateOption(validate)
 
     def _check_missing_model_inputs(self):
         """Check if all model inputs have their corresponding variables
@@ -307,14 +327,20 @@ class XarraySimulationDriver(BaseSimulationDriver):
             '_clock_diff': mclock_coord.diff(mclock_dim, label='lower')
         }
 
-        ds_all_steps = (self.dataset.drop(list(ds_init.data_vars.keys()),
-                                          errors='ignore')
-                                    .isel({mclock_dim: slice(0, -1)})
-                                    .assign(step_data_vars))
+        ds_all_steps = (self.dataset
+                        .drop(list(ds_init.data_vars.keys()), errors='ignore')
+                        .isel({mclock_dim: slice(0, -1)})
+                        .assign(step_data_vars))
 
         ds_gby_steps = ds_all_steps.groupby(mclock_dim)
 
         return ds_init, ds_gby_steps
+
+    def _maybe_validate_inputs(self, input_vars):
+        p_names = set([v[0] for v in input_vars])
+
+        if self._validate_option != ValidateOption.NOTHING:
+            self.validate(p_names)
 
     def run_model(self):
         """Run the model and return a new Dataset with all the simulation
@@ -328,14 +354,20 @@ class XarraySimulationDriver(BaseSimulationDriver):
         """
         ds_init, ds_gby_steps = self._get_runtime_datasets()
 
+        validate_all = self._validate_option == ValidateOption.ALL
+
         runtime_context = RuntimeContext(
             sim_start=ds_init['_sim_start'].values,
             sim_end=ds_init['_sim_end'].values
         )
 
-        self.initialize_store(self._get_input_vars(ds_init))
+        in_vars = self._get_input_vars(ds_init)
+        self.initialize_store(in_vars)
+        self._maybe_validate_inputs(in_vars)
 
-        self.model.execute('initialize', runtime_context)
+        self.model.execute('initialize',
+                           runtime_context,
+                           validate=validate_all)
 
         for step, (_, ds_step) in enumerate(ds_gby_steps):
 
@@ -344,11 +376,19 @@ class XarraySimulationDriver(BaseSimulationDriver):
                                    step_end=ds_step['_clock_end'].values,
                                    step_delta=ds_step['_clock_diff'].values)
 
-            self.update_store(self._get_input_vars(ds_step))
+            in_vars = self._get_input_vars(ds_step)
+            self.update_store(in_vars)
+            self._maybe_validate_inputs(in_vars)
 
-            self.model.execute('run_step', runtime_context)
+            self.model.execute('run_step',
+                               runtime_context,
+                               validate=validate_all)
+
             self._maybe_save_output_vars(step)
-            self.model.execute('finalize_step', runtime_context)
+
+            self.model.execute('finalize_step',
+                               runtime_context,
+                               validate=validate_all)
 
         self._maybe_save_output_vars(-1)
         self.model.execute('finalize', runtime_context)

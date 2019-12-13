@@ -492,13 +492,25 @@ class SimlabAccessor:
 
         return ds
 
-    def run(self, model=None, safe_mode=True):
+    def run(self, model=None, validate='inputs', safe_mode=True):
         """Run the model.
 
         Parameters
         ----------
         model : :class:`xsimlab.Model` object, optional
             Reference model. If None, tries to get model from context.
+        validate : {'nothing', 'inputs', 'all'}, optional
+            Define what will be validated using the variable's validators
+            defined in ``model``'s processes (if any). It should be one of the
+            following options:
+
+            - 'nothing': no validation is performed
+            - 'inputs': validate only values given as inputs (default)
+            - 'all': validate both input values and values set through foreign
+              variables in process classes
+
+            The latter may significantly impact performance, but it may be
+            useful for debugging.
         safe_mode : bool, optional
             If True (default), it is safe to run multiple simulations
             simultaneously. Generally safe mode shouldn't be disabled, except
@@ -518,7 +530,8 @@ class SimlabAccessor:
         store = {}
         output_store = InMemoryOutputStore()
 
-        driver = XarraySimulationDriver(self._ds, model, store, output_store)
+        driver = XarraySimulationDriver(self._ds, model, store, output_store,
+                                        validate=validate)
 
         return driver.run_model()
 

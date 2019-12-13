@@ -92,11 +92,16 @@ as:
   needs (``intent='in'``), updates (``intent='inout'``) or computes
   (``intent='out'``) a value for that variable.
 
+It is also possible to set a default value as well as value validator(s).
+See `attrs' validators`_ for more details.
+
 .. note::
 
    xarray-simlab does not distinguish between model parameters, input
    and output variables. All can be declared using
    :func:`~xsimlab.variable`.
+
+.. _`attrs' validators`: https://www.attrs.org/en/stable/examples.html#validators
 
 Foreign variables
 ~~~~~~~~~~~~~~~~~

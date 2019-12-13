@@ -66,6 +66,12 @@ class TestBaseDriver:
             base_driver.output_store[('profile', 'u')],
             expected)
 
+    def test_validate(self, base_driver):
+        base_driver.store[('roll', 'shift')] = 2.5
+
+        with pytest.raises(TypeError, match=r".*'int'.*"):
+            base_driver.validate(['roll'])
+
     def test_run_model(self, base_driver):
         with pytest.raises(NotImplementedError):
             base_driver.run_model()
