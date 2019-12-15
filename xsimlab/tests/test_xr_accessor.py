@@ -291,6 +291,35 @@ class TestSimlabAccessor:
         _ = in_dataset.xsimlab.run(model=model, safe_mode=False)
         assert model.profile.u is not None
 
+    def test_run_check_dims(self):
+        @xs.process
+        class P:
+            var = xs.variable(dims=['x', ('x', 'y')])
+
+        m = xs.Model({'p': P})
+
+        in_ds = xs.create_setup(
+            model=m,
+            clocks={'clock': [1, 2]},
+            input_vars={
+                'p__var': (('y', 'x'), np.array([[1, 2], [3, 4]]))
+            },
+            output_vars={None: ['p__var']}
+        )
+
+        out_ds = in_ds.xsimlab.run(model=m, check_dims=None)
+        expected = np.array([[1, 2], [3, 4]])
+        actual = out_ds.p__var.values
+        np.testing.assert_array_equal(actual, expected)
+
+        with pytest.raises(ValueError, match=r"Invalid dimension.*"):
+            in_ds.xsimlab.run(model=m, check_dims='strict')
+
+        out_ds = in_ds.xsimlab.run(model=m, check_dims='transpose')
+        expected = np.array([[1, 3], [2, 4]])
+        actual = out_ds.p__var.values
+        np.testing.assert_array_equal(actual, expected)
+
     def test_run_validate(self, model, in_dataset):
         in_dataset['roll__shift'] = 2.5
 
