@@ -200,7 +200,10 @@ class XarraySimulationDriver(BaseSimulationDriver):
         self.output_vars = dataset.xsimlab.output_vars
         self.output_save_steps = self._get_output_save_steps()
 
-        self._check_dims_option = check_dims or CheckDimsOption(check_dims)
+        if check_dims is not None:
+            check_dims = CheckDimsOption(check_dims)
+        self._check_dims_option = check_dims
+
         self._validate_option = ValidateOption(validate)
 
     def _check_missing_model_inputs(self):
