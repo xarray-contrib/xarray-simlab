@@ -492,13 +492,26 @@ class SimlabAccessor:
 
         return ds
 
-    def run(self, model=None, validate='inputs', safe_mode=True):
+    def run(self, model=None, check_dims='strict', validate='inputs',
+            safe_mode=True):
         """Run the model.
 
         Parameters
         ----------
         model : :class:`xsimlab.Model` object, optional
             Reference model. If None, tries to get model from context.
+        check_dims : str, optional
+            Check the dimension(s) of each input variable given in Dataset.
+            It should be one of the following options:
+
+            - 'strict': the dimension labels must exactly correspond to
+              (one of) the label sequences defined by their respective model
+              variables (default)
+            - 'transpose': input variables might be transposed in order to
+              match (one of) the label sequences defined by their respective
+              model variables
+
+            If None is given, no check is performed.
         validate : {'nothing', 'inputs', 'all'}, optional
             Define what will be validated using the variable's validators
             defined in ``model``'s processes (if any). It should be one of the
@@ -531,6 +544,7 @@ class SimlabAccessor:
         output_store = InMemoryOutputStore()
 
         driver = XarraySimulationDriver(self._ds, model, store, output_store,
+                                        check_dims=check_dims,
                                         validate=validate)
 
         return driver.run_model()

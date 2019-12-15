@@ -15,6 +15,11 @@ class ValidateOption(Enum):
     ALL = 'all'
 
 
+class CheckDimsOption(Enum):
+    STRICT = 'strict'
+    TRANSPOSE = 'transpose'
+
+
 class RuntimeContext(Mapping):
     """A mapping providing runtime information at the current time step."""
 
@@ -178,6 +183,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
     """
 
     def __init__(self, dataset, model, store, output_store,
+                 check_dims=CheckDimsOption.STRICT,
                  validate=ValidateOption.INPUTS):
         self.dataset = dataset
         self.model = model
@@ -194,6 +200,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
         self.output_vars = dataset.xsimlab.output_vars
         self.output_save_steps = self._get_output_save_steps()
 
+        self._check_dims_option = check_dims or CheckDimsOption(check_dims)
         self._validate_option = ValidateOption(validate)
 
     def _check_missing_model_inputs(self):
@@ -234,6 +241,27 @@ class XarraySimulationDriver(BaseSimulationDriver):
 
         return save_steps
 
+    def _maybe_transpose(self, xr_var, p_name, var_name):
+        var = variables_dict(self.model[p_name].__class__)[var_name]
+
+        dims = var.metadata['dims']
+        dims_set = {frozenset(d): d for d in dims}
+        xr_dims_set = frozenset(xr_var.dims)
+
+        strict = self._check_dims_option is CheckDimsOption.STRICT
+        transpose = self._check_dims_option is CheckDimsOption.TRANSPOSE
+
+        if transpose and xr_dims_set in dims_set:
+            xr_var = xr_var.transpose(*dims_set[xr_dims_set])
+
+        if (strict or transpose) and xr_var.dims not in dims:
+            raise ValueError("Invalid dimension(s) for variable '{}__{}': "
+                             "found {!r}, must be one of {}"
+                             .format(p_name, var_name, xr_var.dims,
+                                     ",".join([str(d) for d in dims])))
+
+        return xr_var
+
     def _get_input_vars(self, dataset):
         input_vars = {}
 
@@ -241,14 +269,18 @@ class XarraySimulationDriver(BaseSimulationDriver):
             xr_var_name = p_name + '__' + var_name
             xr_var = dataset.get(xr_var_name)
 
-            if xr_var is not None:
-                data = xr_var.data
+            if xr_var is None:
+                continue
 
-                if data.ndim == 0:
-                    # convert array to scalar
-                    data = data.item()
+            xr_var = self._maybe_transpose(xr_var, p_name, var_name)
 
-                input_vars[(p_name, var_name)] = data
+            data = xr_var.data
+
+            if data.ndim == 0:
+                # convert array to scalar
+                data = data.item()
+
+            input_vars[(p_name, var_name)] = data
 
         return input_vars
 

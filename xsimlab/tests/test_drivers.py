@@ -111,16 +111,17 @@ class TestXarraySimulationDriver:
         for k in expected:
             assert_array_equal(xarray_driver.output_save_steps[k], expected[k])
 
-    @pytest.mark.parametrize('var_key,is_scalar', [
-        (('init_profile', 'n_points'), True),
-        (('add', 'offset'), False)
+    @pytest.mark.parametrize('value,is_scalar', [
+        (1, True),
+        (('x', [1, 1, 1, 1, 1]), False)
     ])
-    def test_get_input_vars(self, in_dataset, xarray_driver,
-                            var_key, is_scalar):
+    def test_get_input_vars_scalar(self, in_dataset, xarray_driver,
+                                   value, is_scalar):
+        in_dataset['add__offset'] = value
         in_vars = xarray_driver._get_input_vars(in_dataset)
 
-        actual = in_vars[var_key]
-        expected = in_dataset['__'.join(var_key)].data
+        actual = in_vars[('add', 'offset')]
+        expected = in_dataset['add__offset'].data
 
         if is_scalar:
             assert actual == expected
@@ -143,18 +144,16 @@ class TestXarraySimulationDriver:
 
     def test_runtime_context(self, in_dataset, model):
         @xs.process
-        class BadProcess:
+        class P:
 
-            @xs.runtime(args='bad')
-            def run_step(self, bad):
+            @xs.runtime(args='not_a_runtime_arg')
+            def run_step(self, arg):
                 pass
 
-        bad_model = model.update_processes({'bad': BadProcess})
+        m = model.update_processes({'p': P})
 
-        driver = XarraySimulationDriver(in_dataset, bad_model,
+        driver = XarraySimulationDriver(in_dataset, m,
                                         {}, InMemoryOutputStore())
 
-        with pytest.raises(KeyError) as excinfo:
+        with pytest.raises(KeyError, match="'not_a_runtime_arg'"):
             driver.run_model()
-
-        assert str(excinfo.value) == "'bad'"
