@@ -502,7 +502,7 @@ class SimlabAccessor:
             Reference model. If None, tries to get model from context.
         check_dims : str, optional
             Check the dimension(s) of each input variable given in Dataset.
-            It should be one of the following options:
+            It may be one of the following options:
 
             - 'strict': the dimension labels must exactly correspond to
               (one of) the label sequences defined by their respective model

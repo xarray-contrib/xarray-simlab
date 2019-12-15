@@ -33,6 +33,10 @@ Enhancements
   set through foreign variables), reusing :func:`attr.validate` (:issue:`74`).
   Validation is optional and is controlled by the parameter ``validate`` added
   to :func:`xarray.Dataset.xsimlab.run`.
+- Check or automatically transpose the dimensions of the variables given in
+  input xarray Datasets to match those defined in model variables (:issue:`76`).
+  This is optional and controlled by the parameter ``check_dims`` added
+  to :func:`xarray.Dataset.xsimlab.run`.
 
 Bug fixes
 ~~~~~~~~~
