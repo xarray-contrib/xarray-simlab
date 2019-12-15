@@ -204,6 +204,8 @@ class XarraySimulationDriver(BaseSimulationDriver):
             check_dims = CheckDimsOption(check_dims)
         self._check_dims_option = check_dims
 
+        self._transposed_vars = {}
+
         self._validate_option = ValidateOption(validate)
 
     def _check_missing_model_inputs(self):
@@ -255,6 +257,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
         transpose = self._check_dims_option is CheckDimsOption.TRANSPOSE
 
         if transpose and xr_dims_set in dims_set:
+            self._transposed_vars[(p_name, var_name)] = xr_var.dims
             xr_var = xr_var.transpose(*dims_set[xr_dims_set])
 
         if (strict or transpose) and xr_var.dims not in dims:
@@ -299,7 +302,12 @@ class XarraySimulationDriver(BaseSimulationDriver):
                 self.update_output_store(var_keys)
 
     def _to_xr_variable(self, key, clock):
-        """Convert an output variable to a xarray.Variable object."""
+        """Convert an output variable to a xarray.Variable object.
+
+        Maybe transpose the variable to match the dimension order
+        of the variable given in the input dataset (if any).
+
+        """
         p_name, var_name = key
         p_obj = self.model[p_name]
         var = variables_dict(type(p_obj))[var_name]
@@ -309,14 +317,26 @@ class XarraySimulationDriver(BaseSimulationDriver):
             data = data[0]
 
         dims = _get_dims_from_variable(data, var, clock)
+        original_dims = self._transposed_vars.get(key)
+
         if clock is not None:
             dims = (clock,) + dims
+
+            if original_dims is not None:
+                original_dims = (clock,) + original_dims
 
         attrs = var.metadata['attrs'].copy()
         if var.metadata['description']:
             attrs['description'] = var.metadata['description']
 
-        return xr.Variable(dims, data, attrs=attrs)
+        xr_var = xr.Variable(dims, data, attrs=attrs)
+
+        if original_dims is not None:
+            # TODO: use ellipsis for clock dim in transpose
+            # added in xarray 0.14.1 (too recent)
+            xr_var = xr_var.transpose(*original_dims)
+
+        return xr_var
 
     def _get_output_dataset(self):
         """Return a new dataset as a copy of the input dataset updated with
