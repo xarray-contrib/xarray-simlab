@@ -500,7 +500,7 @@ class SimlabAccessor:
         ----------
         model : :class:`xsimlab.Model` object, optional
             Reference model. If None, tries to get model from context.
-        check_dims : str, optional
+        check_dims : {'strict', 'transpose'}, optional
             Check the dimension(s) of each input variable given in Dataset.
             It may be one of the following options:
 
