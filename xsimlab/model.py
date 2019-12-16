@@ -3,8 +3,12 @@ from collections import OrderedDict, defaultdict
 import attr
 
 from .variable import VarIntent, VarType
-from .process import (filter_variables, get_process_cls,
-                      get_target_variable, SimulationStage)
+from .process import (
+    filter_variables,
+    get_process_cls,
+    get_target_variable,
+    SimulationStage,
+)
 from .utils import AttrMapping, ContextMixin, variables_dict
 from .formatting import repr_model
 
@@ -40,7 +44,7 @@ class _ModelBuilder:
       step of a simulation
 
     """
-   
+
     def __init__(self, processes_cls):
         self._processes_cls = processes_cls
         self._processes_obj = {k: cls() for k, cls in processes_cls.items()}
@@ -70,8 +74,7 @@ class _ModelBuilder:
             for cls in p_cls.mro()[:-1]:
                 reverse_lookup[cls].append(p_name)
 
-        return {k: v[0] if len(v) == 1 else v
-                for k, v in reverse_lookup.items()}
+        return {k: v[0] if len(v) == 1 else v for k, v in reverse_lookup.items()}
 
     def bind_processes(self, model_obj):
         for p_name, p_obj in self._processes_obj.items():
@@ -93,7 +96,7 @@ class _ModelBuilder:
         store_key = None
         od_key = None
 
-        var_type = var.metadata['var_type']
+        var_type = var.metadata["var_type"]
 
         if var_type == VarType.VARIABLE:
             store_key = (p_name, var.name)
@@ -108,25 +111,27 @@ class _ModelBuilder:
             if target_p_name is None:
                 raise KeyError(
                     "Process class '{}' missing in Model but required "
-                    "by foreign variable '{}' declared in process '{}'"
-                    .format(target_p_cls.__name__, var.name, p_name)
+                    "by foreign variable '{}' declared in process '{}'".format(
+                        target_p_cls.__name__, var.name, p_name
+                    )
                 )
 
             elif isinstance(target_p_name, list):
                 raise ValueError(
                     "Process class {!r} required by foreign variable '{}.{}' "
                     "is used (possibly via one its child classes) by multiple "
-                    "processes: {}"
-                    .format(
-                        target_p_cls.__name__, p_name, var.name,
-                        ', '.join(['{!r}'.format(n) for n in target_p_name])
+                    "processes: {}".format(
+                        target_p_cls.__name__,
+                        p_name,
+                        var.name,
+                        ", ".join(["{!r}".format(n) for n in target_p_name]),
                     )
                 )
 
             store_key, od_key = self._get_var_key(target_p_name, target_var)
 
         elif var_type == VarType.GROUP:
-            var_group = var.metadata['group']
+            var_group = var.metadata["group"]
             store_key, od_key = self._get_group_var_keys(var_group)
 
         return store_key, od_key
@@ -178,9 +183,12 @@ class _ModelBuilder:
         intent='out' targets the same variable.
 
         """
+
         def filter_out(var):
-            return (var.metadata['intent'] == VarIntent.OUT and
-                    var.metadata['var_type'] != VarType.ON_DEMAND)
+            return (
+                var.metadata["intent"] == VarIntent.OUT
+                and var.metadata["var_type"] != VarType.ON_DEMAND
+            )
 
         targets = defaultdict(list)
 
@@ -192,13 +200,15 @@ class _ModelBuilder:
         conflicts = {k: v for k, v in targets.items() if len(v) > 1}
 
         if conflicts:
-            conflicts_str = {k: ' and '.join(["'{}.{}'".format(*i) for i in v])
-                             for k, v in conflicts.items()}
-            msg = '\n'.join(["'{}.{}' set by: {}".format(*k, v)
-                             for k, v in conflicts_str.items()])
+            conflicts_str = {
+                k: " and ".join(["'{}.{}'".format(*i) for i in v])
+                for k, v in conflicts.items()
+            }
+            msg = "\n".join(
+                ["'{}.{}' set by: {}".format(*k, v) for k, v in conflicts_str.items()]
+            )
 
-            raise ValueError(
-                "Conflict(s) found in given variable intents:\n" + msg)
+            raise ValueError("Conflict(s) found in given variable intents:\n" + msg)
 
     def get_all_variables(self):
         """Get all variables in the model as a list of
@@ -208,8 +218,7 @@ class _ModelBuilder:
         all_keys = []
 
         for p_name, p_cls in self._processes_cls.items():
-            all_keys += [(p_name, var_name)
-                         for var_name in variables_dict(p_cls)]
+            all_keys += [(p_name, var_name) for var_name in variables_dict(p_cls)]
 
         return all_keys
 
@@ -225,12 +234,15 @@ class _ModelBuilder:
           model inputs.
 
         """
+
         def filter_in(var):
-            return (var.metadata['var_type'] != VarType.GROUP and
-                    var.metadata['intent'] != VarIntent.OUT)
+            return (
+                var.metadata["var_type"] != VarType.GROUP
+                and var.metadata["intent"] != VarIntent.OUT
+            )
 
         def filter_out(var):
-            return var.metadata['intent'] == VarIntent.OUT
+            return var.metadata["intent"] == VarIntent.OUT
 
         in_keys = []
         out_keys = []
@@ -245,8 +257,7 @@ class _ModelBuilder:
                 for var in filter_variables(p_obj, func=filter_out).values()
             ]
 
-        self._input_vars = [k for k in set(in_keys) - set(out_keys)
-                            if k is not None]
+        self._input_vars = [k for k in set(in_keys) - set(out_keys) if k is not None]
 
         return self._input_vars
 
@@ -262,9 +273,9 @@ class _ModelBuilder:
         processes_to_validate = {k: set() for k in self._processes_obj}
 
         for p_name, p_obj in self._processes_obj.items():
-            out_foreign_vars = filter_variables(p_obj,
-                                                var_type=VarType.FOREIGN,
-                                                intent=VarIntent.OUT)
+            out_foreign_vars = filter_variables(
+                p_obj, var_type=VarType.FOREIGN, intent=VarIntent.OUT
+            )
 
             for var in out_foreign_vars.values():
                 pn, _ = p_obj.__xsimlab_store_keys__[var.name]
@@ -284,17 +295,19 @@ class _ModelBuilder:
         """
         self._dep_processes = {k: set() for k in self._processes_obj}
 
-        d_keys = {}   # all store/on-demand keys for each process
+        d_keys = {}  # all store/on-demand keys for each process
 
         for p_name, p_obj in self._processes_obj.items():
-            d_keys[p_name] = _flatten_keys([
-                p_obj.__xsimlab_store_keys__.values(),
-                p_obj.__xsimlab_od_keys__.values()
-            ])
+            d_keys[p_name] = _flatten_keys(
+                [
+                    p_obj.__xsimlab_store_keys__.values(),
+                    p_obj.__xsimlab_od_keys__.values(),
+                ]
+            )
 
         for p_name, p_obj in self._processes_obj.items():
             for var in filter_variables(p_obj, intent=VarIntent.OUT).values():
-                if var.metadata['var_type'] == VarType.ON_DEMAND:
+                if var.metadata["var_type"] == VarType.ON_DEMAND:
                     key = p_obj.__xsimlab_od_keys__[var.name]
                 else:
                     key = p_obj.__xsimlab_store_keys__[var.name]
@@ -303,8 +316,7 @@ class _ModelBuilder:
                     if pn != p_name and key in d_keys[pn]:
                         self._dep_processes[pn].add(p_name)
 
-        self._dep_processes = {k: list(v)
-                               for k, v in self._dep_processes.items()}
+        self._dep_processes = {k: list(v) for k, v in self._dep_processes.items()}
 
         return self._dep_processes
 
@@ -362,7 +374,7 @@ class _ModelBuilder:
                                 cycle.append(nodes.pop())
                             cycle.append(nodes.pop())
                             cycle.reverse()
-                            cycle = '->'.join(cycle)
+                            cycle = "->".join(cycle)
                             raise RuntimeError(
                                 "Cycle detected in process graph: %s" % cycle
                             )
@@ -381,8 +393,7 @@ class _ModelBuilder:
 
     def get_sorted_processes(self):
         self._sorted_processes = OrderedDict(
-            [(p_name, self._processes_obj[p_name])
-             for p_name in self._sort_processes()]
+            [(p_name, self._processes_obj[p_name]) for p_name in self._sort_processes()]
         )
         return self._sorted_processes
 
@@ -418,8 +429,7 @@ class Model(AttrMapping, ContextMixin):
             :func:`process`.
 
         """
-        builder = _ModelBuilder({k: get_process_cls(v)
-                                 for k, v in processes.items()})
+        builder = _ModelBuilder({k: get_process_cls(v) for k, v in processes.items()})
 
         builder.bind_processes(self)
         builder.set_process_keys()
@@ -502,8 +512,9 @@ class Model(AttrMapping, ContextMixin):
         """
         return self._dep_processes
 
-    def visualize(self, show_only_variable=None, show_inputs=False,
-                  show_variables=False):
+    def visualize(
+        self, show_only_variable=None, show_inputs=False, show_variables=False
+    ):
         """Render the model as a graph using dot (require graphviz).
 
         Parameters
@@ -525,9 +536,13 @@ class Model(AttrMapping, ContextMixin):
 
         """
         from .dot import dot_graph
-        return dot_graph(self, show_only_variable=show_only_variable,
-                         show_inputs=show_inputs,
-                         show_variables=show_variables)
+
+        return dot_graph(
+            self,
+            show_only_variable=show_only_variable,
+            show_inputs=show_inputs,
+            show_variables=show_variables,
+        )
 
     def execute(self, stage, runtime_context, validate=False):
         """Run one stage of a simulation.
@@ -600,16 +615,22 @@ class Model(AttrMapping, ContextMixin):
         if isinstance(keys, str):
             keys = [keys]
 
-        processes_cls = {k: type(obj) for k, obj in self._processes.items()
-                         if k not in keys}
+        processes_cls = {
+            k: type(obj) for k, obj in self._processes.items() if k not in keys
+        }
         return type(self)(processes_cls)
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
             return NotImplemented
-        return all([k1 == k2 and type(v1) is type(v2)
-                    for (k1, v1), (k2, v2) in
-                    zip(self._processes.items(), other._processes.items())])
+        return all(
+            [
+                k1 == k2 and type(v1) is type(v2)
+                for (k1, v1), (k2, v2) in zip(
+                    self._processes.items(), other._processes.items()
+                )
+            ]
+        )
 
     def __repr__(self):
         return repr_model(self)

@@ -17,6 +17,7 @@ class NotAProcessClassError(ValueError):
     function.
 
     """
+
     pass
 
 
@@ -28,9 +29,9 @@ def _get_embedded_process_cls(cls):
         try:
             return cls.__xsimlab_cls__
         except AttributeError:
-            raise NotAProcessClassError("{cls!r} is not a "
-                                        "process-decorated class."
-                                        .format(cls=cls))
+            raise NotAProcessClassError(
+                "{cls!r} is not a " "process-decorated class.".format(cls=cls)
+            )
 
 
 def get_process_cls(obj_or_cls):
@@ -51,8 +52,7 @@ def get_process_obj(obj_or_cls):
     return _get_embedded_process_cls(cls)()
 
 
-def filter_variables(process, var_type=None, intent=None, group=None,
-                     func=None):
+def filter_variables(process, var_type=None, intent=None, group=None, func=None):
     """Filter the variables declared in a process.
 
     Parameters
@@ -83,16 +83,21 @@ def filter_variables(process, var_type=None, intent=None, group=None,
     vars = dict(variables_dict(process_cls))
 
     if var_type is not None:
-        vars = {k: v for k, v in vars.items()
-                if v.metadata.get('var_type') == VarType(var_type)}
+        vars = {
+            k: v
+            for k, v in vars.items()
+            if v.metadata.get("var_type") == VarType(var_type)
+        }
 
     if intent is not None:
-        vars = {k: v for k, v in vars.items()
-                if v.metadata.get('intent') == VarIntent(intent)}
+        vars = {
+            k: v
+            for k, v in vars.items()
+            if v.metadata.get("intent") == VarIntent(intent)
+        }
 
     if group is not None:
-        vars = {k: v for k, v in vars.items()
-                if group in v.metadata.get('groups', [])}
+        vars = {k: v for k, v in vars.items() if group in v.metadata.get("groups", [])}
 
     if func is not None:
         vars = {k: v for k, v in vars.items() if func(v)}
@@ -117,23 +122,29 @@ def get_target_variable(var):
 
     visited = []
 
-    while target_var.metadata['var_type'] == VarType.FOREIGN:
+    while target_var.metadata["var_type"] == VarType.FOREIGN:
         visited.append((target_process_cls, target_var))
 
-        target_process_cls = target_var.metadata['other_process_cls']
-        var_name = target_var.metadata['var_name']
+        target_process_cls = target_var.metadata["other_process_cls"]
+        var_name = target_var.metadata["var_name"]
         target_var = filter_variables(target_process_cls)[var_name]
 
         # TODO: maybe remove this? not even sure such a cycle may happen
         # unless we allow later providing other values than classes as first
         # argument of `foreign`
         if (target_process_cls, target_var) in visited:  # pragma: no cover
-            cycle = '->'.join(['{}.{}'.format(cls.__name__, var.name)
-                               if cls is not None else var.name
-                               for cls, var in visited])
+            cycle = "->".join(
+                [
+                    "{}.{}".format(cls.__name__, var.name)
+                    if cls is not None
+                    else var.name
+                    for cls, var in visited
+                ]
+            )
 
-            raise RuntimeError("Cycle detected in process dependencies: {}"
-                               .format(cycle))
+            raise RuntimeError(
+                "Cycle detected in process dependencies: {}".format(cycle)
+            )
 
     return target_process_cls, target_var
 
@@ -166,29 +177,34 @@ def _make_property_variable(var):
 
     target_process_cls, target_var = get_target_variable(var)
 
-    var_type = var.metadata['var_type']
-    target_type = target_var.metadata['var_type']
-    var_intent = var.metadata['intent']
-    target_intent = target_var.metadata['intent']
+    var_type = var.metadata["var_type"]
+    target_type = target_var.metadata["var_type"]
+    var_intent = var.metadata["intent"]
+    target_intent = target_var.metadata["intent"]
 
     var_doc = var_details(var)
 
     if target_process_cls is not None:
-        target_str = '.'.join([target_process_cls.__name__, target_var.name])
+        target_str = ".".join([target_process_cls.__name__, target_var.name])
     else:
         target_str = target_var.name
 
     if target_type == VarType.GROUP:
-        raise ValueError("Variable {var!r} links to group variable "
-                         "{target!r}, which is not supported. Declare {var!r} "
-                         "as a group variable instead."
-                         .format(var=var.name, target=target_str))
+        raise ValueError(
+            "Variable {var!r} links to group variable "
+            "{target!r}, which is not supported. Declare {var!r} "
+            "as a group variable instead.".format(var=var.name, target=target_str)
+        )
 
-    elif (var_type == VarType.FOREIGN and
-          var_intent == VarIntent.OUT and target_intent == VarIntent.OUT):
-        raise ValueError("Conflict between foreign variable {!r} and its "
-                         "target variable {!r}, both have intent='out'."
-                         .format(var.name, target_str))
+    elif (
+        var_type == VarType.FOREIGN
+        and var_intent == VarIntent.OUT
+        and target_intent == VarIntent.OUT
+    ):
+        raise ValueError(
+            "Conflict between foreign variable {!r} and its "
+            "target variable {!r}, both have intent='out'.".format(var.name, target_str)
+        )
 
     elif target_type == VarType.ON_DEMAND:
         return property(fget=get_on_demand, doc=var_doc)
@@ -206,13 +222,14 @@ def _make_property_on_demand(var):
     This property is a simple wrapper around the variable's compute method.
 
     """
-    if 'compute' not in var.metadata:
-        raise KeyError("No compute method found for on_demand variable "
-                       "'{name}'. A method decorated with '@{name}.compute' "
-                       "is required in the class definition."
-                       .format(name=var.name))
+    if "compute" not in var.metadata:
+        raise KeyError(
+            "No compute method found for on_demand variable "
+            "'{name}'. A method decorated with '@{name}.compute' "
+            "is required in the class definition.".format(name=var.name)
+        )
 
-    get_method = var.metadata['compute']
+    get_method = var.metadata["compute"]
 
     return property(fget=get_method, doc=var_details(var))
 
@@ -250,7 +267,7 @@ class _RuntimeMethodExecutor:
         if args is None:
             args = []
         elif isinstance(args, str):
-            args = [k.strip() for k in args.split(',') if k]
+            args = [k.strip() for k in args.split(",") if k]
         elif isinstance(args, (list, tuple)):
             args = tuple(args)
         else:
@@ -292,6 +309,7 @@ def runtime(meth=None, args=None):
        with runtime data.
 
     """
+
     def wrapper(func):
         func.__xsimlab_executor__ = _RuntimeMethodExecutor(func, args)
         return func
@@ -303,10 +321,10 @@ def runtime(meth=None, args=None):
 
 
 class SimulationStage(Enum):
-    INITIALIZE = 'initialize'
-    RUN_STEP = 'run_step'
-    FINALIZE_STEP = 'finalize_step'
-    FINALIZE = 'finalize'
+    INITIALIZE = "initialize"
+    RUN_STEP = "run_step"
+    FINALIZE_STEP = "finalize_step"
+    FINALIZE = "finalize"
 
 
 class _ProcessExecutor:
@@ -322,25 +340,29 @@ class _ProcessExecutor:
                 continue
 
             meth = getattr(self.cls, stage.value)
-            executor = getattr(meth, '__xsimlab_executor__', None)
+            executor = getattr(meth, "__xsimlab_executor__", None)
 
             if executor is None:
                 nparams = len(inspect.signature(meth).parameters)
 
                 if stage == SimulationStage.RUN_STEP and nparams == 2:
                     # TODO: remove (depreciated)
-                    warnings.warn("`run_step(self, dt)` accepting by default "
-                                  "one positional argument is depreciated and "
-                                  "will be removed in a future version of "
-                                  "xarray-simlab. Use the `@runtime` "
-                                  "decorator.",
-                                  FutureWarning)
-                    args = ['step_delta']
+                    warnings.warn(
+                        "`run_step(self, dt)` accepting by default "
+                        "one positional argument is depreciated and "
+                        "will be removed in a future version of "
+                        "xarray-simlab. Use the `@runtime` "
+                        "decorator.",
+                        FutureWarning,
+                    )
+                    args = ["step_delta"]
 
                 elif nparams > 1:
-                    raise TypeError("Process runtime methods with positional "
-                                    "parameters should be decorated with "
-                                    "`@runtime`")
+                    raise TypeError(
+                        "Process runtime methods with positional "
+                        "parameters should be decorated with "
+                        "`@runtime`"
+                    )
 
                 else:
                     args = None
@@ -400,11 +422,12 @@ class _ProcessBuilder:
     can be used within a model.
 
     """
+
     _make_prop_funcs = {
         VarType.VARIABLE: _make_property_variable,
         VarType.ON_DEMAND: _make_property_on_demand,
         VarType.FOREIGN: _make_property_variable,
-        VarType.GROUP: _make_property_group
+        VarType.GROUP: _make_property_group,
     }
 
     def __init__(self, attr_cls):
@@ -420,28 +443,30 @@ class _ProcessBuilder:
                 validator=attrib.validator,
                 default=attrib.default,
                 init=False,
-                repr=False
+                repr=False,
             )
 
         return new_attributes
 
     def _make_process_subclass(self):
-        p_cls = attr.make_class(self._base_cls.__name__,
-                                self._reset_attributes(),
-                                bases=(self._base_cls,),
-                                init=False,
-                                repr=False)
+        p_cls = attr.make_class(
+            self._base_cls.__name__,
+            self._reset_attributes(),
+            bases=(self._base_cls,),
+            init=False,
+            repr=False,
+        )
 
-        setattr(p_cls, '__init__', _process_cls_init)
-        setattr(p_cls, '__repr__', repr_process)
-        setattr(p_cls, '__xsimlab_process__', True)
-        setattr(p_cls, '__xsimlab_executor__', _ProcessExecutor(p_cls))
+        setattr(p_cls, "__init__", _process_cls_init)
+        setattr(p_cls, "__repr__", repr_process)
+        setattr(p_cls, "__xsimlab_process__", True)
+        setattr(p_cls, "__xsimlab_executor__", _ProcessExecutor(p_cls))
 
         return p_cls
 
     def add_properties(self):
         for var_name, var in attr.fields_dict(self._base_cls).items():
-            var_type = var.metadata.get('var_type')
+            var_type = var.metadata.get("var_type")
 
             if var_type is not None:
                 make_prop_func = self._make_prop_funcs[var_type]
@@ -493,6 +518,7 @@ def process(maybe_cls=None, autodoc=False):
         corresponding sections with variable metadata (default: False).
 
     """
+
     def wrap(cls):
         attr_cls = attr.attrs(cls)
 
@@ -503,7 +529,7 @@ def process(maybe_cls=None, autodoc=False):
         if autodoc:
             builder.render_docstrings()
 
-        setattr(attr_cls, '__xsimlab_cls__', builder.build_class())
+        setattr(attr_cls, "__xsimlab_cls__", builder.build_class())
 
         return attr_cls
 
