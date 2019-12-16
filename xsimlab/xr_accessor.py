@@ -500,7 +500,7 @@ class SimlabAccessor:
         ----------
         model : :class:`xsimlab.Model` object, optional
             Reference model. If None, tries to get model from context.
-        check_dims : str, optional
+        check_dims : {'strict', 'transpose'}, optional
             Check the dimension(s) of each input variable given in Dataset.
             It may be one of the following options:
 
@@ -512,18 +512,18 @@ class SimlabAccessor:
               model variables
 
             If None is given, no check is performed.
-        validate : {'nothing', 'inputs', 'all'}, optional
+        validate : {'inputs', 'all'}, optional
             Define what will be validated using the variable's validators
-            defined in ``model``'s processes (if any). It should be one of the
+            defined in ``model``'s processes (if any). It may be one of the
             following options:
 
-            - 'nothing': no validation is performed
             - 'inputs': validate only values given as inputs (default)
             - 'all': validate both input values and values set through foreign
               variables in process classes
 
             The latter may significantly impact performance, but it may be
             useful for debugging.
+            If None is given, no validation is performed.
         safe_mode : bool, optional
             If True (default), it is safe to run multiple simulations
             simultaneously. Generally safe mode shouldn't be disabled, except
