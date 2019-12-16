@@ -1,13 +1,22 @@
 .. _examples:
 
-Examples
-========
+Examples & Related Projects
+===========================
 
-An example of simple advection is given in the user guide
-sections. Here below are more advanced examples of using
-xarray-simlab.
+Basic examples
+--------------
 
-.. toctree::
-    :maxdepth: 2
+Some basic examples can be found in this documentation, e.g.,
 
-    examples/landscape-evolution-model
+- A minimal example, based on the Game of Life, shown in :doc:`about`.
+- An example of simple advection shown in the user guide (see
+  :doc:`create_model` and :doc:`run_model`).
+
+Related projects
+----------------
+
+More detailled examples can be found in 3rd-party projects built on top of
+xarray-simlab (please tell us if you want to add your project to the list
+below):
+
+- `fastscape <https://fastscape.readthedocs.io>`_: landscape evolution modeling.

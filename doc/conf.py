@@ -60,7 +60,6 @@ extensions = [
     'sphinx.ext.todo',
     'IPython.sphinxext.ipython_directive',
     'IPython.sphinxext.ipython_console_highlighting',
-    'nbsphinx',
 ]
 
 extlinks = {
