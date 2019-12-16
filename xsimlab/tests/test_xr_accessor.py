@@ -337,10 +337,10 @@ class TestSimlabAccessor:
     def test_run_validate(self, model, in_dataset):
         in_dataset['roll__shift'] = 2.5
 
-        # no validation -> raises within np.roll()
+        # no input validation -> raises within np.roll()
         with pytest.raises(TypeError,
                            match=r"slice indices must be integers.*"):
-            in_dataset.xsimlab.run(model=model, validate='nothing')
+            in_dataset.xsimlab.run(model=model, validate=None)
 
         # input validation at initialization -> raises within attr.validate()
         with pytest.raises(TypeError, match=r".*'int'.*"):
@@ -361,7 +361,7 @@ class TestSimlabAccessor:
 
         m = model.update_processes({'set_shift': SetRollShift})
 
-        # no validation -> raises within np.roll()
+        # no internal validation -> raises within np.roll()
         with pytest.raises(TypeError,
                            match=r"slice indices must be integers.*"):
             in_dataset.xsimlab.run(model=m, validate='inputs')

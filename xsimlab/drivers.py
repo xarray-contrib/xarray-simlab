@@ -10,7 +10,6 @@ from .utils import variables_dict
 
 
 class ValidateOption(Enum):
-    NOTHING = 'nothing'
     INPUTS = 'inputs'
     ALL = 'all'
 
@@ -206,7 +205,9 @@ class XarraySimulationDriver(BaseSimulationDriver):
 
         self._transposed_vars = {}
 
-        self._validate_option = ValidateOption(validate)
+        if validate is not None:
+            validate = ValidateOption(validate)
+        self._validate_option = validate
 
     def _check_missing_model_inputs(self):
         """Check if all model inputs have their corresponding variables
@@ -394,7 +395,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
     def _maybe_validate_inputs(self, input_vars):
         p_names = set([v[0] for v in input_vars])
 
-        if self._validate_option != ValidateOption.NOTHING:
+        if self._validate_option is not None:
             self.validate(p_names)
 
     def run_model(self):
@@ -409,7 +410,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
         """
         ds_init, ds_gby_steps = self._get_runtime_datasets()
 
-        validate_all = self._validate_option == ValidateOption.ALL
+        validate_all = self._validate_option is ValidateOption.ALL
 
         runtime_context = RuntimeContext(
             sim_start=ds_init['_sim_start'].values,
