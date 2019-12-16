@@ -291,6 +291,49 @@ class TestSimlabAccessor:
         _ = in_dataset.xsimlab.run(model=model, safe_mode=False)
         assert model.profile.u is not None
 
+    def test_run_check_dims(self):
+        @xs.process
+        class P:
+            var = xs.variable(dims=['x', ('x', 'y')])
+
+        m = xs.Model({'p': P})
+
+        arr = np.array([[1, 2], [3, 4]])
+
+        in_ds = xs.create_setup(
+            model=m,
+            clocks={'clock': [1, 2]},
+            input_vars={
+                'p__var': (('y', 'x'), arr)
+            },
+            output_vars={None: ['p__var']}
+        )
+
+        out_ds = in_ds.xsimlab.run(model=m, check_dims=None)
+        actual = out_ds.p__var.values
+        np.testing.assert_array_equal(actual, arr)
+
+        with pytest.raises(ValueError, match=r"Invalid dimension.*"):
+            in_ds.xsimlab.run(model=m, check_dims='strict')
+
+        out_ds = in_ds.xsimlab.run(model=m, check_dims='transpose',
+                                   safe_mode=False)
+        actual = out_ds.p__var.values
+        np.testing.assert_array_equal(actual, arr)
+        np.testing.assert_array_equal(m.p.var, arr.transpose())
+
+        in_ds2 = in_ds.xsimlab.update_vars(
+            model=m,
+            output_vars={'clock': ['p__var']}
+        )
+        # TODO: fix update output vars time-independet -> dependent
+        # currently need the workaround below
+        in_ds2.attrs = {}
+
+        out_ds = in_ds2.xsimlab.run(model=m, check_dims='transpose')
+        actual = out_ds.p__var.isel(clock=-1).values
+        np.testing.assert_array_equal(actual, arr)
+
     def test_run_validate(self, model, in_dataset):
         in_dataset['roll__shift'] = 2.5
 

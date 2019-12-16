@@ -15,6 +15,11 @@ class ValidateOption(Enum):
     ALL = 'all'
 
 
+class CheckDimsOption(Enum):
+    STRICT = 'strict'
+    TRANSPOSE = 'transpose'
+
+
 class RuntimeContext(Mapping):
     """A mapping providing runtime information at the current time step."""
 
@@ -178,6 +183,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
     """
 
     def __init__(self, dataset, model, store, output_store,
+                 check_dims=CheckDimsOption.STRICT,
                  validate=ValidateOption.INPUTS):
         self.dataset = dataset
         self.model = model
@@ -193,6 +199,12 @@ class XarraySimulationDriver(BaseSimulationDriver):
 
         self.output_vars = dataset.xsimlab.output_vars
         self.output_save_steps = self._get_output_save_steps()
+
+        if check_dims is not None:
+            check_dims = CheckDimsOption(check_dims)
+        self._check_dims_option = check_dims
+
+        self._transposed_vars = {}
 
         self._validate_option = ValidateOption(validate)
 
@@ -234,6 +246,28 @@ class XarraySimulationDriver(BaseSimulationDriver):
 
         return save_steps
 
+    def _maybe_transpose(self, xr_var, p_name, var_name):
+        var = variables_dict(self.model[p_name].__class__)[var_name]
+
+        dims = var.metadata['dims']
+        dims_set = {frozenset(d): d for d in dims}
+        xr_dims_set = frozenset(xr_var.dims)
+
+        strict = self._check_dims_option is CheckDimsOption.STRICT
+        transpose = self._check_dims_option is CheckDimsOption.TRANSPOSE
+
+        if transpose and xr_dims_set in dims_set:
+            self._transposed_vars[(p_name, var_name)] = xr_var.dims
+            xr_var = xr_var.transpose(*dims_set[xr_dims_set])
+
+        if (strict or transpose) and xr_var.dims not in dims:
+            raise ValueError("Invalid dimension(s) for variable '{}__{}': "
+                             "found {!r}, must be one of {}"
+                             .format(p_name, var_name, xr_var.dims,
+                                     ",".join([str(d) for d in dims])))
+
+        return xr_var
+
     def _get_input_vars(self, dataset):
         input_vars = {}
 
@@ -241,14 +275,18 @@ class XarraySimulationDriver(BaseSimulationDriver):
             xr_var_name = p_name + '__' + var_name
             xr_var = dataset.get(xr_var_name)
 
-            if xr_var is not None:
-                data = xr_var.data
+            if xr_var is None:
+                continue
 
-                if data.ndim == 0:
-                    # convert array to scalar
-                    data = data.item()
+            xr_var = self._maybe_transpose(xr_var, p_name, var_name)
 
-                input_vars[(p_name, var_name)] = data
+            data = xr_var.data
+
+            if data.ndim == 0:
+                # convert array to scalar
+                data = data.item()
+
+            input_vars[(p_name, var_name)] = data
 
         return input_vars
 
@@ -264,7 +302,12 @@ class XarraySimulationDriver(BaseSimulationDriver):
                 self.update_output_store(var_keys)
 
     def _to_xr_variable(self, key, clock):
-        """Convert an output variable to a xarray.Variable object."""
+        """Convert an output variable to a xarray.Variable object.
+
+        Maybe transpose the variable to match the dimension order
+        of the variable given in the input dataset (if any).
+
+        """
         p_name, var_name = key
         p_obj = self.model[p_name]
         var = variables_dict(type(p_obj))[var_name]
@@ -274,14 +317,26 @@ class XarraySimulationDriver(BaseSimulationDriver):
             data = data[0]
 
         dims = _get_dims_from_variable(data, var, clock)
+        original_dims = self._transposed_vars.get(key)
+
         if clock is not None:
             dims = (clock,) + dims
+
+            if original_dims is not None:
+                original_dims = (clock,) + original_dims
 
         attrs = var.metadata['attrs'].copy()
         if var.metadata['description']:
             attrs['description'] = var.metadata['description']
 
-        return xr.Variable(dims, data, attrs=attrs)
+        xr_var = xr.Variable(dims, data, attrs=attrs)
+
+        if original_dims is not None:
+            # TODO: use ellipsis for clock dim in transpose
+            # added in xarray 0.14.1 (too recent)
+            xr_var = xr_var.transpose(*original_dims)
+
+        return xr_var
 
     def _get_output_dataset(self):
         """Return a new dataset as a copy of the input dataset updated with
