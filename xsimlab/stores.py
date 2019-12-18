@@ -11,6 +11,7 @@ class InMemoryOutputStore:
     which are converted to numpy arrays on store read-access.
 
     """
+
     def __init__(self):
         self._store = defaultdict(list)
 

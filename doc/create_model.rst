@@ -47,7 +47,7 @@ Let's first wrap the code above into a single class named
 explain in detail the content of this class.
 
 .. literalinclude:: scripts/advection_model.py
-   :lines: 3-33
+   :lines: 3-34
 
 Process interface
 ~~~~~~~~~~~~~~~~~
@@ -139,7 +139,7 @@ need to provide a dictionary with the process class(es) that we want
 to include in the model, e.g., with only the process created above:
 
 .. literalinclude:: scripts/advection_model.py
-   :lines: 36
+   :lines: 37
 
 That's it! Now we have different tools already available to inspect
 the model (see section :doc:`inspect_model`). We can also use that
@@ -174,7 +174,7 @@ This process declares all grid-related variables and computes
 x-coordinate values.
 
 .. literalinclude:: scripts/advection_model.py
-   :lines: 39-48
+   :lines: 40-49
 
 Grid x-coordinate values only need to be set once at the beginning of
 the simulation ; there is no need to implement ``.run_step()`` here.
@@ -182,7 +182,7 @@ the simulation ; there is no need to implement ``.run_step()`` here.
 **ProfileU**
 
 .. literalinclude:: scripts/advection_model.py
-   :lines: 51-63
+   :lines: 52-65
 
 ``u_vars`` is declared as a :func:`~xsimlab.group` variable, i.e., an
 iterable of all variables declared elsewhere that belong the same
@@ -197,7 +197,7 @@ value from elsewhere.
 **AdvectionLax**
 
 .. literalinclude:: scripts/advection_model.py
-   :lines: 66-85
+   :lines: 68-88
 
 ``u_advected`` represents the effect of advection on the evolution of
 :math:`u` and therefore belongs to the group 'u_vars'.
@@ -213,7 +213,7 @@ handle them like if these were the original variables. For example,
 **InitUGauss**
 
 .. literalinclude:: scripts/advection_model.py
-   :lines: 88-98
+   :lines: 91-101
 
 A foreign variable can also be used to set values for variables that
 are declared in other processes, as for ``u`` here with
@@ -224,7 +224,7 @@ are declared in other processes, as for ``u`` here with
 We now have all the building blocks to create a more flexible model:
 
 .. literalinclude:: scripts/advection_model.py
-   :lines: 101-104
+   :lines: 104-111
 
 The order in which processes are given doesn't matter (it is a
 dictionary). A computationally consistent order, as well as model
@@ -249,7 +249,7 @@ original, simple version.
 For this we create a new process:
 
 .. literalinclude:: scripts/advection_model.py
-   :lines: 107-133
+   :lines: 114-141
 
 Some comments about this class:
 
@@ -269,13 +269,13 @@ profile instead of a Gaussian pulse. We create another (minimal)
 process for that:
 
 .. literalinclude:: scripts/advection_model.py
-   :lines: 136-144
+   :lines: 144-152
 
 Using one command, we can then update the model with these new
 features:
 
 .. literalinclude:: scripts/advection_model.py
-   :lines: 147-148
+   :lines: 155
 
 Compared to ``model2``, this new ``model3`` have a new process named
 'source' and a replaced process 'init'.
@@ -286,7 +286,7 @@ It is also possible to create new models by removing one or more
 processes from existing Model instances, e.g.,
 
 .. literalinclude:: scripts/advection_model.py
-   :lines: 151
+   :lines: 158
 
 In this latter case, users will have to provide initial values of
 :math:`u` along the grid directly as an input array.
@@ -310,20 +310,20 @@ achieve this is to create a small new process class that sets
 the values of ``spacing`` and ``length``:
 
 .. literalinclude:: scripts/advection_model.py
-   :lines: 154-161
+   :lines: 161-168
 
 However, one drawback of this "additive" approach is that the number
 of processes in a model might become unnecessarily high:
 
 .. literalinclude:: scripts/advection_model.py
-   :lines: 164
+   :lines: 171
 
 Alternatively, it is possible to write a process class that inherits
 from ``UniformGrid1D``, in which we can re-declare variables *and/or*
 re-define "runtime" methods:
 
 .. literalinclude:: scripts/advection_model.py
-   :lines: 167-175
+   :lines: 174-182
 
 We can here directly update the model and replace the original process
 ``UniformGrid1D`` by the inherited class ``FixedGrid``. Foreign
@@ -331,7 +331,7 @@ variables that refer to ``UniformGrid1D`` will still correctly point
 to the ``grid`` process in the updated model:
 
 .. literalinclude:: scripts/advection_model.py
-   :lines: 178
+   :lines: 185
 
 .. warning::
 

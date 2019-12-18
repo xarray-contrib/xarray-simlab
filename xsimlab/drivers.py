@@ -10,24 +10,26 @@ from .utils import variables_dict
 
 
 class ValidateOption(Enum):
-    INPUTS = 'inputs'
-    ALL = 'all'
+    INPUTS = "inputs"
+    ALL = "all"
 
 
 class CheckDimsOption(Enum):
-    STRICT = 'strict'
-    TRANSPOSE = 'transpose'
+    STRICT = "strict"
+    TRANSPOSE = "transpose"
 
 
 class RuntimeContext(Mapping):
     """A mapping providing runtime information at the current time step."""
 
-    _context_keys = ('sim_start',
-                     'sim_end',
-                     'step',
-                     'step_start',
-                     'step_end',
-                     'step_delta')
+    _context_keys = (
+        "sim_start",
+        "sim_end",
+        "step",
+        "step_start",
+        "step_end",
+        "step_delta",
+    )
 
     def __init__(self, **kwargs):
         self._context = {k: 0 for k in self._context_keys}
@@ -43,8 +45,11 @@ class RuntimeContext(Mapping):
 
     def __setitem__(self, key, value):
         if key not in self._context_keys:
-            raise KeyError("Invalid key {!r}, should be one of {!r}"
-                           .format(key, self._context_keys))
+            raise KeyError(
+                "Invalid key {!r}, should be one of {!r}".format(
+                    key, self._context_keys
+                )
+            )
 
         self._context[key] = value
 
@@ -89,11 +94,12 @@ class BaseSimulationDriver:
             p_name, var_name = key
             var = variables_dict(self.model[p_name].__class__)[var_name]
 
-            if check_static and var.metadata.get('static', False):
-                raise RuntimeError("Cannot set value in store for "
-                                   "static variable {!r} defined "
-                                   "in process {!r}"
-                                   .format(var_name, p_name))
+            if check_static and var.metadata.get("static", False):
+                raise RuntimeError(
+                    "Cannot set value in store for "
+                    "static variable {!r} defined "
+                    "in process {!r}".format(var_name, p_name)
+                )
 
             self.store[key] = copy.copy(value)
 
@@ -159,9 +165,9 @@ def _get_dims_from_variable(array, var, clock):
     """
     ndim = array.ndim
     if clock is not None:
-        ndim -= 1      # ignore clock dimension
+        ndim -= 1  # ignore clock dimension
 
-    for dims in var.metadata['dims']:
+    for dims in var.metadata["dims"]:
         if len(dims) == ndim:
             return dims
 
@@ -181,14 +187,19 @@ class XarraySimulationDriver(BaseSimulationDriver):
 
     """
 
-    def __init__(self, dataset, model, store, output_store,
-                 check_dims=CheckDimsOption.STRICT,
-                 validate=ValidateOption.INPUTS):
+    def __init__(
+        self,
+        dataset,
+        model,
+        store,
+        output_store,
+        check_dims=CheckDimsOption.STRICT,
+        validate=ValidateOption.INPUTS,
+    ):
         self.dataset = dataset
         self.model = model
 
-        super(XarraySimulationDriver, self).__init__(
-            model, store, output_store)
+        super(XarraySimulationDriver, self).__init__(model, store, output_store)
 
         self.master_clock_dim = dataset.xsimlab.master_clock_dim
         if self.master_clock_dim is None:
@@ -216,14 +227,13 @@ class XarraySimulationDriver(BaseSimulationDriver):
         missing_xr_vars = []
 
         for p_name, var_name in self.model.input_vars:
-            xr_var_name = p_name + '__' + var_name
+            xr_var_name = p_name + "__" + var_name
 
             if xr_var_name not in self.dataset:
                 missing_xr_vars.append(xr_var_name)
 
         if missing_xr_vars:
-            raise KeyError("Missing variables %s in Dataset"
-                           % missing_xr_vars)
+            raise KeyError("Missing variables %s in Dataset" % missing_xr_vars)
 
     def _get_output_save_steps(self):
         """Returns a dictionary where keys are names of clock coordinates and
@@ -238,19 +248,21 @@ class XarraySimulationDriver(BaseSimulationDriver):
 
             elif clock == self.master_clock_dim:
                 save_steps[clock] = np.ones_like(
-                    self.dataset[self.master_clock_dim].values, dtype=bool)
+                    self.dataset[self.master_clock_dim].values, dtype=bool
+                )
 
             else:
                 save_steps[clock] = np.in1d(
                     self.dataset[self.master_clock_dim].values,
-                    self.dataset[clock].values)
+                    self.dataset[clock].values,
+                )
 
         return save_steps
 
     def _maybe_transpose(self, xr_var, p_name, var_name):
         var = variables_dict(self.model[p_name].__class__)[var_name]
 
-        dims = var.metadata['dims']
+        dims = var.metadata["dims"]
         dims_set = {frozenset(d): d for d in dims}
         xr_dims_set = frozenset(xr_var.dims)
 
@@ -262,10 +274,12 @@ class XarraySimulationDriver(BaseSimulationDriver):
             xr_var = xr_var.transpose(*dims_set[xr_dims_set])
 
         if (strict or transpose) and xr_var.dims not in dims:
-            raise ValueError("Invalid dimension(s) for variable '{}__{}': "
-                             "found {!r}, must be one of {}"
-                             .format(p_name, var_name, xr_var.dims,
-                                     ",".join([str(d) for d in dims])))
+            raise ValueError(
+                "Invalid dimension(s) for variable '{}__{}': "
+                "found {!r}, must be one of {}".format(
+                    p_name, var_name, xr_var.dims, ",".join([str(d) for d in dims]),
+                )
+            )
 
         return xr_var
 
@@ -273,7 +287,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
         input_vars = {}
 
         for p_name, var_name in self.model.input_vars:
-            xr_var_name = p_name + '__' + var_name
+            xr_var_name = p_name + "__" + var_name
             xr_var = dataset.get(xr_var_name)
 
             if xr_var is None:
@@ -295,8 +309,10 @@ class XarraySimulationDriver(BaseSimulationDriver):
         # TODO: optimize this for performance
         for clock, var_keys in self.output_vars.items():
             save_output = (
-                clock is None and istep == -1 or
-                clock is not None and self.output_save_steps[clock][istep]
+                clock is None
+                and istep == -1
+                or clock is not None
+                and self.output_save_steps[clock][istep]
             )
 
             if save_output:
@@ -326,9 +342,9 @@ class XarraySimulationDriver(BaseSimulationDriver):
             if original_dims is not None:
                 original_dims = (clock,) + original_dims
 
-        attrs = var.metadata['attrs'].copy()
-        if var.metadata['description']:
-            attrs['description'] = var.metadata['description']
+        attrs = var.metadata["attrs"].copy()
+        if var.metadata["description"]:
+            attrs["description"] = var.metadata["description"]
 
         xr_var = xr.Variable(dims, data, attrs=attrs)
 
@@ -349,7 +365,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
 
         for clock, vars in self.output_vars.items():
             for key in vars:
-                var_name = '__'.join(key)
+                var_name = "__".join(key)
                 xr_vars[var_name] = self._to_xr_variable(key, clock)
 
         out_ds = self.dataset.copy()
@@ -370,23 +386,23 @@ class XarraySimulationDriver(BaseSimulationDriver):
         mclock_coord = self.dataset[mclock_dim]
 
         init_data_vars = {
-            '_sim_start': mclock_coord[0],
-            '_sim_end': mclock_coord[-1]
+            "_sim_start": mclock_coord[0],
+            "_sim_end": mclock_coord[-1],
         }
 
-        ds_init = (self.dataset.assign(init_data_vars)
-                               .drop_dims(mclock_dim))
+        ds_init = self.dataset.assign(init_data_vars).drop_dims(mclock_dim)
 
         step_data_vars = {
-            '_clock_start': mclock_coord,
-            '_clock_end': mclock_coord.shift({mclock_dim: 1}),
-            '_clock_diff': mclock_coord.diff(mclock_dim, label='lower')
+            "_clock_start": mclock_coord,
+            "_clock_end": mclock_coord.shift({mclock_dim: 1}),
+            "_clock_diff": mclock_coord.diff(mclock_dim, label="lower"),
         }
 
-        ds_all_steps = (self.dataset
-                        .drop(list(ds_init.data_vars.keys()), errors='ignore')
-                        .isel({mclock_dim: slice(0, -1)})
-                        .assign(step_data_vars))
+        ds_all_steps = (
+            self.dataset.drop(list(ds_init.data_vars.keys()), errors="ignore")
+            .isel({mclock_dim: slice(0, -1)})
+            .assign(step_data_vars)
+        )
 
         ds_gby_steps = ds_all_steps.groupby(mclock_dim)
 
@@ -413,40 +429,35 @@ class XarraySimulationDriver(BaseSimulationDriver):
         validate_all = self._validate_option is ValidateOption.ALL
 
         runtime_context = RuntimeContext(
-            sim_start=ds_init['_sim_start'].values,
-            sim_end=ds_init['_sim_end'].values
+            sim_start=ds_init["_sim_start"].values, sim_end=ds_init["_sim_end"].values,
         )
 
         in_vars = self._get_input_vars(ds_init)
         self.initialize_store(in_vars)
         self._maybe_validate_inputs(in_vars)
 
-        self.model.execute('initialize',
-                           runtime_context,
-                           validate=validate_all)
+        self.model.execute("initialize", runtime_context, validate=validate_all)
 
         for step, (_, ds_step) in enumerate(ds_gby_steps):
 
-            runtime_context.update(step=step,
-                                   step_start=ds_step['_clock_start'].values,
-                                   step_end=ds_step['_clock_end'].values,
-                                   step_delta=ds_step['_clock_diff'].values)
+            runtime_context.update(
+                step=step,
+                step_start=ds_step["_clock_start"].values,
+                step_end=ds_step["_clock_end"].values,
+                step_delta=ds_step["_clock_diff"].values,
+            )
 
             in_vars = self._get_input_vars(ds_step)
             self.update_store(in_vars)
             self._maybe_validate_inputs(in_vars)
 
-            self.model.execute('run_step',
-                               runtime_context,
-                               validate=validate_all)
+            self.model.execute("run_step", runtime_context, validate=validate_all)
 
             self._maybe_save_output_vars(step)
 
-            self.model.execute('finalize_step',
-                               runtime_context,
-                               validate=validate_all)
+            self.model.execute("finalize_step", runtime_context, validate=validate_all)
 
         self._maybe_save_output_vars(-1)
-        self.model.execute('finalize', runtime_context)
+        self.model.execute("finalize", runtime_context)
 
         return self._get_output_dataset()

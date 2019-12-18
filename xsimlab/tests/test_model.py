@@ -6,33 +6,38 @@ from xsimlab.tests.fixture_model import AddOnDemand, InitProfile, Profile
 
 
 class TestModelBuilder:
-
     def test_bind_processes(self, model):
-        assert model._processes['profile'].__xsimlab_model__ is model
-        assert model._processes['profile'].__xsimlab_name__ == 'profile'
+        assert model._processes["profile"].__xsimlab_model__ is model
+        assert model._processes["profile"].__xsimlab_name__ == "profile"
 
-    @pytest.mark.parametrize('p_name,expected_store_keys,expected_od_keys', [
-        ('init_profile',
-         {'n_points': ('init_profile', 'n_points'), 'u': ('profile', 'u')},
-         {}
-         ),
-        ('profile',
-         {'u': ('profile', 'u'),
-          'u_diffs': [('roll', 'u_diff')]},
-         {'u_diffs': [('add', 'u_diff')], 'u_opp': ('profile', 'u_opp')}
-         ),
-        ('roll',
-         {'shift': ('roll', 'shift'), 'u': ('profile', 'u'),
-          'u_diff': ('roll', 'u_diff')},
-         {}
-         ),
-        ('add',
-         {'offset': ('add', 'offset')},
-         {'u_diff': ('add', 'u_diff')}
-         )
-    ])
-    def test_set_process_keys(self, model, p_name,
-                              expected_store_keys, expected_od_keys):
+    @pytest.mark.parametrize(
+        "p_name,expected_store_keys,expected_od_keys",
+        [
+            (
+                "init_profile",
+                {"n_points": ("init_profile", "n_points"), "u": ("profile", "u")},
+                {},
+            ),
+            (
+                "profile",
+                {"u": ("profile", "u"), "u_diffs": [("roll", "u_diff")]},
+                {"u_diffs": [("add", "u_diff")], "u_opp": ("profile", "u_opp")},
+            ),
+            (
+                "roll",
+                {
+                    "shift": ("roll", "shift"),
+                    "u": ("profile", "u"),
+                    "u_diff": ("roll", "u_diff"),
+                },
+                {},
+            ),
+            ("add", {"offset": ("add", "offset")}, {"u_diff": ("add", "u_diff")},),
+        ],
+    )
+    def test_set_process_keys(
+        self, model, p_name, expected_store_keys, expected_od_keys
+    ):
         p_obj = model._processes[p_name]
         actual_store_keys = p_obj.__xsimlab_store_keys__
         actual_od_keys = p_obj.__xsimlab_od_keys__
@@ -51,44 +56,47 @@ class TestModelBuilder:
     def test_multiple_groups(self):
         @xs.process
         class A:
-            v = xs.variable(groups=['g1', 'g2'])
+            v = xs.variable(groups=["g1", "g2"])
 
         @xs.process
         class B:
-            g1 = xs.group('g1')
-            g2 = xs.group('g2')
+            g1 = xs.group("g1")
+            g2 = xs.group("g2")
 
-        m = xs.Model({'a': A, 'b': B})
+        m = xs.Model({"a": A, "b": B})
 
-        assert m.b.__xsimlab_store_keys__['g1'] == [('a', 'v')]
-        assert m.b.__xsimlab_store_keys__['g2'] == [('a', 'v')]
+        assert m.b.__xsimlab_store_keys__["g1"] == [("a", "v")]
+        assert m.b.__xsimlab_store_keys__["g2"] == [("a", "v")]
 
     def test_get_all_variables(self, model):
         assert all([len(t) == 2 for t in model.all_vars])
         assert all([p_name in model for p_name, _ in model.all_vars])
-        assert ('profile', 'u') in model.all_vars
+        assert ("profile", "u") in model.all_vars
 
     def test_ensure_no_intent_conflict(self, model):
         @xs.process
         class Foo:
-            u = xs.foreign(Profile, 'u', intent='out')
+            u = xs.foreign(Profile, "u", intent="out")
 
-        with pytest.raises(ValueError) as excinfo:
-            invalid_model = model.update_processes({'foo': Foo})
-        assert "Conflict(s)" in str(excinfo.value)
+        with pytest.raises(ValueError, match=r"Conflict.*"):
+            model.update_processes({"foo": Foo})
 
     def test_get_input_variables(self, model):
-        expected = {('init_profile', 'n_points'),
-                    ('roll', 'shift'),
-                    ('add', 'offset')}
+        expected = {
+            ("init_profile", "n_points"),
+            ("roll", "shift"),
+            ("add", "offset"),
+        }
 
         assert set(model.input_vars) == expected
 
     def test_get_process_dependencies(self, model):
-        expected = {'init_profile': [],
-                    'profile': ['init_profile', 'add', 'roll'],
-                    'roll': ['init_profile'],
-                    'add': []}
+        expected = {
+            "init_profile": [],
+            "profile": ["init_profile", "add", "roll"],
+            "roll": ["init_profile"],
+            "add": [],
+        }
 
         actual = model.dependent_processes
 
@@ -96,12 +104,15 @@ class TestModelBuilder:
             # order of dependencies is not ensured
             assert set(actual[p_name]) == set(expected[p_name])
 
-    @pytest.mark.parametrize('p_name,dep_p_name', [
-        ('profile', 'init_profile'),
-        ('profile', 'add'),
-        ('profile', 'roll'),
-        ('roll', 'init_profile')
-    ])
+    @pytest.mark.parametrize(
+        "p_name,dep_p_name",
+        [
+            ("profile", "init_profile"),
+            ("profile", "add"),
+            ("profile", "roll"),
+            ("roll", "init_profile"),
+        ],
+    )
     def test_sort_processes(self, model, p_name, dep_p_name):
         p_ordered = list(model)
         assert p_ordered.index(p_name) > p_ordered.index(dep_p_name)
@@ -110,58 +121,55 @@ class TestModelBuilder:
         @xs.process
         class Foo:
             in_var = xs.variable()
-            out_var = xs.variable(intent='out')
+            out_var = xs.variable(intent="out")
 
         @xs.process
         class Bar:
-            in_foreign = xs.foreign(Foo, 'out_var')
-            out_foreign = xs.foreign(Foo, 'in_var', intent='out')
+            in_foreign = xs.foreign(Foo, "out_var")
+            out_foreign = xs.foreign(Foo, "in_var", intent="out")
 
-        with pytest.raises(RuntimeError) as excinfo:
-            xs.Model({'foo': Foo, 'bar': Bar})
-        assert "Cycle detected" in str(excinfo.value)
+        with pytest.raises(RuntimeError, match=r"Cycle detected.*"):
+            xs.Model({"foo": Foo, "bar": Bar})
 
     def test_process_inheritance(self, model):
         @xs.process
         class InheritedProfile(Profile):
             pass
 
-        new_model = model.update_processes(
-            {'profile': InheritedProfile})
+        new_model = model.update_processes({"profile": InheritedProfile})
 
-        assert type(new_model['profile']) is get_process_cls(InheritedProfile)
-        assert isinstance(new_model['profile'], Profile)
+        assert type(new_model["profile"]) is get_process_cls(InheritedProfile)
+        assert isinstance(new_model["profile"], Profile)
 
-        with pytest.raises(ValueError) as excinfo:
-            invalid_model = model.update_processes(
-                {'profile2': InheritedProfile})
-        assert "multiple processes" in str(excinfo.value)
+        with pytest.raises(ValueError, match=r".*multiple processes.*"):
+            model.update_processes({"profile2": InheritedProfile})
 
 
 class TestModel:
-
     def test_constructor(self):
         with pytest.raises(KeyError) as excinfo:
-            xs.Model({'init_profile': InitProfile})
+            xs.Model({"init_profile": InitProfile})
         assert "Process class 'Profile' missing" in str(excinfo.value)
 
         # test empty model
         assert len(xs.Model({})) == 0
 
     def test_process_dict_vs_attr_access(self, model):
-        assert model['profile'] is model.profile
+        assert model["profile"] is model.profile
 
     def test_all_vars_dict(self, model):
         assert all([p_name in model for p_name in model.all_vars_dict])
-        assert all([isinstance(p_vars, list)
-                    for p_vars in model.all_vars_dict.values()])
-        assert 'u' in model.all_vars_dict['profile']
+        assert all(
+            [isinstance(p_vars, list) for p_vars in model.all_vars_dict.values()]
+        )
+        assert "u" in model.all_vars_dict["profile"]
 
     def test_input_vars_dict(self, model):
         assert all([p_name in model for p_name in model.input_vars_dict])
-        assert all([isinstance(p_vars, list)
-                    for p_vars in model.input_vars_dict.values()])
-        assert 'n_points' in model.input_vars_dict['init_profile']
+        assert all(
+            [isinstance(p_vars, list) for p_vars in model.input_vars_dict.values()]
+        )
+        assert "n_points" in model.input_vars_dict["init_profile"]
 
     def test_clone(self, model):
         cloned = model.clone()
@@ -170,18 +178,19 @@ class TestModel:
             assert cloned[p_name] is not model[p_name]
 
     def test_update_processes(self, no_init_model, model):
-        m = no_init_model.update_processes({'add': AddOnDemand,
-                                            'init_profile': InitProfile})
+        m = no_init_model.update_processes(
+            {"add": AddOnDemand, "init_profile": InitProfile}
+        )
         assert m == model
 
-    @pytest.mark.parametrize('p_names', ['add', ['add']])
+    @pytest.mark.parametrize("p_names", ["add", ["add"]])
     def test_drop_processes(self, no_init_model, simple_model, p_names):
         m = no_init_model.drop_processes(p_names)
         assert m == simple_model
 
     def test_visualize(self, model):
-        pytest.importorskip('graphviz')
-        ipydisp = pytest.importorskip('IPython.display')
+        pytest.importorskip("graphviz")
+        ipydisp = pytest.importorskip("IPython.display")
 
         result = model.visualize()
         assert isinstance(result, ipydisp.Image)
@@ -192,8 +201,7 @@ class TestModel:
         result = model.visualize(show_variables=True)
         assert isinstance(result, ipydisp.Image)
 
-        result = model.visualize(
-            show_only_variable=('profile', 'u'))
+        result = model.visualize(show_only_variable=("profile", "u"))
         assert isinstance(result, ipydisp.Image)
 
     def test_repr(self, simple_model, simple_model_repr):

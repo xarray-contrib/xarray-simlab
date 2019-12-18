@@ -16,9 +16,9 @@ def variables_dict(process_cls):
 
     Exclude attr.Attribute objects that are not xsimlab-specific.
     """
-    return OrderedDict((k, v)
-                       for k, v in fields_dict(process_cls).items()
-                       if 'var_type' in v.metadata)
+    return OrderedDict(
+        (k, v) for k, v in fields_dict(process_cls).items() if "var_type" in v.metadata
+    )
 
 
 def has_method(obj_or_cls, meth):
@@ -58,6 +58,7 @@ class AttrMapping:
       https://www.python.org/
 
     """
+
     # TODO: use abc.ABCMeta now that metaclasses are not used anymore?
     _initialized = False
 
@@ -74,7 +75,7 @@ class AttrMapping:
         return self._mapping[key]
 
     def get(self, key, default=None):
-        'D.get(k[,d]) -> D[k] if k in D, else d.  d defaults to None.'
+        "D.get(k[,d]) -> D[k] if k in D, else d.  d defaults to None."
         try:
             return self[key]
         except KeyError:
@@ -111,13 +112,14 @@ class AttrMapping:
         return hash(frozenset(self._mapping.items()))
 
     def __getattr__(self, name):
-        if name != '__setstate__':
+        if name != "__setstate__":
             # this avoids an infinite loop when pickle looks for the
             # __setstate__ attribute before the object is initialized
             with suppress(KeyError):
                 return self._mapping[name]
-        raise AttributeError("%r object has no attribute %r" %
-                             (type(self).__name__, name))
+        raise AttributeError(
+            "%r object has no attribute %r" % (type(self).__name__, name)
+        )
 
     def __setattr__(self, name, value):
         if self._initialized and name in self._mapping:
@@ -146,6 +148,7 @@ class ContextMixin:
       https://github.com/pymc-devs/pymc3
 
     """
+
     contexts = threading.local()
 
     def __enter__(self):
@@ -159,7 +162,7 @@ class ContextMixin:
     def get_contexts(cls):
         # no race-condition here, cls.contexts is a thread-local object
         # be sure not to override contexts in a subclass however!
-        if not hasattr(cls.contexts, 'stack'):
+        if not hasattr(cls.contexts, "stack"):
             cls.contexts.stack = []
         return cls.contexts.stack
 
