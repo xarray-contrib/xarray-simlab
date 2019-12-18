@@ -1,7 +1,7 @@
 """Formatting utils and functions."""
 import textwrap
 
-from .utils import variables_dict, has_method
+from .utils import variables_dict
 from .variable import VarIntent, VarType
 
 

@@ -402,7 +402,7 @@ def test_create_setup(model, in_dataset):
             ("roll", "shift"): 1,
             "add__offset": ("clock", [1, 2, 3, 4, 5]),
         },
-        clocks={"clock": [0, 2, 4, 6, 8], "out": [0, 4, 8],},
+        clocks={"clock": [0, 2, 4, 6, 8], "out": [0, 4, 8]},
         master_clock="clock",
         output_vars={
             "clock": "profile__u",

@@ -572,15 +572,15 @@ def git_get_keywords(versionfile_abs):
         f = open(versionfile_abs, "r")
         for line in f.readlines():
             if line.strip().startswith("git_refnames ="):
-                mo = re.search(r'=\s*"(.*)"', line)
+                mo = re.search(r'=\s*"(.*)"', line)  # noqa
                 if mo:
                     keywords["refnames"] = mo.group(1)
             if line.strip().startswith("git_full ="):
-                mo = re.search(r'=\s*"(.*)"', line)
+                mo = re.search(r'=\s*"(.*)"', line)  # noqa
                 if mo:
                     keywords["full"] = mo.group(1)
             if line.strip().startswith("git_date ="):
-                mo = re.search(r'=\s*"(.*)"', line)
+                mo = re.search(r'=\s*"(.*)"', line)  # noqa
                 if mo:
                     keywords["date"] = mo.group(1)
         f.close()
@@ -621,7 +621,7 @@ def git_versions_from_keywords(keywords, tag_prefix, verbose):
         # between branches and tags. By ignoring refnames without digits, we
         # filter out many common branch names like "release" and
         # "stabilization", as well as "HEAD" and "master".
-        tags = set([r for r in refs if re.search(r'\d', r)])
+        tags = set([r for r in refs if re.search(r'\d', r)])  # noqa
         if verbose:
             print("discarding '%%s', no digits" %% ",".join(refs - tags))
     if verbose:
@@ -697,7 +697,7 @@ def git_pieces_from_vcs(tag_prefix, root, verbose, run_command=run_command):
 
     if "-" in git_describe:
         # TAG-NUM-gHEX
-        mo = re.search(r'^(.+)-(\d+)-g([0-9a-f]+)$', git_describe)
+        mo = re.search(r'^(.+)-(\d+)-g([0-9a-f]+)$', git_describe)  # noqa
         if not mo:
             # unparseable. Maybe git-describe is misbehaving?
             pieces["error"] = ("unable to parse git-describe output: '%%s'"

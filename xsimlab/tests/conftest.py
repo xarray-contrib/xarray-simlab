@@ -1,3 +1,5 @@
+# flake8: noqa
+
 from xsimlab.tests.fixture_process import (
     example_process_obj,
     example_process_repr,

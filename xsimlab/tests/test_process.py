@@ -217,13 +217,11 @@ def test_runtime_decorator(args):
 
 
 def test_runtime_decorator_raise():
-    with pytest.raises(ValueError) as excinfo:
+    with pytest.raises(ValueError, match=r".*args must be either.*"):
 
         @xs.runtime(args=1)
         def meth(self):
             pass
-
-    assert "args must be either" in str(excinfo.value)
 
 
 def test_runtime_function():
@@ -244,14 +242,12 @@ def test_process_executor_raise():
             def run_step(self, dt):
                 pass
 
-    with pytest.raises(TypeError) as excinfo:
+    with pytest.raises(TypeError, match=r"Process runtime methods.*"):
 
         @xs.process
-        class P:
+        class P2:
             def run_step(self, a, b):
                 pass
-
-        assert "Process runtime methods" in str(excinfo.value)
 
 
 def test_process_decorator():

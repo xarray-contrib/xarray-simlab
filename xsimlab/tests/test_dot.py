@@ -94,7 +94,7 @@ def test_to_graphviz_attributes(model):
     assert to_graphviz(model, rankdir="BT").graph_attr["rankdir"] == "BT"
 
 
-@pytest.mark.skipif(ipython_installed == False, reason="IPython is not installed")
+@pytest.mark.skipif(not ipython_installed, reason="IPython is not installed")
 @pytest.mark.parametrize(
     "format,typ",
     [
@@ -133,13 +133,13 @@ def test_dot_graph(model, tmpdir, format, typ):
 
 def test_dot_graph_no_ipython(model):
     try:
-        import IPython.display
+        import IPython.display  # noqa
     except ImportError:
         result = dot_graph(model)
         assert result is None
 
 
-@pytest.mark.skipif(ipython_installed == False, reason="IPython is not installed")
+@pytest.mark.skipif(not ipython_installed, reason="IPython is not installed")
 @pytest.mark.parametrize(
     "format,typ",
     [
@@ -163,7 +163,7 @@ def test_dot_graph_no_filename(tmpdir, model, format, typ):
     assert isinstance(result, typ)
 
 
-@pytest.mark.skipif(ipython_installed == False, reason="IPython is not installed")
+@pytest.mark.skipif(not ipython_installed, reason="IPython is not installed")
 def test_filenames_and_formats(model):
 
     # Test with a variety of user provided args

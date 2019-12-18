@@ -2,6 +2,8 @@
 xarray-simlab.
 
 """
+# flake8: noqa
+
 from .xr_accessor import SimlabAccessor, create_setup
 from .variable import variable, on_demand, foreign, group
 from .process import (
