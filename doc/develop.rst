@@ -53,10 +53,10 @@ To install the dependencies, we recommend using the conda_ package manager with
 the conda-forge_ channel. For development purpose, you might consider installing
 the packages in a new conda environment::
 
-  $ conda create -n xarray-simlab_dev python=3.6 attrs numpy xarray -c conda-forge
+  $ conda create -n xarray-simlab_dev python attrs numpy xarray -c conda-forge
   $ source activate xarray-simlab_dev
 
-Then install xarray-simlab locally using ``pip``::
+Then install xarray-simlab locally (in development mode) using ``pip``::
 
   $ cd xarray-simlab
   $ pip install -e .
@@ -114,29 +114,27 @@ request).
 Python versions
 ~~~~~~~~~~~~~~~
 
-xarray-simlab supports Python versions 3.4 and higher. It is not compatible
-with Python versions 2.x. We don't plan to make it compatible with Python 2.7.x
-unless there are very good reasons to do so.
+xarray-simlab supports Python versions 3.6 and higher. It is not compatible with
+Python versions 2.x. We don't plan to make it compatible with Python 2.7.x.
 
-Test
-~~~~
+Tests
+~~~~~
 
 xarray-simlab's uses unit tests extensively to make sure that every
 part of the code behaves as we expect. Test coverage is required for
 all code contributions.
 
-Unit test are written using `pytest`_ style (i.e., mostly using the
-``assert`` statement directly) in various files located in the
-``xsimlab/tests`` folder. The file ``conftest.py`` defines some
-``Process`` subclasses, ``Model`` objects and ``xarray.Dataset``
-objects that can be used as fixtures for testing.
+Unit tests are written using `pytest`_ style (i.e., mostly using the ``assert``
+statement directly) in various files located in the ``xsimlab/tests`` folder.
+The file ``conftest.py`` defines some ``process`` decorated classes, ``Model``
+objects and ``xarray.Dataset`` objects that can be used as fixtures for testing.
 
-You can run tests locally from the main xarray-simlab directory::
+You can run the tests locally from the main xarray-simlab directory::
 
   $ pytest xsimlab --verbose
 
-All tests are also executed automatically on the Travis.ci continuous
-integration platform on every push to every pull request on GitHub.
+All the tests are also executed automatically on continuous integration
+platforms on every push to every pull request on GitHub.
 
 Docstrings
 ~~~~~~~~~~
@@ -146,26 +144,31 @@ should follow the numpydoc_ standard when possible.
 
 .. _numpydoc: https://github.com/numpy/numpy/blob/master/doc/HOWTO_DOCUMENT.rst.txt
 
-Coding style
-~~~~~~~~~~~~
+Code Formatting & linting
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The xarray-simlab code mostly follows the style conventions defined in PEP8_.
+xarray-simlab uses black_ and flake8_ to ensure a consistent code format
+throughout the project. Both of these tools can be installed with either
+``conda`` or ``pip``. Once installed in your development environment, your can
+run them from the root of the xarray-simlab repository::
 
-.. _PEP8: https://www.python.org/dev/peps/pep-0008/
+   $ black .
+   $ flake8
 
-Source code checker
-~~~~~~~~~~~~~~~~~~~
+to auto-format your code. For convenience, many editors have plugins that will
+apply ``black`` as you edit files.
 
-To check about any potential error or bad style in your code, you might want
-using a source code checker like flake8_. You can install it in your
-development environment::
+``flake8`` reports warnings and/or errors about code formatting. It may also
+detect other programming errors.
 
-  $ conda install flake8 -c conda-forge
+Like unit tests, These tools are also run on continuous platforms for every code
+change submission.
 
+.. _black: https://black.readthedocs.io/en/stable/
 .. _flake8: http://flake8.pycqa.org
 
-What's new entry
-~~~~~~~~~~~~~~~~
+Release notes
+~~~~~~~~~~~~~
 
 Every significative code contribution should be listed in the
 :doc:`whats_new` section of this documentation under the corresponding version.

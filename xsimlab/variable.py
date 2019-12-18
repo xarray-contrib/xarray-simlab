@@ -7,16 +7,16 @@ from attr._make import _CountingAttr
 
 
 class VarType(Enum):
-    VARIABLE = 'variable'
-    ON_DEMAND = 'on_demand'
-    FOREIGN = 'foreign'
-    GROUP = 'group'
+    VARIABLE = "variable"
+    ON_DEMAND = "on_demand"
+    FOREIGN = "foreign"
+    GROUP = "group"
 
 
 class VarIntent(Enum):
-    IN = 'in'
-    OUT = 'out'
-    INOUT = 'inout'
+    IN = "in"
+    OUT = "out"
+    INOUT = "inout"
 
 
 def compute(self, method):
@@ -24,7 +24,7 @@ def compute(self, method):
     value for that variable.
 
     """
-    self.metadata['compute'] = method
+    self.metadata["compute"] = method
 
     return method
 
@@ -48,8 +48,7 @@ def _as_dim_tuple(dims):
     elif isinstance(dims, str):
         dims = [(dims,)]
     elif isinstance(dims, list):
-        dims = [tuple([d]) if isinstance(d, str) else tuple(d)
-                for d in dims]
+        dims = [tuple([d]) if isinstance(d, str) else tuple(d) for d in dims]
     else:
         dims = [dims]
 
@@ -58,17 +57,17 @@ def _as_dim_tuple(dims):
         return len(dims)
 
     dims_sorted = sorted(dims, key=fget_ndim)
-    ndim_groups = [list(g)
-                   for _, g in itertools.groupby(dims_sorted, fget_ndim)]
+    ndim_groups = [list(g) for _, g in itertools.groupby(dims_sorted, fget_ndim)]
 
     if len(ndim_groups) != len(dims):
         invalid_dims = [g for g in ndim_groups if len(g) > 1]
-        invalid_msg = ' and '.join(
-            ', '.join(str(d) for d in group) for group in invalid_dims
+        invalid_msg = " and ".join(
+            ", ".join(str(d) for d in group) for group in invalid_dims
         )
-        raise ValueError("the following combinations of dimension labels "
-                         "are ambiguous for a variable: {}"
-                         .format(invalid_msg))
+        raise ValueError(
+            "the following combinations of dimension labels "
+            "are ambiguous for a variable: {}".format(invalid_msg)
+        )
 
     return tuple(dims)
 
@@ -83,10 +82,9 @@ def _as_group_tuple(groups, group):
 
     if group is not None:
         warnings.warn(
-            "Setting variable group using `group` is depreciated; "
-            "use `groups`.",
+            "Setting variable group using `group` is depreciated; " "use `groups`.",
             FutureWarning,
-            stacklevel=2
+            stacklevel=2,
         )
         if group not in groups:
             groups.append(group)
@@ -94,9 +92,17 @@ def _as_group_tuple(groups, group):
     return tuple(groups)
 
 
-def variable(dims=(), intent='in', group=None, groups=None,
-             default=attr.NOTHING, validator=None, static=False,
-             description='', attrs=None):
+def variable(
+    dims=(),
+    intent="in",
+    group=None,
+    groups=None,
+    default=attr.NOTHING,
+    validator=None,
+    static=False,
+    description="",
+    attrs=None,
+):
     """Create a variable.
 
     Variables store useful metadata such as dimension labels, a short
@@ -165,13 +171,15 @@ def variable(dims=(), intent='in', group=None, groups=None,
     :mod:`attr.validators`
 
     """
-    metadata = {'var_type': VarType.VARIABLE,
-                'dims': _as_dim_tuple(dims),
-                'intent': VarIntent(intent),
-                'groups': _as_group_tuple(groups, group),
-                'static': static,
-                'attrs': attrs or {},
-                'description': description}
+    metadata = {
+        "var_type": VarType.VARIABLE,
+        "dims": _as_dim_tuple(dims),
+        "intent": VarIntent(intent),
+        "groups": _as_group_tuple(groups, group),
+        "static": static,
+        "attrs": attrs or {},
+        "description": description,
+    }
 
     if VarIntent(intent) == VarIntent.OUT:
         _init = False
@@ -180,11 +188,17 @@ def variable(dims=(), intent='in', group=None, groups=None,
         _init = True
         _repr = True
 
-    return attr.attrib(metadata=metadata, default=default, validator=validator,
-                       init=_init, repr=_repr, kw_only=True)
+    return attr.attrib(
+        metadata=metadata,
+        default=default,
+        validator=validator,
+        init=_init,
+        repr=_repr,
+        kw_only=True,
+    )
 
 
-def on_demand(dims=(), group=None, groups=None, description='', attrs=None):
+def on_demand(dims=(), group=None, groups=None, description="", attrs=None):
     """Create a variable that is computed on demand.
 
     Instead of being computed systematically at every step of a simulation
@@ -228,17 +242,19 @@ def on_demand(dims=(), group=None, groups=None, description='', attrs=None):
     :func:`variable`
 
     """
-    metadata = {'var_type': VarType.ON_DEMAND,
-                'dims': _as_dim_tuple(dims),
-                'intent': VarIntent.OUT,
-                'groups': _as_group_tuple(groups, group),
-                'attrs': attrs or {},
-                'description': description}
+    metadata = {
+        "var_type": VarType.ON_DEMAND,
+        "dims": _as_dim_tuple(dims),
+        "intent": VarIntent.OUT,
+        "groups": _as_group_tuple(groups, group),
+        "attrs": attrs or {},
+        "description": description,
+    }
 
     return attr.attrib(metadata=metadata, init=False, repr=False)
 
 
-def foreign(other_process_cls, var_name, intent='in'):
+def foreign(other_process_cls, var_name, intent="in"):
     """Create a reference to a variable that is defined in another
     process class.
 
@@ -266,19 +282,20 @@ def foreign(other_process_cls, var_name, intent='in'):
     model.
 
     """
-    if intent == 'inout':
-        raise ValueError("intent='inout' is not supported for "
-                         "foreign variables")
+    if intent == "inout":
+        raise ValueError("intent='inout' is not supported for " "foreign variables")
 
-    description = ("Reference to variable {!r} "
-                   "defined in class {!r}"
-                   .format(var_name, other_process_cls.__name__))
+    description = "Reference to variable {!r} " "defined in class {!r}".format(
+        var_name, other_process_cls.__name__
+    )
 
-    metadata = {'var_type': VarType.FOREIGN,
-                'other_process_cls': other_process_cls,
-                'var_name': var_name,
-                'intent': VarIntent(intent),
-                'description': description}
+    metadata = {
+        "var_type": VarType.FOREIGN,
+        "other_process_cls": other_process_cls,
+        "var_name": var_name,
+        "intent": VarIntent(intent),
+        "description": description,
+    }
 
     if VarIntent(intent) == VarIntent.OUT:
         _init = False
@@ -310,13 +327,15 @@ def group(name):
     :func:`variable`
 
     """
-    description = ("Iterable of all variables that "
-                   "belong to group {!r}".format(name))
+    description = "Iterable of all variables that " "belong to group {!r}".format(name)
 
-    metadata = {'var_type': VarType.GROUP,
-                'group': name,
-                'intent': VarIntent.IN,
-                'description': description}
+    metadata = {
+        "var_type": VarType.GROUP,
+        "group": name,
+        "intent": VarIntent.IN,
+        "description": description,
+    }
 
-    return attr.attrib(metadata=metadata, init=True, repr=True,
-                       default=tuple(), kw_only=True)
+    return attr.attrib(
+        metadata=metadata, init=True, repr=True, default=tuple(), kw_only=True
+    )

@@ -12,7 +12,7 @@ from .stores import InMemoryOutputStore
 from .utils import variables_dict
 
 
-@register_dataset_accessor('filter')
+@register_dataset_accessor("filter")
 def filter_accessor(dataset):
     """A temporary hack until ``filter`` is available in xarray (GH916)."""
 
@@ -20,8 +20,7 @@ def filter_accessor(dataset):
         variables = {k: v for k, v in dataset._variables.items() if func(v)}
         coord_names = [c for c in dataset._coord_names if c in variables]
 
-        return dataset._replace_vars_and_dims(variables,
-                                              coord_names=coord_names)
+        return dataset._replace_vars_and_dims(variables, coord_names=coord_names)
 
     return filter
 
@@ -57,7 +56,7 @@ def as_variable_key(key):
         key_tuple = key
 
     elif isinstance(key, str):
-        key_split = key.split('__')
+        key_split = key.split("__")
         if len(key_split) == 2:
             p_name, var_name = key_split
             if p_name and var_name:
@@ -112,21 +111,23 @@ def _flatten_outputs(output_vars):
             var_list = [as_variable_key(k) for k in out_vars]
 
         else:
-            raise ValueError("Cannot interpret {!r} as valid output "
-                             "variable key(s)".format(out_vars))
+            raise ValueError(
+                "Cannot interpret {!r} as valid output "
+                "variable key(s)".format(out_vars)
+            )
 
         flatten_vars[clock] = var_list
 
     return flatten_vars
 
 
-@register_dataset_accessor('xsimlab')
+@register_dataset_accessor("xsimlab")
 class SimlabAccessor:
     """Simlab extension to :class:`xarray.Dataset`."""
 
-    _clock_key = '__xsimlab_output_clock__'
-    _master_clock_key = '__xsimlab_master_clock__'
-    _output_vars_key = '__xsimlab_output_vars__'
+    _clock_key = "__xsimlab_output_clock__"
+    _master_clock_key = "__xsimlab_master_clock__"
+    _output_vars_key = "__xsimlab_output_vars__"
 
     def __init__(self, ds):
         self._ds = ds
@@ -137,8 +138,11 @@ class SimlabAccessor:
         """Dictionary of :class:`xarray.DataArray` objects corresponding to
         clock coordinates.
         """
-        return {k: coord for k, coord in self._ds.coords.items()
-                if self._clock_key in coord.attrs}
+        return {
+            k: coord
+            for k, coord in self._ds.coords.items()
+            if self._clock_key in coord.attrs
+        }
 
     @property
     def master_clock_dim(self):
@@ -164,10 +168,11 @@ class SimlabAccessor:
         xr_var = as_variable(data, name=dim)
 
         if xr_var.dims != (dim,):
-            raise ValueError("Invalid dimension(s) given for clock coordinate "
-                             "{dim!r}: found {invalid_dims!r}, "
-                             "expected {dim!r}"
-                             .format(dim=dim, invalid_dims=xr_var.dims))
+            raise ValueError(
+                "Invalid dimension(s) given for clock coordinate "
+                "{dim!r}: found {invalid_dims!r}, "
+                "expected {dim!r}".format(dim=dim, invalid_dims=xr_var.dims)
+            )
 
         xr_var.attrs[self._clock_key] = np.uint8(True)
 
@@ -189,20 +194,21 @@ class SimlabAccessor:
                 old_mclock_coord.attrs.pop(self._master_clock_key)
 
             if dim not in self._ds.coords:
-                raise KeyError("Master clock dimension name {} as no "
-                               "defined coordinate in Dataset"
-                               .format(dim))
+                raise KeyError(
+                    "Master clock dimension name {} as no "
+                    "defined coordinate in Dataset".format(dim)
+                )
 
             self._ds[dim].attrs[self._master_clock_key] = np.uint8(True)
             self._master_clock_dim = dim
 
         if units is not None:
             for coord in self.clock_coords.values():
-                coord.attrs['units'] = units
+                coord.attrs["units"] = units
 
         if calendar is not None:
             for coord in self.clock_coords.values():
-                coord.attrs['calendar'] = calendar
+                coord.attrs["calendar"] = calendar
 
         master_clock_idx = self._ds.indexes.get(self.master_clock_dim)
 
@@ -214,31 +220,34 @@ class SimlabAccessor:
             diff_idx = clock_idx.difference(master_clock_idx)
 
             if diff_idx.size:
-                raise ValueError("Clock coordinate {} is not synchronized "
-                                 "with master clock coordinate {}. "
-                                 "The following coordinate labels are "
-                                 "absent in master clock: {}"
-                                 .format(clock_dim, self.master_clock_dim,
-                                         diff_idx.values))
+                raise ValueError(
+                    "Clock coordinate {} is not synchronized "
+                    "with master clock coordinate {}. "
+                    "The following coordinate labels are "
+                    "absent in master clock: {}".format(
+                        clock_dim, self.master_clock_dim, diff_idx.values
+                    )
+                )
 
     def _set_input_vars(self, model, input_vars):
         invalid_inputs = set(input_vars) - set(model.input_vars)
         if invalid_inputs:
             raise KeyError(
-                "{} is/are not valid key(s) for input variables in model {}"
-                .format(', '.join([str(k) for k in invalid_inputs]), model)
+                "{} is/are not valid key(s) for input variables in model {}".format(
+                    ", ".join([str(k) for k in invalid_inputs]), model
+                )
             )
 
         for (p_name, var_name), data in input_vars.items():
             p_obj = model[p_name]
             var = variables_dict(type(p_obj))[var_name]
 
-            xr_var_name = p_name + '__' + var_name
+            xr_var_name = p_name + "__" + var_name
             xr_var = as_variable(data)
 
-            if var.metadata['description']:
-                xr_var.attrs['description'] = var.metadata['description']
-            xr_var.attrs.update(var.metadata['attrs'])
+            if var.metadata["description"]:
+                xr_var.attrs["description"] = var.metadata["description"]
+            xr_var.attrs.update(var.metadata["attrs"])
 
             self._ds[xr_var_name] = xr_var
 
@@ -246,20 +255,23 @@ class SimlabAccessor:
         invalid_outputs = set(output_vars) - set(model.all_vars)
         if invalid_outputs:
             raise KeyError(
-                "{} is/are not valid key(s) for variables in model {}"
-                .format(', '.join([str(k) for k in invalid_outputs]), model)
+                "{} is/are not valid key(s) for variables in model {}".format(
+                    ", ".join([str(k) for k in invalid_outputs]), model
+                )
             )
 
-        output_vars_str = ','.join([p_name + '__' + var_name
-                                    for (p_name, var_name) in output_vars])
+        output_vars_str = ",".join(
+            [p_name + "__" + var_name for (p_name, var_name) in output_vars]
+        )
 
         if clock is None:
             self._ds.attrs[self._output_vars_key] = output_vars_str
 
         else:
             if clock not in self.clock_coords:
-                raise ValueError("{!r} coordinate is not a valid clock "
-                                 "coordinate.".format(clock))
+                raise ValueError(
+                    "{!r} coordinate is not a valid clock " "coordinate.".format(clock)
+                )
             coord = self.clock_coords[clock]
             coord.attrs[self._output_vars_key] = output_vars_str
 
@@ -267,8 +279,7 @@ class SimlabAccessor:
         out_attr = ds_or_coord.attrs.get(self._output_vars_key)
 
         if out_attr is not None:
-            output_vars[clock] = [as_variable_key(k)
-                                  for k in out_attr.split(',')]
+            output_vars[clock] = [as_variable_key(k) for k in out_attr.split(",")]
 
     @property
     def output_vars(self):
@@ -327,29 +338,36 @@ class SimlabAccessor:
         ds = self._ds.copy()
 
         if isinstance(master_clock, str):
-            master_clock_dict = {'dim': master_clock}
+            master_clock_dict = {"dim": master_clock}
 
         elif master_clock is None:
-            if (clocks is not None and len(clocks) == 1 and
-                    self.master_clock_dim is None):
-                master_clock_dict = {'dim': list(clocks.keys())[0]}
+            if (
+                clocks is not None
+                and len(clocks) == 1
+                and self.master_clock_dim is None
+            ):
+                master_clock_dict = {"dim": list(clocks.keys())[0]}
             else:
                 master_clock_dict = {}
 
         else:
             master_clock_dict = master_clock
 
-        master_clock_dim = master_clock_dict.get('dim', self.master_clock_dim)
+        master_clock_dim = master_clock_dict.get("dim", self.master_clock_dim)
 
         if clocks is not None:
             if master_clock_dim is None:
-                raise ValueError("Cannot determine which clock coordinate is "
-                                 "the master clock")
-            elif (master_clock_dim not in clocks and
-                  master_clock_dim not in self.clock_coords):
-                raise KeyError("Master clock dimension name {!r} not found "
-                               "in `clocks` nor in Dataset"
-                               .format(master_clock_dim))
+                raise ValueError(
+                    "Cannot determine which clock coordinate is " "the master clock"
+                )
+            elif (
+                master_clock_dim not in clocks
+                and master_clock_dim not in self.clock_coords
+            ):
+                raise KeyError(
+                    "Master clock dimension name {!r} not found "
+                    "in `clocks` nor in Dataset".format(master_clock_dim)
+                )
 
             for dim, data in clocks.items():
                 ds.xsimlab._set_clock_coord(dim, data)
@@ -475,10 +493,10 @@ class SimlabAccessor:
                 continue
 
             try:
-                p_name, var_name = xr_var_name.split('__')
+                p_name, var_name = xr_var_name.split("__")
             except ValueError:
                 # not a xsimlab model input: make sure to remove it
-                p_name, var_name = ('', xr_var_name)
+                p_name, var_name = ("", xr_var_name)
 
             if (p_name, var_name) not in model.input_vars:
                 drop_variables.append(xr_var_name)
@@ -492,8 +510,7 @@ class SimlabAccessor:
 
         return ds
 
-    def run(self, model=None, check_dims='strict', validate='inputs',
-            safe_mode=True):
+    def run(self, model=None, check_dims="strict", validate="inputs", safe_mode=True):
         """Run the model.
 
         Parameters
@@ -543,9 +560,14 @@ class SimlabAccessor:
         store = {}
         output_store = InMemoryOutputStore()
 
-        driver = XarraySimulationDriver(self._ds, model, store, output_store,
-                                        check_dims=check_dims,
-                                        validate=validate)
+        driver = XarraySimulationDriver(
+            self._ds,
+            model,
+            store,
+            output_store,
+            check_dims=check_dims,
+            validate=validate,
+        )
 
         return driver.run_model()
 
@@ -563,8 +585,14 @@ class SimlabAccessor:
         raise NotImplementedError()
 
 
-def create_setup(model=None, clocks=None, master_clock=None,
-                 input_vars=None, output_vars=None, fill_default=True):
+def create_setup(
+    model=None,
+    clocks=None,
+    master_clock=None,
+    input_vars=None,
+    output_vars=None,
+    fill_default=True,
+):
     """Create a specific setup for model runs.
 
     This convenient function creates a new :class:`xarray.Dataset`
@@ -651,11 +679,13 @@ def create_setup(model=None, clocks=None, master_clock=None,
         else:
             return ds
 
-    ds = (Dataset()
-          .xsimlab.update_clocks(model=model, clocks=clocks,
-                                 master_clock=master_clock)
-          .pipe(maybe_fill_default)
-          .xsimlab.update_vars(model=model, input_vars=input_vars,
-                               output_vars=output_vars))
+    ds = (
+        Dataset()
+        .xsimlab.update_clocks(model=model, clocks=clocks, master_clock=master_clock)
+        .pipe(maybe_fill_default)
+        .xsimlab.update_vars(
+            model=model, input_vars=input_vars, output_vars=output_vars
+        )
+    )
 
     return ds

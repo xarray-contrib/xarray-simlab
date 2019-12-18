@@ -7,17 +7,17 @@ length = 1.5
 x = np.arange(0, length, spacing)
 
 # velocity
-v = 1.
+v = 1.0
 
 # time
-start = 0.
-end = 1.
+start = 0.0
+end = 1.0
 step = 0.01
 
 # initial gauss profile
 loc = 0.3
 scale = 0.1
-u = np.exp(-1 / scale**2 * (x - loc)**2)
+u = np.exp(-1 / scale ** 2 * (x - loc) ** 2)
 u0 = u.copy()
 
 # time loop - Lax method
