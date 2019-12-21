@@ -109,6 +109,7 @@ class TestXarraySimulationDriver:
         expected = {
             "clock": np.array([True, True, True, True, True]),
             "out": np.array([True, False, True, False, True]),
+            None: np.array([False, False, False, False, True]),
         }
 
         assert xarray_driver.output_save_steps.keys() == expected.keys()
