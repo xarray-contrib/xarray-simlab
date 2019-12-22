@@ -439,8 +439,8 @@ class SimlabAccessor:
             Model input values (may be grouped per process name, as dict of
             dicts).
         output_vars : dict, optional
-            Model variables to save as simulation output, given per
-            clock coordinate.
+            Model variables to save as simulation output (time-dependent or
+            time-independent).
 
         Returns
         -------
@@ -678,24 +678,13 @@ def create_setup(
         :class:`xarray.Variable` objects, e.g., single values, array-like,
         ``(dims, data, attrs)`` tuples or xarray objects.
     output_vars : dict, optional
-        Dictionary with model variable names to save as simulation output,
-        given per clock coordinate. Entries of the given dictionary may
-        look like:
-
-        - ``'dim': {'foo': 'bar'}`` or
-        - ``'dim': {'foo': ('bar', 'baz')}`` or
-        - ``'dim': ('foo', 'bar')`` or
-        - ``'dim': [('foo', 'bar'), ('foo', 'baz')]`` or
-        - ``'dim': 'foo__bar'`` or
-        - ``'dim': ['foo__bar', 'foo__baz']``
-
-        where ``foo`` is the name of a existing process in the model and
-        ``bar``, ``baz`` are the names of variables declared in that process.
-
-        If ``'dim'`` corresponds to the dimension of a clock coordinate,
-        new output values will be saved at each time given by the coordinate
-        labels. if None is given instead, only one value will be saved at the
-        end of the simulation.
+        Dictionary with model variable names to save as simulation output
+        (time-dependent or time-independent). Entries of the dictionary look
+        similar than for ``input_vars`` (see here above), except that here
+        ``value`` must correspond to the dimension of a clock coordinate
+        (i.e., new output values will be saved at each time given by the
+        coordinate labels) or ``None`` (i.e., only one value will be saved
+        at the end of the simulation).
     fill_default : bool, optional
         If True (default), automatically fill the dataset with all model
         inputs missing in ``input_vars`` and their default value (if any).
