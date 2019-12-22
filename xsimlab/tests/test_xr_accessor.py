@@ -223,7 +223,7 @@ class TestSimlabAccessor:
         ds = in_dataset.xsimlab.update_vars(
             model=model,
             input_vars={("roll", "shift"): 2},
-            output_vars={"out": ("profile", "u")},
+            output_vars={("profile", "u"): "out"},
         )
 
         assert not ds["roll__shift"].equals(in_dataset["roll__shift"])
@@ -273,6 +273,12 @@ class TestSimlabAccessor:
         with pytest.raises(ValueError, match=r".not a valid clock.*"):
             ds.xsimlab._set_output_vars(model, {("profile", "u"): "not_a_clock"})
 
+        with pytest.warns(FutureWarning):
+            ds.xsimlab._set_output_vars(model, {None: ("profile", "u_opp")})
+
+        with pytest.warns(FutureWarning):
+            ds.xsimlab._set_output_vars(model, {"out": ("profile", "u_opp")})
+
     def test_output_vars(self, model):
         o_vars = {
             ("profile", "u_opp"): None,
@@ -317,7 +323,7 @@ class TestSimlabAccessor:
             model=m,
             clocks={"clock": [1, 2]},
             input_vars={"p__var": (("y", "x"), arr)},
-            output_vars={None: ["p__var"]},
+            output_vars={"p__var": None},
         )
 
         out_ds = in_ds.xsimlab.run(model=m, check_dims=None)
@@ -332,7 +338,7 @@ class TestSimlabAccessor:
         np.testing.assert_array_equal(actual, arr)
         np.testing.assert_array_equal(m.p.var, arr.transpose())
 
-        in_ds2 = in_ds.xsimlab.update_vars(model=m, output_vars={"clock": ["p__var"]})
+        in_ds2 = in_ds.xsimlab.update_vars(model=m, output_vars={"p__var": "clock"})
         # TODO: fix update output vars time-independet -> dependent
         # currently need the workaround below
         in_ds2.attrs = {}
@@ -401,9 +407,10 @@ def test_create_setup(model, in_dataset):
         clocks={"clock": [0, 2, 4, 6, 8], "out": [0, 4, 8]},
         master_clock="clock",
         output_vars={
-            "clock": "profile__u",
-            "out": [("roll", "u_diff"), ("add", "u_diff")],
-            None: {"profile": "u_opp"},
+            "profile__u": "clock",
+            ("roll", "u_diff"): "out",
+            ("add", "u_diff"): "out",
+            "profile": {"u_opp": None},
         },
     )
     xr.testing.assert_identical(ds, in_dataset)

@@ -3,6 +3,7 @@ xarray extensions (accessors).
 
 """
 from collections import defaultdict
+import warnings
 
 import attr
 import numpy as np
@@ -259,6 +260,13 @@ class SimlabAccessor:
 
         for k, v in output_vars.items():
             if k is None or k in self.clock_coords:
+                warnings.warn(
+                    "Setting clock dimensions or `None` as keys for `output_vars`"
+                    " is depreciated; use variable names instead (and clock "
+                    "dimensions or `None` as values, see docs).",
+                    FutureWarning,
+                    stacklevel=2,
+                )
                 o_vars.update({vn: k for vn in _flatten_outputs({k: v})[k]})
 
             else:
