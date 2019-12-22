@@ -284,7 +284,7 @@ class TestSimlabAccessor:
             ("profile", "u_opp"): None,
             ("profile", "u"): "clock",
             ("roll", "u_diff"): "out",
-            ("add", "u_diff"): "out"
+            ("add", "u_diff"): "out",
         }
 
         ds = xs.create_setup(
@@ -293,10 +293,10 @@ class TestSimlabAccessor:
                 "clock": [0, 2, 4, 6, 8],
                 "out": [0, 4, 8],
                 # snapshot clock with no output variable
-                "out2": [0, 8]
+                "out2": [0, 8],
             },
             master_clock="clock",
-            output_vars=o_vars
+            output_vars=o_vars,
         )
 
         assert ds.xsimlab.output_vars == o_vars

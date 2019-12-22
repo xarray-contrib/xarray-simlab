@@ -324,6 +324,7 @@ class SimlabAccessor:
         name (or None) on which to save snapshots as values.
 
         """
+
         def xr_attr_to_dict(attrs, clock):
             var_str = attrs.get(self._output_vars_key)
 
