@@ -321,7 +321,7 @@ class SimlabAccessor:
     def output_vars(self):
         """Returns a dictionary of output variable names - in the form of
         ``('p_name', 'var_name')`` tuples - as keys and the clock dimension
-        name (or None) on which to save snapshots as values.
+        names (or None) on which to save snapshots as values.
 
         """
 
