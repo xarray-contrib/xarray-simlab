@@ -10,12 +10,20 @@ Breaking changes
 ~~~~~~~~~~~~~~~~
 
 - Python 3.6 is now the oldest supported version (:issue:`70`).
+- The keys of the dictionary returned by
+  :attr:`xarray.Dataset.xsimlab.output_vars` now correspond to variable names,
+  and the values are clock dimension labels or ``None`` (previously the
+  dictionary was formatted the other way around) (:issue:`85`).
 
 Depreciations
 ~~~~~~~~~~~~~
 
-- Using the ``group`` parameter in ``xsimlab.variable`` and
-  ``xsimlab.on_demand`` is depreciated; use ``groups`` instead.
+- Using the ``group`` parameter in :func:`xsimlab.variable` and
+  :func:`xsimlab.on_demand` is depreciated; use ``groups`` instead.
+- Providing a dictionary with clock dimensions or ``None`` as keys to
+  ``output_vars`` in :func:`xarray.Dataset.xsimlab.update_vars()` and
+  :func:`xsimlab.create_setup()` is depreciated. Variable names should be used
+  instead (:issue:`85`).
 
 Enhancements
 ~~~~~~~~~~~~
@@ -37,6 +45,8 @@ Enhancements
   input xarray Datasets to match those defined in model variables (:issue:`76`).
   This is optional and controlled by the parameter ``check_dims`` added
   to :func:`xarray.Dataset.xsimlab.run`.
+- More consistent dictionary format for output variables in the xarray
+  extension (:issue:`85`).
 
 Bug fixes
 ~~~~~~~~~

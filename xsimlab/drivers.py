@@ -242,20 +242,16 @@ class XarraySimulationDriver(BaseSimulationDriver):
         """
         save_steps = {}
 
-        for clock in self.output_vars:
-            if clock is None:
-                continue
+        master_coord = self.dataset[self.master_clock_dim]
 
-            elif clock == self.master_clock_dim:
-                save_steps[clock] = np.ones_like(
-                    self.dataset[self.master_clock_dim].values, dtype=bool
-                )
-
+        for clock, coord in self.dataset.xsimlab.clock_coords.items():
+            if clock == self.master_clock_dim:
+                save_steps[clock] = np.ones_like(coord.values, dtype=bool)
             else:
-                save_steps[clock] = np.in1d(
-                    self.dataset[self.master_clock_dim].values,
-                    self.dataset[clock].values,
-                )
+                save_steps[clock] = np.in1d(master_coord.values, coord.values)
+
+        save_steps[None] = np.zeros_like(master_coord.values, dtype=bool)
+        save_steps[None][-1] = True
 
         return save_steps
 
@@ -306,17 +302,13 @@ class XarraySimulationDriver(BaseSimulationDriver):
         return input_vars
 
     def _maybe_save_output_vars(self, istep):
-        # TODO: optimize this for performance
-        for clock, var_keys in self.output_vars.items():
-            save_output = (
-                clock is None
-                and istep == -1
-                or clock is not None
-                and self.output_save_steps[clock][istep]
-            )
+        var_list = []
 
-            if save_output:
-                self.update_output_store(var_keys)
+        for key, clock in self.output_vars.items():
+            if self.output_save_steps[clock][istep]:
+                var_list.append(key)
+
+        self.update_output_store(var_list)
 
     def _to_xr_variable(self, key, clock):
         """Convert an output variable to a xarray.Variable object.
@@ -359,25 +351,17 @@ class XarraySimulationDriver(BaseSimulationDriver):
         """Return a new dataset as a copy of the input dataset updated with
         output variables.
         """
-        from .xr_accessor import SimlabAccessor
-
         xr_vars = {}
 
-        for clock, vars in self.output_vars.items():
-            for key in vars:
-                var_name = "__".join(key)
-                xr_vars[var_name] = self._to_xr_variable(key, clock)
+        for key, clock in self.output_vars.items():
+            var_name = "__".join(key)
+            xr_vars[var_name] = self._to_xr_variable(key, clock)
 
         out_ds = self.dataset.copy()
         out_ds.update(xr_vars)
 
         # remove output_vars attributes in output dataset
-        for clock in self.output_vars:
-            if clock is None:
-                attrs = out_ds.attrs
-            else:
-                attrs = out_ds[clock].attrs
-            attrs.pop(SimlabAccessor._output_vars_key)
+        out_ds.xsimlab._reset_output_vars(self.model, {})
 
         return out_ds
 

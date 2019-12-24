@@ -48,14 +48,20 @@ create a new setup in a very declarative way:
 
     in_ds = xs.create_setup(
         model=model2,
-        clocks={'time': np.linspace(0., 1., 101),
-                'otime': [0, 0.5, 1]},
+        clocks={
+            'time': np.linspace(0., 1., 101),
+            'otime': [0, 0.5, 1]
+        },
         master_clock='time',
-        input_vars={'grid': {'length': 1.5, 'spacing': 0.01},
-                    'init': {'loc': 0.3, 'scale': 0.1},
-                    'advect': {'v': 1.}},
-        output_vars={None: {'grid': 'x'},
-                     'otime': {'profile': 'u'}}
+        input_vars={
+            'grid': {'length': 1.5, 'spacing': 0.01},
+            'init': {'loc': 0.3, 'scale': 0.1},
+            'advect__v': 1.
+        },
+        output_vars={
+            'grid__x': None,
+            'profile__u': 'otime'
+        }
     )
 
 A setup consists in:

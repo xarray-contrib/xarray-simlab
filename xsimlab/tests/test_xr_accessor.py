@@ -223,7 +223,7 @@ class TestSimlabAccessor:
         ds = in_dataset.xsimlab.update_vars(
             model=model,
             input_vars={("roll", "shift"): 2},
-            output_vars={"out": ("profile", "u")},
+            output_vars={("profile", "u"): "out"},
         )
 
         assert not ds["roll__shift"].equals(in_dataset["roll__shift"])
@@ -258,46 +258,48 @@ class TestSimlabAccessor:
         ds["out"] = ("out", [0, 4, 8], {self._clock_key: 1})
         ds["not_a_clock"] = ("not_a_clock", [0, 1])
 
-        with pytest.raises(KeyError) as excinfo:
-            ds.xsimlab._set_output_vars(model, None, [("invalid", "var")])
-        assert "not valid key(s)" in str(excinfo.value)
+        with pytest.raises(KeyError, match=r".*not valid key.*"):
+            ds.xsimlab._set_output_vars(model, {("invalid", "var"): None})
 
-        ds.xsimlab._set_output_vars(model, None, [("profile", "u_opp")])
+        ds.xsimlab._set_output_vars(model, {("profile", "u_opp"): None})
         assert ds.attrs[self._output_vars_key] == "profile__u_opp"
 
         ds.xsimlab._set_output_vars(
-            model, "out", [("roll", "u_diff"), ("add", "u_diff")]
+            model, {("roll", "u_diff"): "out", ("add", "u_diff"): "out"}
         )
         expected = "roll__u_diff,add__u_diff"
         assert ds["out"].attrs[self._output_vars_key] == expected
 
-        with pytest.raises(ValueError) as excinfo:
-            ds.xsimlab._set_output_vars(model, "not_a_clock", [("profile", "u")])
-        assert "not a valid clock" in str(excinfo.value)
+        with pytest.raises(ValueError, match=r".not a valid clock.*"):
+            ds.xsimlab._set_output_vars(model, {("profile", "u"): "not_a_clock"})
+
+        with pytest.warns(FutureWarning):
+            ds.xsimlab._set_output_vars(model, {None: ("profile", "u_opp")})
+
+        with pytest.warns(FutureWarning):
+            ds.xsimlab._set_output_vars(model, {"out": ("profile", "u_opp")})
 
     def test_output_vars(self, model):
-        ds = xr.Dataset()
-        ds["clock"] = (
-            "clock",
-            [0, 2, 4, 6, 8],
-            {self._clock_key: 1, self._master_clock_key: 1},
-        )
-        ds["out"] = ("out", [0, 4, 8], {self._clock_key: 1})
-        # snapshot clock with no output variable (attribute) set
-        ds["out2"] = ("out2", [0, 8], {self._clock_key: 1})
-
-        ds.xsimlab._set_output_vars(model, None, [("profile", "u_opp")])
-        ds.xsimlab._set_output_vars(model, "clock", [("profile", "u")])
-        ds.xsimlab._set_output_vars(
-            model, "out", [("roll", "u_diff"), ("add", "u_diff")]
-        )
-
-        expected = {
-            None: [("profile", "u_opp")],
-            "clock": [("profile", "u")],
-            "out": [("roll", "u_diff"), ("add", "u_diff")],
+        o_vars = {
+            ("profile", "u_opp"): None,
+            ("profile", "u"): "clock",
+            ("roll", "u_diff"): "out",
+            ("add", "u_diff"): "out",
         }
-        assert ds.xsimlab.output_vars == expected
+
+        ds = xs.create_setup(
+            model=model,
+            clocks={
+                "clock": [0, 2, 4, 6, 8],
+                "out": [0, 4, 8],
+                # snapshot clock with no output variable
+                "out2": [0, 8],
+            },
+            master_clock="clock",
+            output_vars=o_vars,
+        )
+
+        assert ds.xsimlab.output_vars == o_vars
 
     def test_run_safe_mode(self, model, in_dataset):
         # safe mode True: ensure model is cloned
@@ -321,7 +323,7 @@ class TestSimlabAccessor:
             model=m,
             clocks={"clock": [1, 2]},
             input_vars={"p__var": (("y", "x"), arr)},
-            output_vars={None: ["p__var"]},
+            output_vars={"p__var": None},
         )
 
         out_ds = in_ds.xsimlab.run(model=m, check_dims=None)
@@ -336,7 +338,7 @@ class TestSimlabAccessor:
         np.testing.assert_array_equal(actual, arr)
         np.testing.assert_array_equal(m.p.var, arr.transpose())
 
-        in_ds2 = in_ds.xsimlab.update_vars(model=m, output_vars={"clock": ["p__var"]})
+        in_ds2 = in_ds.xsimlab.update_vars(model=m, output_vars={"p__var": "clock"})
         # TODO: fix update output vars time-independet -> dependent
         # currently need the workaround below
         in_ds2.attrs = {}
@@ -405,9 +407,10 @@ def test_create_setup(model, in_dataset):
         clocks={"clock": [0, 2, 4, 6, 8], "out": [0, 4, 8]},
         master_clock="clock",
         output_vars={
-            "clock": "profile__u",
-            "out": [("roll", "u_diff"), ("add", "u_diff")],
-            None: {"profile": "u_opp"},
+            "profile__u": "clock",
+            ("roll", "u_diff"): "out",
+            ("add", "u_diff"): "out",
+            "profile": {"u_opp": None},
         },
     )
     xr.testing.assert_identical(ds, in_dataset)

@@ -82,7 +82,7 @@ def _as_group_tuple(groups, group):
 
     if group is not None:
         warnings.warn(
-            "Setting variable group using `group` is depreciated; " "use `groups`.",
+            "Setting variable group using `group` is depreciated; use `groups`.",
             FutureWarning,
             stacklevel=2,
         )

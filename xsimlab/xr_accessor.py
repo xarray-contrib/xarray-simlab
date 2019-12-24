@@ -2,6 +2,9 @@
 xarray extensions (accessors).
 
 """
+from collections import defaultdict
+import warnings
+
 import attr
 import numpy as np
 from xarray import as_variable, Dataset, register_dataset_accessor
@@ -251,7 +254,33 @@ class SimlabAccessor:
 
             self._ds[xr_var_name] = xr_var
 
-    def _set_output_vars(self, model, clock, output_vars):
+    def _set_output_vars(self, model, output_vars, clear=False):
+        # TODO: remove this ugly code (depreciated output_vars format)
+        o_vars = {}
+
+        for k, v in output_vars.items():
+            if k is None or k in self.clock_coords:
+                warnings.warn(
+                    "Setting clock dimensions or `None` as keys for `output_vars`"
+                    " is depreciated; use variable names instead (and clock "
+                    "dimensions or `None` as values, see docs).",
+                    FutureWarning,
+                    stacklevel=2,
+                )
+                o_vars.update({vn: k for vn in _flatten_outputs({k: v})[k]})
+
+            else:
+                o_vars[k] = v
+
+        output_vars = _flatten_inputs(o_vars)
+
+        # end of depreciated code block
+
+        if not clear:
+            _output_vars = self.output_vars
+            _output_vars.update(output_vars)
+            output_vars = _output_vars
+
         invalid_outputs = set(output_vars) - set(model.all_vars)
         if invalid_outputs:
             raise KeyError(
@@ -260,42 +289,58 @@ class SimlabAccessor:
                 )
             )
 
-        output_vars_str = ",".join(
-            [p_name + "__" + var_name for (p_name, var_name) in output_vars]
-        )
+        clock_vars = defaultdict(list)
 
-        if clock is None:
-            self._ds.attrs[self._output_vars_key] = output_vars_str
-
-        else:
-            if clock not in self.clock_coords:
+        for (p_name, var_name), clock in output_vars.items():
+            if clock is not None and clock not in self.clock_coords:
                 raise ValueError(
-                    "{!r} coordinate is not a valid clock " "coordinate.".format(clock)
+                    "{!r} coordinate is not a valid clock coordinate.".format(clock)
                 )
-            coord = self.clock_coords[clock]
-            coord.attrs[self._output_vars_key] = output_vars_str
 
-    def _maybe_update_output_vars(self, clock, ds_or_coord, output_vars):
-        out_attr = ds_or_coord.attrs.get(self._output_vars_key)
+            xr_var_name = p_name + "__" + var_name
+            clock_vars[clock].append(xr_var_name)
 
-        if out_attr is not None:
-            output_vars[clock] = [as_variable_key(k) for k in out_attr.split(",")]
+        for clock, var_list in clock_vars.items():
+            var_str = ",".join(var_list)
+
+            if clock is None:
+                self._ds.attrs[self._output_vars_key] = var_str
+            else:
+                coord = self.clock_coords[clock]
+                coord.attrs[self._output_vars_key] = var_str
+
+    def _reset_output_vars(self, model, output_vars):
+        self._ds.attrs.pop(self._output_vars_key, None)
+
+        for coord in self.clock_coords.values():
+            coord.attrs.pop(self._output_vars_key, None)
+
+        self._set_output_vars(model, output_vars, clear=True)
 
     @property
     def output_vars(self):
-        """Returns a dictionary of clock dimension names (or None) as keys and
-        output variable names - i.e. lists of ``('p_name', 'var_name')``
-        tuples - as values.
+        """Returns a dictionary of output variable names - in the form of
+        ``('p_name', 'var_name')`` tuples - as keys and the clock dimension
+        names (or None) on which to save snapshots as values.
 
         """
-        output_vars = {}
 
-        for clock, clock_coord in self.clock_coords.items():
-            self._maybe_update_output_vars(clock, clock_coord, output_vars)
+        def xr_attr_to_dict(attrs, clock):
+            var_str = attrs.get(self._output_vars_key)
 
-        self._maybe_update_output_vars(None, self._ds, output_vars)
+            if var_str is None:
+                return {}
+            else:
+                return {as_variable_key(k): clock for k in var_str.split(",")}
 
-        return output_vars
+        o_vars = {}
+
+        for clock, coord in self.clock_coords.items():
+            o_vars.update(xr_attr_to_dict(coord.attrs, clock))
+
+        o_vars.update(xr_attr_to_dict(self._ds.attrs, None))
+
+        return o_vars
 
     def update_clocks(self, model=None, clocks=None, master_clock=None):
         """Set or update clock coordinates.
@@ -374,9 +419,9 @@ class SimlabAccessor:
 
         ds.xsimlab._uniformize_clock_coords(**master_clock_dict)
 
-        for clock, var_keys in self.output_vars.items():
-            if clock is None or clock in ds:
-                ds.xsimlab._set_output_vars(model, clock, var_keys)
+        # operations on clock coords may have discarded coord attributes
+        o_vars = {k: v for k, v in self.output_vars.items() if v is None or v in ds}
+        ds.xsimlab._set_output_vars(model, o_vars)
 
         return ds
 
@@ -394,8 +439,8 @@ class SimlabAccessor:
             Model input values (may be grouped per process name, as dict of
             dicts).
         output_vars : dict, optional
-            Model variables to save as simulation output, given per
-            clock coordinate.
+            Model variables to save as simulation output (time-dependent or
+            time-independent).
 
         Returns
         -------
@@ -416,8 +461,7 @@ class SimlabAccessor:
             ds.xsimlab._set_input_vars(model, _flatten_inputs(input_vars))
 
         if output_vars is not None:
-            for clock, out_vars in _flatten_outputs(output_vars).items():
-                ds.xsimlab._set_output_vars(model, clock, out_vars)
+            ds.xsimlab._set_output_vars(model, output_vars)
 
         return ds
 
@@ -504,9 +548,8 @@ class SimlabAccessor:
         ds = self._ds.drop(drop_variables)
 
         # update output variable attributes
-        for clock, out_vars in self.output_vars.items():
-            new_out_vars = [key for key in out_vars if key in model.all_vars]
-            ds.xsimlab._set_output_vars(model, clock, new_out_vars)
+        o_vars = {k: v for k, v in self.output_vars.items() if k in model.all_vars}
+        ds.xsimlab._reset_output_vars(model, o_vars)
 
         return ds
 
@@ -635,24 +678,13 @@ def create_setup(
         :class:`xarray.Variable` objects, e.g., single values, array-like,
         ``(dims, data, attrs)`` tuples or xarray objects.
     output_vars : dict, optional
-        Dictionary with model variable names to save as simulation output,
-        given per clock coordinate. Entries of the given dictionary may
-        look like:
-
-        - ``'dim': {'foo': 'bar'}`` or
-        - ``'dim': {'foo': ('bar', 'baz')}`` or
-        - ``'dim': ('foo', 'bar')`` or
-        - ``'dim': [('foo', 'bar'), ('foo', 'baz')]`` or
-        - ``'dim': 'foo__bar'`` or
-        - ``'dim': ['foo__bar', 'foo__baz']``
-
-        where ``foo`` is the name of a existing process in the model and
-        ``bar``, ``baz`` are the names of variables declared in that process.
-
-        If ``'dim'`` corresponds to the dimension of a clock coordinate,
-        new output values will be saved at each time given by the coordinate
-        labels. if None is given instead, only one value will be saved at the
-        end of the simulation.
+        Dictionary with model variable names to save as simulation output
+        (time-dependent or time-independent). Entries of the dictionary look
+        similar than for ``input_vars`` (see here above), except that here
+        ``value`` must correspond to the dimension of a clock coordinate
+        (i.e., new output values will be saved at each time given by the
+        coordinate labels) or ``None`` (i.e., only one value will be saved
+        at the end of the simulation).
     fill_default : bool, optional
         If True (default), automatically fill the dataset with all model
         inputs missing in ``input_vars`` and their default value (if any).
