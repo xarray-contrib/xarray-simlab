@@ -21,9 +21,13 @@ jobs:
           - {os: ubuntu-latest,  env-name: py38}
           - {os: macos-latest,   env-name: py37}
           - {os: windows-latest, env-name: py37}
+          - {os: ubuntu-latest,  env-name: py37-xarray-dev, allow-failure: true}
+          - {os: ubuntu-latest,  env-name: py37-attrs-dev,  allow-failure: true}
     steps:
-      - uses: actions/checkout@v2
-      - uses: goanpeca/setup-miniconda@v1
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Install miniconda
+        uses: goanpeca/setup-miniconda@v1
         with:
           auto-update-conda: true
           activate-environment: test_env_${{ matrix.cfg.env-name }}
@@ -43,3 +47,4 @@ jobs:
       - name: Run tests
         shell: bash -l {0}
         run: pytest xsimlab --verbose --color=yes
+        continue-on-error: ${{ matrix.cfg.allow-failure }}
