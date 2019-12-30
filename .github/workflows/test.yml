@@ -18,12 +18,12 @@ jobs:
         os: ['ubuntu-latest', 'macos-latest', 'windows-latest']
         env-name: ['py36', 'py37', 'py38']
     steps:
+      - uses: actions/checkout@v2
       - uses: goanpeca/setup-miniconda@v1
         with:
-          auto-update-conda: true
+          auto-update-conda: false
           activate-environment: test_env_${{ matrix.env-name }}
           environment-file: ci/requirements/${{ matrix.env-name }}.yml
-          python-version: 3.7
           auto-activate-base: false
       - name: Conda info
         shell: bash -l {0}
