@@ -11,23 +11,8 @@ branches:
 matrix:
   fast_finish: True
   include:
-    - python: 3.6
-      env: CONDA_ENV=py36
-    - python: 3.7
-      env: CONDA_ENV=py37
-    - python: 3.8
-      env: CONDA_ENV=py38
-    - python: 3.7
-      env: CONDA_ENV=py37-xarray-dev
-    - python: 3.7
-      env: CONDA_ENV=py37-attrs-dev
     - python: 3.7
       env: CONDA_ENV=doc
-  allow_failures:
-    - python: 3.7
-      env: CONDA_ENV=py37-xarray-dev
-    - python: 3.7
-      env: CONDA_ENV=py37-attrs-dev
 
 before_install:
   - wget http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
@@ -55,6 +40,3 @@ script:
     else
       pytest xsimlab --cov=xsimlab --cov-report term-missing --verbose;
     fi
-
-after_success:
-  - coveralls
