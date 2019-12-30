@@ -17,7 +17,7 @@ jobs:
       matrix:
         cfg:
           - {os: ubuntu-latest,  env-name: py36}
-          - {os: ubuntu-latest,  env-name: py37, coveralls: true}
+          - {os: ubuntu-latest,  env-name: py37, codecov: true}
           - {os: ubuntu-latest,  env-name: py38}
           - {os: macos-latest,   env-name: py37}
           - {os: windows-latest, env-name: py37}
@@ -48,9 +48,9 @@ jobs:
         shell: bash -l {0}
         run: pytest xsimlab --cov=xsimlab --cov-report term-missing --verbose --color=yes
         continue-on-error: ${{ matrix.cfg.allow-failure }}
-      - name: Coveralls
-        if: matrix.cfg.coveralls
+      - name: Codecov
+        if: matrix.cfg.codecov
         shell: bash -l {0}
         env:
-          COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
-        run: coveralls
+          CODECOV_TOKEN: ${{ secrets.CODECOV_REPO_TOKEN }}
+        run: codecov

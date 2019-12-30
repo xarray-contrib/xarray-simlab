@@ -11,4 +11,4 @@ dependencies:
   - graphviz
   - python-graphviz
   - ipython
-  - coveralls
+  - codecov
