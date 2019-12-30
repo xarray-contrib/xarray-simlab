@@ -50,7 +50,6 @@ jobs:
         continue-on-error: ${{ matrix.cfg.allow-failure }}
       - name: Coveralls
         if: matrix.cfg.coveralls
-        uses: coverallsapp/github-action@master
-        with:
-          path-to-lcov: .coverage
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
+        run: coveralls
