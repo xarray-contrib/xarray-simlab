@@ -49,7 +49,7 @@ jobs:
         run: pytest xsimlab --cov=xsimlab --cov-report term-missing --verbose --color=yes
         continue-on-error: ${{ matrix.cfg.allow-failure }}
       - name: Coveralls
-        if: ${{ matrix.cfg.coveralls }}
+        if: matrix.cfg.coveralls
         uses: coverallsapp/github-action@master
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
