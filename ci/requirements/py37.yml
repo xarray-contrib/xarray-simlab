@@ -10,6 +10,7 @@ dependencies:
   - graphviz
   - python-graphviz
   - ipython
+  - pip
   - pip:
     - coveralls
     - pytest-cov

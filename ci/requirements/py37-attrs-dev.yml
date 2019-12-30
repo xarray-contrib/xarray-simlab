@@ -6,7 +6,6 @@ dependencies:
   - pytest
   - numpy
   - xarray
+  - pip
   - pip:
     - git+https://github.com/python-attrs/attrs.git
-    - coveralls
-    - pytest-cov

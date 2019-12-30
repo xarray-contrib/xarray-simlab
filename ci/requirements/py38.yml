@@ -9,6 +9,3 @@ dependencies:
   - xarray
   - graphviz
   - python-graphviz
-  - pip:
-    - coveralls
-    - pytest-cov
