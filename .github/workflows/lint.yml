@@ -1,9 +1,15 @@
 name: lint
 
-on: [push, pull_request]
+on:
+  push:
+    branches:
+    - 'master'
+  pull_request:
+    branches:
+    - 'master'
 
 jobs:
-  build:
+  lint:
     runs-on: ubuntu-latest
     name: flake8-black
     steps:
