@@ -4,6 +4,7 @@ channels:
 dependencies:
   - python=3.7
   - pytest
+  - pytest-cov
   - numpy
   - xarray
   - pip

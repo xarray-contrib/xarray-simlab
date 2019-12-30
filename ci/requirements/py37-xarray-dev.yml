@@ -5,6 +5,7 @@ dependencies:
   - attrs>=19.2.0
   - python=3.7
   - pytest
+  - pytest-cov
   - numpy
   - pip
   - pip:

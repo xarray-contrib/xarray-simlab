@@ -5,6 +5,7 @@ dependencies:
   - attrs>=19.2.0
   - python=3.6
   - pytest
+  - pytest-cov
   - numpy
   - xarray
   - graphviz
