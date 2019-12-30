@@ -38,4 +38,4 @@ jobs:
           python -OO -c "import xsimlab"
       - name: Run tests
         shell: bash -l {0}
-        run: pytest xsimlab --verbose
+        run: pytest xsimlab --verbose --color=yes
