@@ -17,7 +17,7 @@ jobs:
       matrix:
         cfg:
           - {os: ubuntu-latest,  env-name: py36}
-          - {os: ubuntu-latest,  env-name: py37}
+          - {os: ubuntu-latest,  env-name: py37, coveralls: true}
           - {os: ubuntu-latest,  env-name: py38}
           - {os: macos-latest,   env-name: py37}
           - {os: windows-latest, env-name: py37}
@@ -46,5 +46,10 @@ jobs:
           python -OO -c "import xsimlab"
       - name: Run tests
         shell: bash -l {0}
-        run: pytest xsimlab --verbose --color=yes
+        run: pytest xsimlab --cov=xsimlab --cov-report term-missing --verbose --color=yes
         continue-on-error: ${{ matrix.cfg.allow-failure }}
+      - name: Coveralls
+        if: ${{ matrix.cfg.coveralls }}
+        uses: coverallsapp/github-action@master
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
