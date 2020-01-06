@@ -47,6 +47,27 @@ Enhancements
   to :func:`xarray.Dataset.xsimlab.run`.
 - More consistent dictionary format for output variables in the xarray
   extension (:issue:`85`).
+- Existing and newly written processes will be updated automatically
+  (:issue:`3`) now with a docstring that follows the template:
+
+      Attributes
+      ----------
+      var1: object
+          Variable description
+
+          - type: variable
+          - intent: in
+          - dims : ((),)
+          - groups : ()
+          - static : False
+          - attrs : {}
+
+      var2: object
+      ...
+
+  Docstring can be placed arbitrarily by using the placeholder {{attributes}}
+  Variable description will be replaced by (no description given) if that field
+  is left empty in the process.
 
 Bug fixes
 ~~~~~~~~~

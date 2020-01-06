@@ -7,7 +7,7 @@ import warnings
 import attr
 
 from .variable import VarIntent, VarType
-from .formatting import repr_process, var_details
+from .formatting import add_attribute_section, repr_process, var_details
 from .utils import has_method, variables_dict
 
 
@@ -474,8 +474,9 @@ class _ProcessBuilder:
                 self._p_cls_dict[var_name] = make_prop_func(var)
 
     def render_docstrings(self):
-        # self._p_cls_dict['__doc__'] = "Process-ified class."
-        raise NotImplementedError("autodoc is not yet implemented.")
+        new_doc = add_attribute_section(self._base_cls)
+
+        self._base_cls.__doc__ = new_doc
 
     def build_class(self):
         p_cls = self._make_process_subclass()
@@ -487,7 +488,7 @@ class _ProcessBuilder:
         return p_cls
 
 
-def process(maybe_cls=None, autodoc=False):
+def process(maybe_cls=None, autodoc=True):
     """A class decorator that adds everything needed to use the class
     as a process.
 
@@ -515,7 +516,25 @@ def process(maybe_cls=None, autodoc=False):
         ``@process(*args)``.
     autodoc : bool, optional
         If True, render the docstrings template and fill the
-        corresponding sections with variable metadata (default: False).
+        corresponding sections with variable metadata (default: True).
+        {{attributes}} can be used as a placeholder for the updated
+        metadata information.
+        
+        Docstring template:
+            Attributes
+            ----------
+            var1: object
+                Variable description
+
+                - type: variable
+                - intent: in
+                - dims : ((),)
+                - groups : ()
+                - static : False
+                - attrs : {}
+                
+            var2: object
+            ...
 
     """
 

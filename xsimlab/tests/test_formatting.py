@@ -2,6 +2,7 @@ from textwrap import dedent
 
 import xsimlab as xs
 from xsimlab.formatting import (
+    add_attribute_section,
     maybe_truncate,
     pretty_print,
     repr_process,
@@ -40,6 +41,58 @@ def test_var_details(example_process_obj):
     assert "- type : variable" in var_details_str
     assert "- intent : in" in var_details_str
     assert "- dims : (('x',),)" in var_details_str
+
+
+def test_add_attribute_section():
+    @xs.process(autodoc=False)
+    class Dummy:
+        """This is a Dummy class
+    to test `add_attribute_section()`
+        """
+
+        var1 = xs.variable(dims="x", description="a variable")
+        var2 = xs.variable()
+
+    @xs.process(autodoc=False)
+    class Dummy_placeholder:
+        """This is a Dummy class
+    to test `add_attribute_section()`
+        
+    {{attributes}}
+"""
+
+        var1 = xs.variable(dims="x", description="a variable")
+        var2 = xs.variable()
+
+    expected = """This is a Dummy class
+    to test `add_attribute_section()`
+        
+    Attributes
+    ----------
+    var1 : object
+        A variable
+
+        - type : variable
+        - intent : in
+        - dims : (('x',),)
+        - groups : ()
+        - static : False
+        - attrs : {}
+
+    var2 : object
+        (no description given)
+
+        - type : variable
+        - intent : in
+        - dims : ((),)
+        - groups : ()
+        - static : False
+        - attrs : {}
+
+"""
+
+    assert add_attribute_section(Dummy) == expected
+    assert add_attribute_section(Dummy_placeholder) == expected
 
 
 def test_process_repr(
