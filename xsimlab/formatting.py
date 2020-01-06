@@ -87,6 +87,9 @@ def var_details(var, max_line_length=70):
     description = textwrap.fill(
         var_metadata.pop("description").capitalize(), width=max_line_length
     )
+    if var.metadata.get("var_type").value == "foreign":
+        description = foreign_var(var)
+
     if not description:
         description = "(no description given)"
 
@@ -108,6 +111,7 @@ def add_attribute_section(process, placeholder="{{attributes}}"):
 
     for vname, var in variables_dict(process).items():
         var_header = f"{vname} : {data_type}"
+
         var_content = textwrap.indent(var_details(var, max_line_length=62), " " * 4)
 
         fmt_vars.append(f"{var_header}\n{var_content}")
@@ -124,6 +128,16 @@ def add_attribute_section(process, placeholder="{{attributes}}"):
         new_doc = f"{current_doc}\n{fmt_section}\n"
 
     return new_doc
+
+
+def foreign_var(var):
+    ref_process = var.metadata.get("other_process_cls")
+
+    for key, value in variables_dict(ref_process).items():
+        if key == var.metadata.get("var_name"):
+            var_data = value.metadata.get("description")
+
+    return var_data
 
 
 def repr_process(process):

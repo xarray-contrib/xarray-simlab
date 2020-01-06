@@ -95,6 +95,48 @@ def test_add_attribute_section():
     assert add_attribute_section(Dummy_placeholder) == expected
 
 
+def test_foreign_var():
+    @xs.process(autodoc=False)
+    class OriProcess:
+        """Original Process"""
+
+        some_var = xs.variable(
+            groups="some_group", intent="out", description="original description"
+        )
+
+    @xs.process(autodoc=False)
+    class RefProcess:
+        """Referencing Process"""
+
+        another_var = xs.variable()
+        some_foreign_var = xs.foreign(OriProcess, "some_var")
+
+    expected = """Referencing Process
+    Attributes
+    ----------
+    another_var : object
+        (no description given)
+
+        - type : variable
+        - intent : in
+        - dims : ((),)
+        - groups : ()
+        - static : False
+        - attrs : {}
+
+    some_foreign_var : object
+        original description
+
+        - type : foreign
+        - intent : in
+        - other_process_cls : <class 'xsimlab.tests.test_formatting.test_foreign_var.<locals>.OriProcess'>
+        - var_name : some_var
+
+"""
+
+    assert add_attribute_section(RefProcess) == expected
+
+
 def test_process_repr(
     example_process_obj,
     processes_with_store,

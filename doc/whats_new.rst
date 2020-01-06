@@ -68,6 +68,8 @@ Enhancements
   Docstring can be placed arbitrarily by using the placeholder {{attributes}}
   Variable description will be replaced by (no description given) if that field
   is left empty in the process.
+- Docstring now contains original description of foreign variables using
+  `formatting.foreign_var()`
 
 Bug fixes
 ~~~~~~~~~
