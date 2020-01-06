@@ -70,12 +70,22 @@ class BaseSimulationDriver:
 
     """
 
-    def __init__(self, model, store, output_store):
+    def __init__(self, model, store, output_store, start, pretask, posttask, finish, stage):
         self.model = model
         self.store = store
         self.output_store = output_store
+        self._start = start
+        self._pretask = pretask
+        self._posttask = posttask
+        self._finish = finish
+        self._stage = stage
 
         self._bind_store_to_model()
+
+    @property
+    def _callback(self):
+        fields = ["_start", "_pretask", "_posttask", "_finish", "_stage"]
+        return tuple(getattr(self, i, None) for i in fields)
 
     def _bind_store_to_model(self):
         """Bind the simulation active data store to each process in the
