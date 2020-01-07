@@ -110,22 +110,18 @@ class _ModelBuilder:
 
             if target_p_name is None:
                 raise KeyError(
-                    "Process class '{}' missing in Model but required "
-                    "by foreign variable '{}' declared in process '{}'".format(
-                        target_p_cls.__name__, var.name, p_name
-                    )
+                    f"Process class '{target_p_cls.__name__}' "
+                     "missing in Model but required "
+                    f"by foreign variable '{var.name}' "
+                    f"declared in process '{p_name}'"
                 )
 
             elif isinstance(target_p_name, list):
                 raise ValueError(
-                    "Process class {!r} required by foreign variable '{}.{}' "
-                    "is used (possibly via one its child classes) by multiple "
-                    "processes: {}".format(
-                        target_p_cls.__name__,
-                        p_name,
-                        var.name,
-                        ", ".join(["{!r}".format(n) for n in target_p_name]),
-                    )
+                    f"Process class {target_p_cls.__name__!r} required "
+                    f"by foreign variable '{p_name}.{var.name}' "
+                    f"is used (possibly via one its child classes) by multiple "
+                    f"processes: {', '.join([f'{n!r}' for n in target_p_name])}"
                 )
 
             store_key, od_key = self._get_var_key(target_p_name, target_var)
@@ -205,7 +201,7 @@ class _ModelBuilder:
                 for k, v in conflicts.items()
             }
             msg = "\n".join(
-                ["'{}.{}' set by: {}".format(*k, v) for k, v in conflicts_str.items()]
+                [f"'{'.'.join(k)}' set by: {v}" for k, v in conflicts_str.items()]
             )
 
             raise ValueError("Conflict(s) found in given variable intents:\n" + msg)
@@ -376,7 +372,7 @@ class _ModelBuilder:
                             cycle.reverse()
                             cycle = "->".join(cycle)
                             raise RuntimeError(
-                                "Cycle detected in process graph: %s" % cycle
+                                f"Cycle detected in process graph: {cycle}"
                             )
                         next_nodes.append(nxt)
 
