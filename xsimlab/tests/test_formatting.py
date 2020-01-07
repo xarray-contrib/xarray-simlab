@@ -44,6 +44,11 @@ def test_var_details(example_process_obj):
 
 
 def test_add_attribute_section():
+    """For testing, autodoc is set to False since True would
+    create a duplicate entry:
+    First when creating the process, 
+    Second when calling add_attribute_section()"""
+
     @xs.process(autodoc=False)
     class Dummy:
         """This is a Dummy class
