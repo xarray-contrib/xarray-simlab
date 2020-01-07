@@ -4,6 +4,11 @@ import attr
 import numpy as np
 
 
+__all__ = [
+    "in_bounds",
+]
+
+
 @attr.s(auto_attribs=True, repr=False, hash=True)
 class _InBoundsValidator:
     bounds: Tuple[Any, Any]
@@ -36,7 +41,7 @@ def in_bounds(bounds, closed=(True, True)):
     """A validator that raises a `ValueError` if a given value is out of
     the given bounded interval.
 
-    It works with scalar values as well as with arrays.
+    It works with scalar values as well as with arrays (element-wise check).
 
     Parameters
     ----------
@@ -44,7 +49,7 @@ def in_bounds(bounds, closed=(True, True)):
         Lower and upper value bounds. Use ``None`` for either lower or upper
         value to set half-bounded intervals.
     closed : tuple, optional
-        Used to set an open, half-open or closed interval, i.e., whether the
+        Set an open, half-open or closed interval, i.e., whether the
         lower and/or upper bound is included or not in the interval.
         Default: closed interval (i.e., includes both lower and upper bounds).
 
