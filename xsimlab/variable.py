@@ -288,7 +288,7 @@ def foreign(other_process_cls, var_name, intent="in"):
 
     for key, value in variables_dict(other_process_cls).items():
         if key == var_name:
-             description = value.metadata.get("description")
+            description = value.metadata.get("description")
 
     metadata = {
         "var_type": VarType.FOREIGN,
