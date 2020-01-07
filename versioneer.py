@@ -1276,12 +1276,12 @@ def render_pep440(pieces):
         rendered = pieces["closest-tag"]
         if pieces["distance"] or pieces["dirty"]:
             rendered += plus_or_dot(pieces)
-            rendered += f"{pieces["distance"]:d}.g{pieces["short"]}"
+            rendered += f"{pieces['distance']:d}.g{pieces['short']}"
             if pieces["dirty"]:
                 rendered += ".dirty"
     else:
         # exception #1
-        rendered = f"0+untagged.{pieces["distance"]:d}.g{pieces["short"]}"
+        rendered = f"0+untagged.{pieces['distance']:d}.g{pieces['short']}"
         if pieces["dirty"]:
             rendered += ".dirty"
     return rendered
@@ -1296,10 +1296,10 @@ def render_pep440_pre(pieces):
     if pieces["closest-tag"]:
         rendered = pieces["closest-tag"]
         if pieces["distance"]:
-            rendered += f".post.dev{pieces["distance"]:d}"
+            rendered += f".post.dev{pieces['distance']:d}"
     else:
         # exception #1
-        rendered = f"0.post.dev{pieces["distance"]:d}"
+        rendered = f"0.post.dev{pieces['distance']:d}"
     return rendered
 
 
@@ -1316,17 +1316,17 @@ def render_pep440_post(pieces):
     if pieces["closest-tag"]:
         rendered = pieces["closest-tag"]
         if pieces["distance"] or pieces["dirty"]:
-            rendered += f".post{pieces["distance"]:d}"
+            rendered += f".post{pieces['distance']:d}"
             if pieces["dirty"]:
                 rendered += ".dev0"
             rendered += plus_or_dot(pieces)
-            rendered += f"g{pieces["short"]}"
+            rendered += f"g{pieces['short']}"
     else:
         # exception #1
-        rendered = f"0.post{pieces["distance"]:d}"
+        rendered = f"0.post{pieces['distance']:d}"
         if pieces["dirty"]:
             rendered += ".dev0"
-        rendered += f"+g{pieces["short"]}"
+        rendered += f"+g{pieces['short']}"
     return rendered
 
 
@@ -1341,12 +1341,12 @@ def render_pep440_old(pieces):
     if pieces["closest-tag"]:
         rendered = pieces["closest-tag"]
         if pieces["distance"] or pieces["dirty"]:
-            rendered += f".post{pieces["distance"]:d}"
+            rendered += f".post{pieces['distance']:d}"
             if pieces["dirty"]:
                 rendered += ".dev0"
     else:
         # exception #1
-        rendered = f"0.post{pieces["distance"]:d}"
+        rendered = f"0.post{pieces['distance']:d}"
         if pieces["dirty"]:
             rendered += ".dev0"
     return rendered
@@ -1363,7 +1363,7 @@ def render_git_describe(pieces):
     if pieces["closest-tag"]:
         rendered = pieces["closest-tag"]
         if pieces["distance"]:
-            rendered += f"-{pieces["distance"]:d}-g{pieces["short"]}"
+            rendered += f"-{pieces['distance']:d}-g{pieces['short']}"
     else:
         # exception #1
         rendered = pieces["short"]
@@ -1383,7 +1383,7 @@ def render_git_describe_long(pieces):
     """
     if pieces["closest-tag"]:
         rendered = pieces["closest-tag"]
-        rendered += f"-{pieces["distance"]:d}-g{pieces["short"]}"
+        rendered += f"-{pieces['distance']:d}-g{pieces['short']}"
     else:
         # exception #1
         rendered = pieces["short"]
