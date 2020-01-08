@@ -119,6 +119,7 @@ class _ModelBuilder:
             elif isinstance(target_p_name, list):
                 raise ValueError(
                     "Process class {!r} required by foreign variable '{}.{}' "
+                    "is used (possibly via one its child classes) by multiple "
                     "processes: {}".format(
                         target_p_cls.__name__,
                         p_name,
