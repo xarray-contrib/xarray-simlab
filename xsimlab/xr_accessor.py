@@ -171,7 +171,7 @@ class SimlabAccessor:
 
         if xr_var.dims != (dim,):
             raise ValueError(
-                f"Invalid dimension(s) given for clock coordinate "
+                "Invalid dimension(s) given for clock coordinate "
                 f"{dim!r}: found {xr_var.dims!r}, "
                 f"expected {dim!r}"
             )
@@ -198,7 +198,7 @@ class SimlabAccessor:
             if dim not in self._ds.coords:
                 raise KeyError(
                     f"Master clock dimension name {dim} as no "
-                    f"defined coordinate in Dataset"
+                    "defined coordinate in Dataset"
                 )
 
             self._ds[dim].attrs[self._master_clock_key] = np.uint8(True)
@@ -225,7 +225,7 @@ class SimlabAccessor:
                 raise ValueError(
                     f"Clock coordinate {clock_dim} is not synchronized "
                     f"with master clock coordinate {self.master_clock_dim}. "
-                    f"The following coordinate labels are "
+                    "The following coordinate labels are "
                     f"absent in master clock: {diff_idx.values}"
                 )
 
@@ -406,7 +406,7 @@ class SimlabAccessor:
             ):
                 raise KeyError(
                     f"Master clock dimension name {master_clock_dim!r} not found "
-                    f"in `clocks` nor in Dataset"
+                    "in `clocks` nor in Dataset"
                 )
 
             for dim, data in clocks.items():

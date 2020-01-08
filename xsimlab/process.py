@@ -225,8 +225,8 @@ def _make_property_on_demand(var):
     if "compute" not in var.metadata:
         raise KeyError(
             "No compute method found for on_demand variable "
-            "'{name}'. A method decorated with '@{name}.compute' "
-            "is required in the class definition.".format(name=var.name)
+            f"'{var.name}'. A method decorated with '@{var.name}.compute' "
+            "is required in the class definition."
         )
 
     get_method = var.metadata["compute"]

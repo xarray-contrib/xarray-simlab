@@ -111,7 +111,7 @@ class _ModelBuilder:
             if target_p_name is None:
                 raise KeyError(
                     f"Process class '{target_p_cls.__name__}' "
-                     "missing in Model but required "
+                    "missing in Model but required "
                     f"by foreign variable '{var.name}' "
                     f"declared in process '{p_name}'"
                 )
@@ -120,7 +120,7 @@ class _ModelBuilder:
                 raise ValueError(
                     f"Process class {target_p_cls.__name__!r} required "
                     f"by foreign variable '{p_name}.{var.name}' "
-                    f"is used (possibly via one its child classes) by multiple "
+                    "is used (possibly via one its child classes) by multiple "
                     f"processes: {', '.join([f'{n!r}' for n in target_p_name])}"
                 )
 
@@ -204,7 +204,7 @@ class _ModelBuilder:
                 [f"'{'.'.join(k)}' set by: {v}" for k, v in conflicts_str.items()]
             )
 
-            raise ValueError("Conflict(s) found in given variable intents:\n" + msg)
+            raise ValueError(f"Conflict(s) found in given variable intents:\n{msg}")
 
     def get_all_variables(self):
         """Get all variables in the model as a list of

@@ -65,7 +65,7 @@ def _as_dim_tuple(dims):
             ", ".join(str(d) for d in group) for group in invalid_dims
         )
         raise ValueError(
-            f"the following combinations of dimension labels "
+            "the following combinations of dimension labels "
             f"are ambiguous for a variable: {invalid_msg}"
         )
 
@@ -286,7 +286,8 @@ def foreign(other_process_cls, var_name, intent="in"):
         raise ValueError("intent='inout' is not supported for " "foreign variables")
 
     description = (
-        f"Reference to variable {var_name!r} defined in class {other_process_cls.__name__!r}"
+        f"Reference to variable {var_name!r} defined "
+        f"in class {other_process_cls.__name__!r}"
     )
 
     metadata = {
