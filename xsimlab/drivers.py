@@ -46,8 +46,7 @@ class RuntimeContext(Mapping):
     def __setitem__(self, key, value):
         if key not in self._context_keys:
             raise KeyError(
-                f"Invalid key {key!r}, "
-                f"should be one of {self._context_keys!r}"
+                f"Invalid key {key!r}, " f"should be one of {self._context_keys!r}"
             )
 
         self._context[key] = value
@@ -97,7 +96,8 @@ class BaseSimulationDriver:
                 raise RuntimeError(
                     "Cannot set value in store for "
                     f"static variable {var_name!r} defined "
-                    f"in process {p_name!r}")
+                    f"in process {p_name!r}"
+                )
 
             self.store[key] = copy.copy(value)
 
@@ -271,7 +271,8 @@ class XarraySimulationDriver(BaseSimulationDriver):
             raise ValueError(
                 f"Invalid dimension(s) for variable '{p_name}__{var_name}': "
                 f"found {xr_var.dims!r}, "
-                f"must be one of {','.join([str(d) for d in dims])}")
+                f"must be one of {','.join([str(d) for d in dims])}"
+            )
 
         return xr_var
 

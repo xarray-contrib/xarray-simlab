@@ -233,7 +233,7 @@ class SimlabAccessor:
         invalid_inputs = set(input_vars) - set(model.input_vars)
         if invalid_inputs:
             raise KeyError(
-                f"{', '.join([str(k) for k in invalid_inputs])} " 
+                f"{', '.join([str(k) for k in invalid_inputs])} "
                 f"is/are not valid key(s) for input variables in model {model}"
             )
 

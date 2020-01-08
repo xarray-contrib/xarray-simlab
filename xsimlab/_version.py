@@ -301,7 +301,9 @@ def git_pieces_from_vcs(tag_prefix, root, verbose, run_command=run_command):
         if not full_tag.startswith(tag_prefix):
             if verbose:
                 print(f"tag '{full_tag}' doesn't start with prefix '{tag_prefix}'")
-            pieces["error"] = f"tag '{full_tag}' doesn't start with prefix '{tag_prefix}'"
+            pieces[
+                "error"
+            ] = f"tag '{full_tag}' doesn't start with prefix '{tag_prefix}'"
             return pieces
         pieces["closest-tag"] = full_tag[len(tag_prefix) :]
 

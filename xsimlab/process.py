@@ -29,9 +29,7 @@ def _get_embedded_process_cls(cls):
         try:
             return cls.__xsimlab_cls__
         except AttributeError:
-            raise NotAProcessClassError(
-                f"{cls!r} is not a process-decorated class."
-            )
+            raise NotAProcessClassError(f"{cls!r} is not a process-decorated class.")
 
 
 def get_process_cls(obj_or_cls):
@@ -135,16 +133,12 @@ def get_target_variable(var):
         if (target_process_cls, target_var) in visited:  # pragma: no cover
             cycle = "->".join(
                 [
-                    f"{cls.__name__}.{var.name}"
-                    if cls is not None
-                    else var.name
+                    f"{cls.__name__}.{var.name}" if cls is not None else var.name
                     for cls, var in visited
                 ]
             )
 
-            raise RuntimeError(
-                f"Cycle detected in process dependencies: {cycle}"
-            )
+            raise RuntimeError(f"Cycle detected in process dependencies: {cycle}")
 
     return target_process_cls, target_var
 

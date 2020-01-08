@@ -1115,7 +1115,9 @@ def git_pieces_from_vcs(tag_prefix, root, verbose, run_command=run_command):
         if not full_tag.startswith(tag_prefix):
             if verbose:
                 print(f"tag '{full_tag}' doesn't start with prefix '{tag_prefix}'")
-            pieces["error"] = f"tag '{full_tag}' doesn't start with prefix '{tag_prefix}'"
+            pieces[
+                "error"
+            ] = f"tag '{full_tag}' doesn't start with prefix '{tag_prefix}'"
             return pieces
         pieces["closest-tag"] = full_tag[len(tag_prefix) :]
 
@@ -1253,7 +1255,7 @@ def write_to_version_file(filename, versions):
     with open(filename, "w") as f:
         f.write(SHORT_VERSION_PY % contents)
 
-    print(f"set {filename} to '{versions["version"]}'")
+    print(f"set {filename} to {versions['version']!r}")
 
 
 def plus_or_dot(pieces):
@@ -1555,12 +1557,12 @@ def get_cmdclass():
 
         def run(self):
             vers = get_versions(verbose=True)
-            print(f"Version: {vers["version"]}")
-            print(f" full-revisionid: {vers.get("full-revisionid")}")
-            print(f" dirty: {vers.get("dirty")}")
-            print(f" date: {vers.get("date")}")
+            print(f"Version: {vers['version']}")
+            print(f" full-revisionid: {vers.get('full-revisionid')}")
+            print(f" dirty: {vers.get('dirty')}")
+            print(f" date: {vers.get('date')}")
             if vers["error"]:
-                print(f" error: {vers["error"]}")
+                print(f" error: {vers['error']}")
 
     cmds["version"] = cmd_version
 
