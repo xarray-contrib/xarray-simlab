@@ -133,7 +133,9 @@ def get_target_variable(var):
         if (target_process_cls, target_var) in visited:  # pragma: no cover
             cycle = "->".join(
                 [
-                    f"{cls.__name__}.{var.name}" if cls is not None else var.name
+                    "{}.{}".format(cls.__name__, var.name)
+                    if cls is not None
+                    else var.name
                     for cls, var in visited
                 ]
             )

@@ -118,10 +118,13 @@ class _ModelBuilder:
 
             elif isinstance(target_p_name, list):
                 raise ValueError(
-                    f"Process class {target_p_cls.__name__!r} required "
-                    f"by foreign variable '{p_name}.{var.name}' "
-                    "is used (possibly via one its child classes) by multiple "
-                    f"processes: {', '.join([f'{n!r}' for n in target_p_name])}"
+                    "Process class {!r} required by foreign variable '{}.{}' "
+                    "processes: {}".format(
+                        target_p_cls.__name__,
+                        p_name,
+                        var.name,
+                        ", ".join(["{!r}".format(n) for n in target_p_name]),
+                    )
                 )
 
             store_key, od_key = self._get_var_key(target_p_name, target_var)
