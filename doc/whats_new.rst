@@ -47,8 +47,8 @@ Enhancements
   to :func:`xarray.Dataset.xsimlab.run`.
 - More consistent dictionary format for output variables in the xarray
   extension (:issue:`85`).
-- %-formatting and str.format() has been converted into formatted string
-  literals (f-strings)
+- %-formatting and str.format() code has been converted into formatted string
+  literals (f-strings) (:issue:`80`).
 
 Bug fixes
 ~~~~~~~~~
