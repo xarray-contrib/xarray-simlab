@@ -56,4 +56,7 @@ def test_foreign():
         foreign(ExampleProcess, "some_var", intent="inout")
 
     assert "intent='inout' is not supported" in str(excinfo.value)
-    assert foreign(ExampleProcess, "out_foreign_var").metadata["description"] == "original description"
+    assert (
+        foreign(ExampleProcess, "out_foreign_var").metadata["description"]
+        == "original description"
+    )
