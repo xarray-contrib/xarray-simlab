@@ -48,7 +48,7 @@ Enhancements
 - More consistent dictionary format for output variables in the xarray
   extension (:issue:`85`).
 - %-formatting and str.format() code has been converted into formatted string
-  literals (f-strings) (:issue:`80`).
+  literals (f-strings) (:issue:`90`).
 
 Bug fixes
 ~~~~~~~~~

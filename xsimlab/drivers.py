@@ -46,7 +46,7 @@ class RuntimeContext(Mapping):
     def __setitem__(self, key, value):
         if key not in self._context_keys:
             raise KeyError(
-                f"Invalid key {key!r}, " f"should be one of {self._context_keys!r}"
+                f"Invalid key {key!r}, should be one of {self._context_keys!r}"
             )
 
         self._context[key] = value

@@ -233,8 +233,8 @@ class SimlabAccessor:
         invalid_inputs = set(input_vars) - set(model.input_vars)
         if invalid_inputs:
             raise KeyError(
-                f"{', '.join([str(k) for k in invalid_inputs])} "
-                f"is/are not valid key(s) for input variables in model {model}"
+                ", ".join([str(k) for k in invalid_inputs]),
+                f" is/are not valid key(s) for input variables in model {model}",
             )
 
         for (p_name, var_name), data in input_vars.items():
@@ -280,8 +280,8 @@ class SimlabAccessor:
         invalid_outputs = set(output_vars) - set(model.all_vars)
         if invalid_outputs:
             raise KeyError(
-                f"{', '.join([str(k) for k in invalid_outputs])} "
-                f"is/are not valid key(s) for variables in model {model}"
+                ", ".join([str(k) for k in invalid_outputs]),
+                f" is/are not valid key(s) for variables in model {model}",
             )
 
         clock_vars = defaultdict(list)

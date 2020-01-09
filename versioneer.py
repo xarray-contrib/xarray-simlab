@@ -1826,7 +1826,7 @@ def do_setup():
             "to MANIFEST.in"
         )
         with open(manifest_in, "a") as f:
-            f.write("include %s\n" % cfg.versionfile_source)
+            f.write(f"include {cfg.versionfile_source}\n")
     else:
         print(" versionfile_source already in MANIFEST.in")
 
