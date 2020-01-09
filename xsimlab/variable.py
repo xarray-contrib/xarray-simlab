@@ -286,9 +286,7 @@ def foreign(other_process_cls, var_name, intent="in"):
     if intent == "inout":
         raise ValueError("intent='inout' is not supported for " "foreign variables")
 
-    for key, value in variables_dict(other_process_cls).items():
-        if key == var_name:
-            description = value.metadata.get("description")
+    description = variables_dict(other_process_cls)[var_name].metadata["description"]
 
     metadata = {
         "var_type": VarType.FOREIGN,

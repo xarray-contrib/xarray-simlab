@@ -47,7 +47,8 @@ Enhancements
   to :func:`xarray.Dataset.xsimlab.run`.
 - More consistent dictionary format for output variables in the xarray
   extension (:issue:`85`).
-- :func:`~xsimlab.foreign` has been updated to return its original description
+- :func:`~xsimlab.foreign` has been updated to return the original description
+  of a foreign variable
 
 Bug fixes
 ~~~~~~~~~
