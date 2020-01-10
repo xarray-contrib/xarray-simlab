@@ -20,14 +20,22 @@ class _InBoundsValidator:
 
         self.bounds_str = f"{delim_left}{self.bounds[0]}, {self.bounds[1]}{delim_right}"
 
-    def __call__(self, inst, attr, value):
-        out_lower = (
+        if (
             self.bounds[0] is not None
-            and (value < self.bounds[0] if self.closed[0] else value <= self.bounds[0])
+            and self.bounds[1] is not None
+            and self.bounds[1] < self.bounds[0]
+        ):
+            raise ValueError(
+                f"Invalid bounds {self.bounds_str}: "
+                "upper limit should be higher than lower limit"
+            )
+
+    def __call__(self, inst, attr, value):
+        out_lower = self.bounds[0] is not None and (
+            value < self.bounds[0] if self.closed[0] else value <= self.bounds[0]
         )
-        out_upper = (
-            self.bounds[1] is not None
-            and (value > self.bounds[1] if self.closed[1] else value >= self.bounds[1])
+        out_upper = self.bounds[1] is not None and (
+            value > self.bounds[1] if self.closed[1] else value >= self.bounds[1]
         )
 
         if np.any(out_lower) or np.any(out_upper):
