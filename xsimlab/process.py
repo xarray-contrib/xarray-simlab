@@ -515,26 +515,9 @@ def process(maybe_cls=None, autodoc=True):
         Allows to apply this decorator to a class either as ``@process`` or
         ``@process(*args)``.
     autodoc : bool, optional
-        If True, render the docstrings template and fill the
-        corresponding sections with variable metadata (default: True).
-        {{attributes}} can be used as a placeholder for the updated
-        metadata information.
-        
-        Docstring template:
-            Attributes
-            ----------
-            var1: object
-                Variable description
-
-                - type: variable
-                - intent: in
-                - dims : ((),)
-                - groups : ()
-                - static : False
-                - attrs : {}
-                
-            var2: object
-            ...
+        (default: True) Automatically adds an attributes section to the
+        docstring of the class to which the decorator is applied, using the
+        metadata of each variable declared in the class.
 
     """
 
