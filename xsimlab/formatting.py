@@ -50,7 +50,7 @@ def _summarize_var(var, process, col_width):
         var_intent_str = "[inout]"
 
     if var_type == VarType.GROUP:
-        var_info = "{} group {!r}".format(link_symbol, var.metadata["group"])
+        var_info = f"{link_symbol} group {var.metadata['group']!r}"
 
     elif var_type == VarType.FOREIGN:
         key = process.__xsimlab_store_keys__.get(var_name)
@@ -62,7 +62,7 @@ def _summarize_var(var, process, col_width):
                 var.metadata["var_name"],
             )
 
-        var_info = "{} {}.{}".format(link_symbol, *key)
+        var_info = f"{link_symbol} {'.'.join(key)}"
 
     else:
         var_dims = " or ".join([str(d) for d in var.metadata["dims"]])
@@ -72,7 +72,7 @@ def _summarize_var(var, process, col_width):
         else:
             var_info = var.metadata["description"]
 
-    left_col = pretty_print("    {}".format(var.name), col_width)
+    left_col = pretty_print(f"    {var.name}", col_width)
 
     right_col = var_intent_str
     if var_info:
@@ -96,7 +96,7 @@ def var_details(var, max_line_length=70):
     ]
     detail_items += list(var_metadata.items())
 
-    details = "\n".join(["- {} : {}".format(k, v) for k, v in detail_items])
+    details = "\n".join([f"- {k} : {v}" for k, v in detail_items])
 
     return description + "\n\n" + details + "\n"
 
@@ -130,11 +130,11 @@ def repr_process(process):
     process_cls = type(process)
 
     if process.__xsimlab_name__ is not None:
-        process_name = "{!r}".format(process.__xsimlab_name__)
+        process_name = f"{process.__xsimlab_name__!r}"
     else:
         process_name = ""
 
-    header = "<{} {} (xsimlab process)>".format(process_cls.__name__, process_name)
+    header = f"<{process_cls.__name__} {process_name} (xsimlab process)>"
 
     variables = variables_dict(process_cls)
 
@@ -173,8 +173,8 @@ def repr_process(process):
 def repr_model(model):
     n_processes = len(model)
 
-    header = "<xsimlab.Model ({} processes, {} inputs)>".format(
-        n_processes, len(model.input_vars)
+    header = (
+        f"<xsimlab.Model ({n_processes} processes, {len(model.input_vars)} inputs)>"
     )
 
     if not n_processes:
