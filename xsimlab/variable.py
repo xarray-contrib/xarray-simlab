@@ -66,7 +66,7 @@ def _as_dim_tuple(dims):
         )
         raise ValueError(
             "the following combinations of dimension labels "
-            "are ambiguous for a variable: {}".format(invalid_msg)
+            f"are ambiguous for a variable: {invalid_msg}"
         )
 
     return tuple(dims)
@@ -283,10 +283,11 @@ def foreign(other_process_cls, var_name, intent="in"):
 
     """
     if intent == "inout":
-        raise ValueError("intent='inout' is not supported for " "foreign variables")
+        raise ValueError("intent='inout' is not supported for foreign variables")
 
-    description = "Reference to variable {!r} " "defined in class {!r}".format(
-        var_name, other_process_cls.__name__
+    description = (
+        f"Reference to variable {var_name!r} defined "
+        f"in class {other_process_cls.__name__!r}"
     )
 
     metadata = {
@@ -327,7 +328,7 @@ def group(name):
     :func:`variable`
 
     """
-    description = "Iterable of all variables that " "belong to group {!r}".format(name)
+    description = f"Iterable of all variables that belong to group {name!r}"
 
     metadata = {
         "var_type": VarType.GROUP,
