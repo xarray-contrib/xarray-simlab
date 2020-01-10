@@ -46,9 +46,7 @@ class RuntimeContext(Mapping):
     def __setitem__(self, key, value):
         if key not in self._context_keys:
             raise KeyError(
-                "Invalid key {!r}, should be one of {!r}".format(
-                    key, self._context_keys
-                )
+                f"Invalid key {key!r}, should be one of {self._context_keys!r}"
             )
 
         self._context[key] = value
@@ -107,8 +105,8 @@ class BaseSimulationDriver:
             if check_static and var.metadata.get("static", False):
                 raise RuntimeError(
                     "Cannot set value in store for "
-                    "static variable {!r} defined "
-                    "in process {!r}".format(var_name, p_name)
+                    f"static variable {var_name!r} defined "
+                    f"in process {p_name!r}"
                 )
 
             self.store[key] = copy.copy(value)
@@ -243,7 +241,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
                 missing_xr_vars.append(xr_var_name)
 
         if missing_xr_vars:
-            raise KeyError("Missing variables %s in Dataset" % missing_xr_vars)
+            raise KeyError(f"Missing variables {missing_xr_vars} in Dataset")
 
     def _get_output_save_steps(self):
         """Returns a dictionary where keys are names of clock coordinates and
@@ -281,10 +279,9 @@ class XarraySimulationDriver(BaseSimulationDriver):
 
         if (strict or transpose) and xr_var.dims not in dims:
             raise ValueError(
-                "Invalid dimension(s) for variable '{}__{}': "
-                "found {!r}, must be one of {}".format(
-                    p_name, var_name, xr_var.dims, ",".join([str(d) for d in dims]),
-                )
+                f"Invalid dimension(s) for variable '{p_name}__{var_name}': "
+                f"found {xr_var.dims!r}, "
+                f"must be one of {','.join([str(d) for d in dims])}"
             )
 
         return xr_var
