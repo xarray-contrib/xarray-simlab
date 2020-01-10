@@ -84,14 +84,14 @@ def test_is_subdtype_success():
 
     # nothing happends
     v(None, simple_attr("test"), np.array([1, 2, 3]))
-    v(None, simple_attr("test"), np.array([1., 2., 3.]))
+    v(None, simple_attr("test"), np.array([1.0, 2.0, 3.0]))
 
 
 def test_is_subdtype_fail():
     v = is_subdtype(np.number)
 
     with pytest.raises(TypeError, match=r".*not a sub-dtype of.*"):
-        v(None, simple_attr("test"), np.array(['1', '2', '3']))
+        v(None, simple_attr("test"), np.array(["1", "2", "3"]))
 
 
 def test_is_subdtype_repr():
