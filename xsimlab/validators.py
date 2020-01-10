@@ -4,9 +4,7 @@ import attr
 import numpy as np
 
 
-__all__ = [
-    "in_bounds",
-]
+__all__ = ["in_bounds", "is_subdtype"]
 
 
 @attr.s(auto_attribs=True, repr=False, hash=True)
@@ -46,7 +44,7 @@ class _InBoundsValidator:
 
 
 def in_bounds(bounds, closed=(True, True)):
-    """A validator that raises a `ValueError` if a given value is out of
+    """A validator that raises a :exc:`ValueError` if a given value is out of
     the given bounded interval.
 
     It works with scalar values as well as with arrays (element-wise check).
@@ -63,3 +61,36 @@ def in_bounds(bounds, closed=(True, True)):
 
     """
     return _InBoundsValidator(tuple(bounds), tuple(closed))
+
+
+@attr.s(repr=False, hash=True)
+class _IsSubdtypeValidator:
+    dtype = attr.ib()
+
+    def __call__(self, inst, attr, value):
+        if not np.issubdtype(value.dtype, self.dtype):
+            raise TypeError(
+                f"{attr.name!r} array has {value.dtype!r}, which is not "
+                f"a sub-dtype of {self.dtype!r}"
+            )
+
+    def __repr__(self):
+        return f"<is_subdtype validator with type: {self.dtype!r}>"
+
+
+def is_subdtype(dtype):
+    """A validator that raises a :exc:`TypeError` if a given array has a wrong
+    dtype.
+
+    Parameters
+    ----------
+    dtype : dtype_like
+        dtype or string representing the typecode of the highest type
+        allowed in the hierarchy.
+
+    See Also
+    --------
+    :func:`numpy.issubdtype`
+
+    """
+    return _IsSubdtypeValidator(dtype)

@@ -158,5 +158,6 @@ listed below. These are defined in ``xsimlab.validators``.
    :toctree: _api_generated/
 
    in_bounds
+   is_subdtype
 
 .. _`attrs' validators`: https://www.attrs.org/en/stable/examples.html#validators

@@ -1,7 +1,26 @@
+import attr
 import numpy as np
 import pytest
 
-from xsimlab.validators import in_bounds
+from xsimlab.validators import in_bounds, is_subdtype
+
+
+def simple_attr(name):
+    """
+    Return an attribute with a name just for testing purpose.
+    """
+    return attr.Attribute(
+        name=name,
+        default=attr.NOTHING,
+        validator=None,
+        repr=True,
+        eq=True,
+        cmp=None,
+        hash=None,
+        init=True,
+        converter=None,
+        kw_only=False,
+    )
 
 
 def test_in_bounds_init():
@@ -25,7 +44,7 @@ def test_in_bounds_success(bounds, value):
     v = in_bounds(bounds)
 
     # nothing happens
-    v(None, None, value)
+    v(None, simple_attr("test"), value)
 
 
 @pytest.mark.parametrize(
@@ -41,7 +60,7 @@ def test_in_bounds_fail(bounds, closed, value):
     v = in_bounds(bounds, closed=closed)
 
     with pytest.raises(ValueError, match=r".*out of bounds.*"):
-        v(None, None, value)
+        v(None, simple_attr("test"), value)
 
 
 @pytest.mark.parametrize(
@@ -58,3 +77,24 @@ def test_in_bounds_repr(closed, interval_str):
 
     expected = f"<in_bounds validator with bounds {interval_str}>"
     assert repr(v) == expected
+
+
+def test_is_subdtype_success():
+    v = is_subdtype(np.number)
+
+    # nothing happends
+    v(None, simple_attr("test"), np.array([1, 2, 3]))
+    v(None, simple_attr("test"), np.array([1., 2., 3.]))
+
+
+def test_is_subdtype_fail():
+    v = is_subdtype(np.number)
+
+    with pytest.raises(TypeError, match=r".*not a sub-dtype of.*"):
+        v(None, simple_attr("test"), np.array(['1', '2', '3']))
+
+
+def test_is_subdtype_repr():
+    v = is_subdtype(np.number)
+
+    assert repr(v) == "<is_subdtype validator with type: <class 'numpy.number'>>"
