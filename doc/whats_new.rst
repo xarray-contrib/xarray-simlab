@@ -55,6 +55,7 @@ Enhancements
   to automatically add an attributes section to the docstring of the class to
   which the decorator is applied, using the metadata of each variable declared
   in the class (:issue:`67`).
+- Added a couple of variable validators (:issue:`87`).
 
 Bug fixes
 ~~~~~~~~~
