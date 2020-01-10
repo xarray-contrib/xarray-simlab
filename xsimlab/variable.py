@@ -4,7 +4,6 @@ import warnings
 
 import attr
 from attr._make import _CountingAttr
-from .utils import variables_dict
 
 
 class VarType(Enum):
@@ -286,7 +285,7 @@ def foreign(other_process_cls, var_name, intent="in"):
     if intent == "inout":
         raise ValueError("intent='inout' is not supported for foreign variables")
 
-    description = variables_dict(other_process_cls)[var_name].metadata["description"]
+    description = attr.fields_dict(other_process_cls)[var_name].metadata["description"]
 
     metadata = {
         "var_type": VarType.FOREIGN,

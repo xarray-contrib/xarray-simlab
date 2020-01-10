@@ -1,6 +1,7 @@
 import pytest
+import attr
 
-from xsimlab.tests.fixture_process import ExampleProcess
+from xsimlab.tests.fixture_process import AnotherProcess, ExampleProcess
 from xsimlab.variable import _as_dim_tuple, _as_group_tuple, foreign
 
 
@@ -54,9 +55,8 @@ def test_as_group_tuple(groups, group, expected):
 def test_foreign():
     with pytest.raises(ValueError) as excinfo:
         foreign(ExampleProcess, "some_var", intent="inout")
-
     assert "intent='inout' is not supported" in str(excinfo.value)
-    assert (
-        foreign(ExampleProcess, "out_foreign_var").metadata["description"]
-        == "original description"
-    )
+
+    actual = attr.fields(ExampleProcess).out_foreign_var.metadata["description"]
+    expected = attr.fields(AnotherProcess).another_var.metadata["description"]
+    assert actual == expected
