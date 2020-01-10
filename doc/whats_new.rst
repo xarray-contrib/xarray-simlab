@@ -49,6 +49,8 @@ Enhancements
   extension (:issue:`85`).
 - :func:`~xsimlab.foreign` has been updated to get the original description
   of a foreign variable
+- %-formatting and str.format() code has been converted into formatted string
+  literals (f-strings) (:issue:`90`).
 
 Bug fixes
 ~~~~~~~~~

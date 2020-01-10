@@ -118,14 +118,14 @@ class AttrMapping:
             with suppress(KeyError):
                 return self._mapping[name]
         raise AttributeError(
-            "%r object has no attribute %r" % (type(self).__name__, name)
+            f"{type(self).__name__!r} object has no attribute {name!r}"
         )
 
     def __setattr__(self, name, value):
         if self._initialized and name in self._mapping:
             raise AttributeError(
-                "cannot override attribute %r of this %r object"
-                % (name, type(self).__name__)
+                f"cannot override attribute {name!r} of "
+                f"this {type(self).__name__!r} object"
             )
         object.__setattr__(self, name, value)
 

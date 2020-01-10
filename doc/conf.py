@@ -19,30 +19,30 @@
 import sys
 import os
 
-print("python exec:", sys.executable)
-print("sys.path:", sys.path)
+print(f"python exec: {sys.executable}")
+print(f"sys.path: {sys.path}")
 try:
     import numpy
 
-    print("numpy: %s, %s" % (numpy.__version__, numpy.__file__))
+    print(f"numpy: {numpy.__version__}, {numpy.__file__}")
 except ImportError:
     print("no numpy")
 try:
     import attr
 
-    print("attr: %s, %s" % (attr.__version__, attr.__file__))
+    print(f"attr: {attr.__version__}, {attr.__file__}")
 except ImportError:
     print("no attr")
 try:
     import xarray
 
-    print("xarray: %s, %s" % (xarray.__version__, xarray.__file__))
+    print(f"xarray: {xarray.__version__}, {xarray.__file__}")
 except ImportError:
     print("no xarray")
 
 import xsimlab
 
-print("xsimlab: %s, %s" % (xsimlab.__version__, xsimlab.__file__))
+print(f"xsimlab: {xsimlab.__version__}, {xsimlab.__file__}")
 
 # -- General configuration ------------------------------------------------
 
