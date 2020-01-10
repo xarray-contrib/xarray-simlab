@@ -39,7 +39,7 @@ def _maybe_get_model_from_context(model):
             raise TypeError("No model found in context")
 
     if not isinstance(model, Model):
-        raise TypeError("%s is not an instance of xsimlab.Model" % model)
+        raise TypeError(f"{model} is not an instance of xsimlab.Model")
 
     return model
 
@@ -66,7 +66,7 @@ def as_variable_key(key):
                 key_tuple = (p_name, var_name)
 
     if key_tuple is None:
-        raise ValueError("{!r} is not a valid input variable key".format(key))
+        raise ValueError(f"{key!r} is not a valid input variable key")
 
     return key_tuple
 
@@ -115,8 +115,7 @@ def _flatten_outputs(output_vars):
 
         else:
             raise ValueError(
-                "Cannot interpret {!r} as valid output "
-                "variable key(s)".format(out_vars)
+                f"Cannot interpret {out_vars!r} as valid output variable key(s)"
             )
 
         flatten_vars[clock] = var_list
@@ -173,8 +172,8 @@ class SimlabAccessor:
         if xr_var.dims != (dim,):
             raise ValueError(
                 "Invalid dimension(s) given for clock coordinate "
-                "{dim!r}: found {invalid_dims!r}, "
-                "expected {dim!r}".format(dim=dim, invalid_dims=xr_var.dims)
+                f"{dim!r}: found {xr_var.dims!r}, "
+                f"expected {dim!r}"
             )
 
         xr_var.attrs[self._clock_key] = np.uint8(True)
@@ -198,8 +197,8 @@ class SimlabAccessor:
 
             if dim not in self._ds.coords:
                 raise KeyError(
-                    "Master clock dimension name {} as no "
-                    "defined coordinate in Dataset".format(dim)
+                    f"Master clock dimension name {dim} as no "
+                    "defined coordinate in Dataset"
                 )
 
             self._ds[dim].attrs[self._master_clock_key] = np.uint8(True)
@@ -224,21 +223,18 @@ class SimlabAccessor:
 
             if diff_idx.size:
                 raise ValueError(
-                    "Clock coordinate {} is not synchronized "
-                    "with master clock coordinate {}. "
+                    f"Clock coordinate {clock_dim} is not synchronized "
+                    f"with master clock coordinate {self.master_clock_dim}. "
                     "The following coordinate labels are "
-                    "absent in master clock: {}".format(
-                        clock_dim, self.master_clock_dim, diff_idx.values
-                    )
+                    f"absent in master clock: {diff_idx.values}"
                 )
 
     def _set_input_vars(self, model, input_vars):
         invalid_inputs = set(input_vars) - set(model.input_vars)
         if invalid_inputs:
             raise KeyError(
-                "{} is/are not valid key(s) for input variables in model {}".format(
-                    ", ".join([str(k) for k in invalid_inputs]), model
-                )
+                ", ".join([str(k) for k in invalid_inputs])
+                + f" is/are not valid key(s) for input variables in model {model}",
             )
 
         for (p_name, var_name), data in input_vars.items():
@@ -284,9 +280,8 @@ class SimlabAccessor:
         invalid_outputs = set(output_vars) - set(model.all_vars)
         if invalid_outputs:
             raise KeyError(
-                "{} is/are not valid key(s) for variables in model {}".format(
-                    ", ".join([str(k) for k in invalid_outputs]), model
-                )
+                ", ".join([str(k) for k in invalid_outputs])
+                + f" is/are not valid key(s) for variables in model {model}",
             )
 
         clock_vars = defaultdict(list)
@@ -294,7 +289,7 @@ class SimlabAccessor:
         for (p_name, var_name), clock in output_vars.items():
             if clock is not None and clock not in self.clock_coords:
                 raise ValueError(
-                    "{!r} coordinate is not a valid clock coordinate.".format(clock)
+                    f"{clock!r} coordinate is not a valid clock coordinate."
                 )
 
             xr_var_name = p_name + "__" + var_name
@@ -403,15 +398,15 @@ class SimlabAccessor:
         if clocks is not None:
             if master_clock_dim is None:
                 raise ValueError(
-                    "Cannot determine which clock coordinate is " "the master clock"
+                    "Cannot determine which clock coordinate is the master clock"
                 )
             elif (
                 master_clock_dim not in clocks
                 and master_clock_dim not in self.clock_coords
             ):
                 raise KeyError(
-                    "Master clock dimension name {!r} not found "
-                    "in `clocks` nor in Dataset".format(master_clock_dim)
+                    f"Master clock dimension name {master_clock_dim!r} not found "
+                    "in `clocks` nor in Dataset"
                 )
 
             for dim, data in clocks.items():
