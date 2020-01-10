@@ -110,10 +110,10 @@ class _ModelBuilder:
 
             if target_p_name is None:
                 raise KeyError(
-                    "Process class '{}' missing in Model but required "
-                    "by foreign variable '{}' declared in process '{}'".format(
-                        target_p_cls.__name__, var.name, p_name
-                    )
+                    f"Process class '{target_p_cls.__name__}' "
+                    "missing in Model but required "
+                    f"by foreign variable '{var.name}' "
+                    f"declared in process '{p_name}'"
                 )
 
             elif isinstance(target_p_name, list):
@@ -205,10 +205,10 @@ class _ModelBuilder:
                 for k, v in conflicts.items()
             }
             msg = "\n".join(
-                ["'{}.{}' set by: {}".format(*k, v) for k, v in conflicts_str.items()]
+                [f"'{'.'.join(k)}' set by: {v}" for k, v in conflicts_str.items()]
             )
 
-            raise ValueError("Conflict(s) found in given variable intents:\n" + msg)
+            raise ValueError(f"Conflict(s) found in given variable intents:\n{msg}")
 
     def get_all_variables(self):
         """Get all variables in the model as a list of
@@ -376,7 +376,7 @@ class _ModelBuilder:
                             cycle.reverse()
                             cycle = "->".join(cycle)
                             raise RuntimeError(
-                                "Cycle detected in process graph: %s" % cycle
+                                f"Cycle detected in process graph: {cycle}"
                             )
                         next_nodes.append(nxt)
 

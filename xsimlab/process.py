@@ -7,7 +7,7 @@ import warnings
 import attr
 
 from .variable import VarIntent, VarType
-from .formatting import repr_process, var_details
+from .formatting import add_attribute_section, repr_process, var_details
 from .utils import has_method, variables_dict
 
 
@@ -29,9 +29,7 @@ def _get_embedded_process_cls(cls):
         try:
             return cls.__xsimlab_cls__
         except AttributeError:
-            raise NotAProcessClassError(
-                "{cls!r} is not a " "process-decorated class.".format(cls=cls)
-            )
+            raise NotAProcessClassError(f"{cls!r} is not a process-decorated class.")
 
 
 def get_process_cls(obj_or_cls):
@@ -142,9 +140,7 @@ def get_target_variable(var):
                 ]
             )
 
-            raise RuntimeError(
-                "Cycle detected in process dependencies: {}".format(cycle)
-            )
+            raise RuntimeError(f"Cycle detected in process dependencies: {cycle}")
 
     return target_process_cls, target_var
 
@@ -191,9 +187,9 @@ def _make_property_variable(var):
 
     if target_type == VarType.GROUP:
         raise ValueError(
-            "Variable {var!r} links to group variable "
-            "{target!r}, which is not supported. Declare {var!r} "
-            "as a group variable instead.".format(var=var.name, target=target_str)
+            f"Variable {var.name!r} links to group variable "
+            f"{target_str!r}, which is not supported. Declare {var.name!r} "
+            "as a group variable instead."
         )
 
     elif (
@@ -202,8 +198,8 @@ def _make_property_variable(var):
         and target_intent == VarIntent.OUT
     ):
         raise ValueError(
-            "Conflict between foreign variable {!r} and its "
-            "target variable {!r}, both have intent='out'.".format(var.name, target_str)
+            f"Conflict between foreign variable {var.name!r} and its "
+            f"target variable {target_str!r}, both have intent='out'."
         )
 
     elif target_type == VarType.ON_DEMAND:
@@ -225,8 +221,8 @@ def _make_property_on_demand(var):
     if "compute" not in var.metadata:
         raise KeyError(
             "No compute method found for on_demand variable "
-            "'{name}'. A method decorated with '@{name}.compute' "
-            "is required in the class definition.".format(name=var.name)
+            f"'{var.name}'. A method decorated with '@{var.name}.compute' "
+            "is required in the class definition."
         )
 
     get_method = var.metadata["compute"]
@@ -474,8 +470,9 @@ class _ProcessBuilder:
                 self._p_cls_dict[var_name] = make_prop_func(var)
 
     def render_docstrings(self):
-        # self._p_cls_dict['__doc__'] = "Process-ified class."
-        raise NotImplementedError("autodoc is not yet implemented.")
+        new_doc = add_attribute_section(self._base_cls)
+
+        self._base_cls.__doc__ = new_doc
 
     def build_class(self):
         p_cls = self._make_process_subclass()
@@ -487,7 +484,7 @@ class _ProcessBuilder:
         return p_cls
 
 
-def process(maybe_cls=None, autodoc=False):
+def process(maybe_cls=None, autodoc=True):
     """A class decorator that adds everything needed to use the class
     as a process.
 
@@ -514,8 +511,9 @@ def process(maybe_cls=None, autodoc=False):
         Allows to apply this decorator to a class either as ``@process`` or
         ``@process(*args)``.
     autodoc : bool, optional
-        If True, render the docstrings template and fill the
-        corresponding sections with variable metadata (default: False).
+        (default: True) Automatically adds an attributes section to the
+        docstring of the class to which the decorator is applied, using the
+        metadata of each variable declared in the class.
 
     """
 

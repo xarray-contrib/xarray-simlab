@@ -251,11 +251,16 @@ def test_process_executor_raise():
 
 
 def test_process_decorator():
-    with pytest.raises(NotImplementedError):
+    @xs.process(autodoc=True)
+    class Dummy_t:
+        pass
 
-        @xs.process(autodoc=True)
-        class Dummy:
-            pass
+    @xs.process(autodoc=False)
+    class Dummy_f:
+        pass
+
+    assert "Attributes" in Dummy_t.__doc__
+    assert Dummy_f.__doc__ is None
 
 
 def test_process_no_model():
