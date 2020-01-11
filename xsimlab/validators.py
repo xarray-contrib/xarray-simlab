@@ -37,7 +37,14 @@ class _InBoundsValidator:
         )
 
         if np.any(out_lower) or np.any(out_upper):
-            raise ValueError(f"found value(s) out of bounds {self.bounds_str}")
+            common_msg = f"out of bounds {self.bounds_str}"
+
+            if np.isscalar(value):
+                msg = f"Value {value} of variable '{attr.name}' is " + common_msg
+            else:
+                msg = f"Found value(s) in array '{attr.name}' " + common_msg
+
+            raise ValueError(msg)
 
     def __repr__(self):
         return f"<in_bounds validator with bounds {self.bounds_str}>"
@@ -70,7 +77,7 @@ class _IsSubdtypeValidator:
     def __call__(self, inst, attr, value):
         if not np.issubdtype(value.dtype, self.dtype):
             raise TypeError(
-                f"{attr.name!r} array has {value.dtype!r}, which is not "
+                f"'{attr.name}' array has {value.dtype!r}, which is not "
                 f"a sub-dtype of {self.dtype!r}"
             )
 
