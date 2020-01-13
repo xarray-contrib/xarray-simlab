@@ -99,7 +99,10 @@ class BaseSimulationDriver:
                     f"in process {p_name!r}"
                 )
 
-            self.store[key] = copy.copy(value)
+            if var.converter is not None:
+                self.store[key] = var.converter(value)
+            else:
+                self.store[key] = copy.copy(value)
 
     def initialize_store(self, input_vars):
         """Pre-populate the simulation active data store with input
