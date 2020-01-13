@@ -35,7 +35,9 @@ class Profile:
 
 @xs.process
 class InitProfile:
-    n_points = xs.variable(description="nb. of profile points", static=True)
+    n_points = xs.variable(
+        description="nb. of profile points", converter=int, static=True
+    )
     u = xs.foreign(Profile, "u", intent="out")
 
     def initialize(self):

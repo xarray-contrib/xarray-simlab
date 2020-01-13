@@ -197,6 +197,14 @@ def test_process_properties_values(processes_with_store):
     assert set(example_process.group_var) == {1, 4}
 
 
+def test_process_properties_converter(processes_with_store):
+    _, _, example_process = processes_with_store
+
+    example_process.inout_var = 1.1
+    assert example_process.inout_var == 1
+    assert type(example_process.inout_var) is int
+
+
 def test_runtime_decorator_noargs():
     @xs.runtime
     def meth(self):

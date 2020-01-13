@@ -145,6 +145,10 @@ def get_target_variable(var):
     return target_process_cls, target_var
 
 
+def _dummy_converter(value):
+    return value
+
+
 def _make_property_variable(var):
     """Create a property for a variable or a foreign variable (after
     some sanity checks).
@@ -157,6 +161,7 @@ def _make_property_variable(var):
 
     """
     var_name = var.name
+    var_converter = var.converter or _dummy_converter
 
     def get_from_store(self):
         key = self.__xsimlab_store_keys__[var_name]
@@ -169,7 +174,7 @@ def _make_property_variable(var):
 
     def put_in_store(self, value):
         key = self.__xsimlab_store_keys__[var_name]
-        self.__xsimlab_store__[key] = value
+        self.__xsimlab_store__[key] = var_converter(value)
 
     target_process_cls, target_var = get_target_variable(var)
 
@@ -437,6 +442,7 @@ class _ProcessBuilder:
             new_attributes[k] = attr.attrib(
                 metadata=attrib.metadata,
                 validator=attrib.validator,
+                converter=attrib.converter,
                 default=attrib.default,
                 init=False,
                 repr=False,
