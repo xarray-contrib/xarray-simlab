@@ -38,12 +38,21 @@ class TestBaseDriver:
         assert ("not-a-model", "input") not in base_driver.store
 
     def test_set_store_copy(self, base_driver):
-        n = np.array(10)
-        input_vars = {("init_profile", "n_points"): n}
+        n = np.array([1, 2, 3, 4])
+        input_vars = {("add", "offset"): n}
         base_driver.initialize_store(input_vars)
 
-        assert base_driver.store[("init_profile", "n_points")] == n
-        assert base_driver.store[("init_profile", "n_points")] is not n
+        actual = base_driver.store[("add", "offset")]
+        assert_array_equal(actual, n)
+        assert actual is not n
+
+    def test_set_store_converter(self, base_driver):
+        input_vars = {("init_profile", "n_points"): 10.2}
+        base_driver.initialize_store(input_vars)
+
+        actual = base_driver.store[("init_profile", "n_points")]
+        assert actual == 10
+        assert type(actual) is int
 
     def test_initialize_store(self, base_driver):
         input_vars = {("init_profile", "n_points"): 10}
