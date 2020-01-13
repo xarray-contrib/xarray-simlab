@@ -57,6 +57,9 @@ Enhancements
   in the class (:issue:`67`).
 - Added :func:`~xsimlab.validators.in_bounds` and
   :func:`~xsimlab.validators.is_subdtype` validators (:issue:`87`).
+- :func:`xsimlab.variable` has now a ``converter`` parameter that can be used to
+  convert any input value before (maybe) validating it and setting the variable
+  (:issue:`92`).
 
 Bug fixes
 ~~~~~~~~~
