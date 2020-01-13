@@ -146,3 +146,18 @@ Variable
    foreign
    group
    on_demand
+
+Validators
+==========
+
+See also `attrs' validators`_. Some additional validators for common usage are
+listed below. These are defined in ``xsimlab.validators``.
+
+.. currentmodule:: xsimlab.validators
+.. autosummary::
+   :toctree: _api_generated/
+
+   in_bounds
+   is_subdtype
+
+.. _`attrs' validators`: https://www.attrs.org/en/stable/examples.html#validators

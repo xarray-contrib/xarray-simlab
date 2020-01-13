@@ -51,6 +51,12 @@ Enhancements
   literals (f-strings) (:issue:`90`).
 - :func:`~xsimlab.foreign` has been updated to get the original description
   of a foreign variable (:issue:`91`)
+- The ``autodoc`` parameter of the :func:`xsimlab.process` decorator now allows
+  to automatically add an attributes section to the docstring of the class to
+  which the decorator is applied, using the metadata of each variable declared
+  in the class (:issue:`67`).
+- Added :func:`~xsimlab.validators.in_bounds` and
+  :func:`~xsimlab.validators.is_subdtype` validators (:issue:`87`).
 
 Bug fixes
 ~~~~~~~~~

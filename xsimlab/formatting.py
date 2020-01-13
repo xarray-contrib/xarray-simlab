@@ -81,14 +81,14 @@ def _summarize_var(var, process, col_width):
     return left_col + right_col
 
 
-def var_details(var):
-    max_line_length = 70
-
+def var_details(var, max_line_length=70):
     var_metadata = var.metadata.copy()
 
     description = textwrap.fill(
         var_metadata.pop("description").capitalize(), width=max_line_length
     )
+    if not description:
+        description = "(no description given)"
 
     detail_items = [
         ("type", var_metadata.pop("var_type").value),
@@ -99,6 +99,31 @@ def var_details(var):
     details = "\n".join([f"- {k} : {v}" for k, v in detail_items])
 
     return description + "\n\n" + details + "\n"
+
+
+def add_attribute_section(process, placeholder="{{attributes}}"):
+    data_type = "object"  # placeholder until issue #34 is solved
+
+    fmt_vars = []
+
+    for vname, var in variables_dict(process).items():
+        var_header = f"{vname} : {data_type}"
+        var_content = textwrap.indent(var_details(var, max_line_length=62), " " * 4)
+
+        fmt_vars.append(f"{var_header}\n{var_content}")
+
+    fmt_section = textwrap.indent(
+        "Attributes\n" "----------\n" + "\n".join(fmt_vars), " " * 4
+    )
+
+    current_doc = process.__doc__ or ""
+
+    if placeholder in current_doc:
+        new_doc = current_doc.replace(placeholder, fmt_section[4:])
+    else:
+        new_doc = f"{current_doc}\n{fmt_section}\n"
+
+    return new_doc
 
 
 def repr_process(process):

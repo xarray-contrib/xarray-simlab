@@ -7,7 +7,7 @@ import warnings
 import attr
 
 from .variable import VarIntent, VarType
-from .formatting import repr_process, var_details
+from .formatting import add_attribute_section, repr_process, var_details
 from .utils import has_method, variables_dict
 
 
@@ -470,8 +470,9 @@ class _ProcessBuilder:
                 self._p_cls_dict[var_name] = make_prop_func(var)
 
     def render_docstrings(self):
-        # self._p_cls_dict['__doc__'] = "Process-ified class."
-        raise NotImplementedError("autodoc is not yet implemented.")
+        new_doc = add_attribute_section(self._base_cls)
+
+        self._base_cls.__doc__ = new_doc
 
     def build_class(self):
         p_cls = self._make_process_subclass()
@@ -483,7 +484,7 @@ class _ProcessBuilder:
         return p_cls
 
 
-def process(maybe_cls=None, autodoc=False):
+def process(maybe_cls=None, autodoc=True):
     """A class decorator that adds everything needed to use the class
     as a process.
 
@@ -510,8 +511,9 @@ def process(maybe_cls=None, autodoc=False):
         Allows to apply this decorator to a class either as ``@process`` or
         ``@process(*args)``.
     autodoc : bool, optional
-        If True, render the docstrings template and fill the
-        corresponding sections with variable metadata (default: False).
+        (default: True) Automatically adds an attributes section to the
+        docstring of the class to which the decorator is applied, using the
+        metadata of each variable declared in the class.
 
     """
 
