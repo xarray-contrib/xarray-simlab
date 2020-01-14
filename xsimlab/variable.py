@@ -99,6 +99,7 @@ def variable(
     groups=None,
     default=attr.NOTHING,
     validator=None,
+    converter=None,
     static=False,
     description="",
     attrs=None,
@@ -152,6 +153,11 @@ def variable(
         is given.
         If a ``list`` is passed, its items are all are treated as validators.
         The validator can also be set using decorator notation.
+    converter : callable, optional
+        Callable that is called when setting a value for this variable, and that
+        converts the value to the desired format. The callable must accept
+        one argument and return one value. The value is converted before being
+        passed to the validator, if any.
     static : bool, optional
         If True, the value of the (input) variable must be set once
         before the simulation starts and cannot be further updated
@@ -192,6 +198,7 @@ def variable(
         metadata=metadata,
         default=default,
         validator=validator,
+        converter=converter,
         init=_init,
         repr=_repr,
         kw_only=True,
