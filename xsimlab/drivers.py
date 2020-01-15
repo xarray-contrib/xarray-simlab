@@ -1,6 +1,8 @@
 from collections.abc import Mapping
 import copy
 from enum import Enum
+import sys
+import time
 
 import attr
 import numpy as np
@@ -68,21 +70,25 @@ class BaseSimulationDriver:
 
     """
 
-    def __init__(self, model, store, output_store, start, pretask, posttask, finish, stage):
+    def __init__(
+        self, model, store, output_store, start=None, prestep=None, stop=None,
+    ):
         self.model = model
         self.store = store
         self.output_store = output_store
-        self._start = start
-        self._pretask = pretask
-        self._posttask = posttask
-        self._finish = finish
-        self._stage = stage
 
         self._bind_store_to_model()
 
+        if start:
+            self._start = start
+        if prestep:
+            self._prestep = prestep
+        if stop:
+            self._stop = stop
+
     @property
     def _callback(self):
-        fields = ["_start", "_pretask", "_posttask", "_finish", "_stage"]
+        fields = ["_start", "_prestep", "_stop"]
         return tuple(getattr(self, i, None) for i in fields)
 
     def _bind_store_to_model(self):
@@ -455,3 +461,55 @@ class XarraySimulationDriver(BaseSimulationDriver):
         self.model.execute("finalize", runtime_context)
 
         return self._get_output_dataset()
+
+
+def format_time(secs):
+    mins, secs = divmod(secs, 60)
+    hours, mins = divmod(mins, 60)
+    if hours:
+        return f"{hours:2.0f}hrs {mins:2.0f}min {secs:.2f}s"
+    elif mins:
+        return f"{mins:2.0f}min {secs:.2f}s"
+    else:
+        return f"{secs:.2f}s"
+
+
+class ProgressBar(BaseSimulationDriver):
+    def __init__(self, threshold=0, span=50):
+        self._treshold = threshold
+        self._span = span
+
+    def _start(self):
+        self._step = None
+        self._start_time = time.perf_counter()
+
+    def _prestep(self, step):
+        self._step = step
+        sys.stdout.flush()
+
+    def _stop(self):
+        elapsed = time.perf_counter() - self._start_time
+
+        if elapsed < self._threshold:
+            return
+        else:
+            self._update_bar(elapsed)
+
+    def _update_bar(self, elapsed):
+        steps = self._step
+        if not steps:
+            self._bar(0, elapsed)
+
+        step_progress = len(steps["finished"])
+        total_steps = len(steps.values())
+        self._bar(step_progress / total_steps if step_progress else 0, elapsed)
+
+    def _bar(self, increment, elapsed):
+        progress = int(self._span * increment)
+        remain = self._span - progress
+        percent = int(100 * increment)
+        elapsed = format_time(elapsed)
+
+        output = f"[{'#' * progress}{'.' * remain}] | {percent:.2f}% | {elapsed}\r"
+        sys.stdout.write(output)
+        sys.stdout.flush()
