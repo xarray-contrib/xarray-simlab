@@ -491,7 +491,7 @@ class Model(AttrMapping, ContextMixin):
         ``(process_name, var_name)`` tuples (or an empty list).
 
         """
-        return self._all_vars
+        return self._index_vars
 
     @property
     def index_vars_dict(self):
