@@ -197,4 +197,6 @@ def out_dataset(in_dataset):
     )
     out_ds["add__u_diff"] = ("out", [1, 3, 4])
 
+    out_ds["x"] = ("x", [0., 1., 2., 3., 4.])
+
     return out_ds
