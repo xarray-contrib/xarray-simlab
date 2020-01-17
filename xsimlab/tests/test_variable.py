@@ -2,7 +2,7 @@ import pytest
 import attr
 
 from xsimlab.tests.fixture_process import AnotherProcess, ExampleProcess
-from xsimlab.variable import _as_dim_tuple, _as_group_tuple, foreign
+from xsimlab.variable import _as_dim_tuple, _as_group_tuple, foreign, index
 
 
 @pytest.mark.parametrize(
@@ -50,6 +50,11 @@ def test_as_group_tuple(groups, group, expected):
         actual = _as_group_tuple(groups, group)
 
     assert actual == expected
+
+
+def test_index():
+    with pytest.raises(ValueError, match=r".*not accept scalar values.*"):
+        index(())
 
 
 def test_foreign():

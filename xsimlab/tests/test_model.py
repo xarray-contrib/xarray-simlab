@@ -15,7 +15,11 @@ class TestModelBuilder:
         [
             (
                 "init_profile",
-                {"n_points": ("init_profile", "n_points"), "u": ("profile", "u")},
+                {
+                    "n_points": ("init_profile", "n_points"),
+                    "x": ("init_profile", "x"),
+                    "u": ("profile", "u")
+                },
                 {},
             ),
             (

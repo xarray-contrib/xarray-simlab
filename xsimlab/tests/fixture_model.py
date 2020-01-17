@@ -38,9 +38,13 @@ class InitProfile:
     n_points = xs.variable(
         description="nb. of profile points", converter=int, static=True
     )
+
+    x = xs.index(dims="x")
     u = xs.foreign(Profile, "u", intent="out")
 
     def initialize(self):
+        self.x = np.arange(self.n_points)
+
         self.u = np.zeros(self.n_points)
         self.u[0] = 1.0
 
