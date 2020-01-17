@@ -310,7 +310,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
 
         self.update_output_store(var_list)
 
-    def _to_xr_variable(self, key, clock):
+    def _to_xr_variable(self, key, clock, index=False):
         """Convert an output variable to a xarray.Variable object.
 
         Maybe transpose the variable to match the dimension order
@@ -321,9 +321,13 @@ class XarraySimulationDriver(BaseSimulationDriver):
         p_obj = self.model[p_name]
         var = variables_dict(type(p_obj))[var_name]
 
-        data = self.output_store[key]
-        if clock is None:
-            data = data[0]
+        if index:
+            # get index directly from simulation store
+            data = self.store[key]
+        else:
+            data = self.output_store[key]
+            if clock is None:
+                data = data[0]
 
         dims = _get_dims_from_variable(data, var, clock)
         original_dims = self._transposed_vars.get(key)
@@ -349,19 +353,30 @@ class XarraySimulationDriver(BaseSimulationDriver):
 
     def _get_output_dataset(self):
         """Return a new dataset as a copy of the input dataset updated with
-        output variables.
+        output variables and index variables.
         """
+        out_ds = self.dataset.copy()
+
+        # add/update output variables
         xr_vars = {}
 
         for key, clock in self.output_vars.items():
             var_name = "__".join(key)
-            xr_vars[var_name] = self._to_xr_variable(key, clock)
+            xr_vars[var_name] = self._to_xr_variable(key, clock, index=False)
 
-        out_ds = self.dataset.copy()
         out_ds.update(xr_vars)
 
         # remove output_vars attributes in output dataset
         out_ds.xsimlab._reset_output_vars(self.model, {})
+
+        # add/update index variables
+        xr_coords = {}
+
+        for key in self.model.index_vars():
+            _, var_name = key
+            xr_coords[var_name] = self._to_xr_variable(key, None, index=True)
+
+        out_ds.coords.update(xr_coords)
 
         return out_ds
 
