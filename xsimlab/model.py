@@ -9,7 +9,7 @@ from .process import (
     get_target_variable,
     SimulationStage,
 )
-from .utils import AttrMapping, ContextMixin, variables_dict
+from .utils import AttrMapping, ContextMixin
 from .formatting import repr_model
 
 
@@ -98,7 +98,7 @@ class _ModelBuilder:
 
         var_type = var.metadata["var_type"]
 
-        if var_type == VarType.VARIABLE:
+        if var_type in (VarType.VARIABLE, VarType.INDEX):
             store_key = (p_name, var.name)
 
         elif var_type == VarType.ON_DEMAND:
@@ -210,15 +210,19 @@ class _ModelBuilder:
 
             raise ValueError(f"Conflict(s) found in given variable intents:\n{msg}")
 
-    def get_all_variables(self):
-        """Get all variables in the model as a list of
+    def get_variables(self, **kwargs):
+        """Get variables in the model as a list of
         ``(process_name, var_name)`` tuples.
+
+        **kwargs may be used to return only a subset of the variables.
 
         """
         all_keys = []
 
         for p_name, p_cls in self._processes_cls.items():
-            all_keys += [(p_name, var_name) for var_name in variables_dict(p_cls)]
+            all_keys += [
+                (p_name, var_name) for var_name in filter_variables(p_cls, **kwargs)
+            ]
 
         return all_keys
 
@@ -434,8 +438,11 @@ class Model(AttrMapping, ContextMixin):
         builder.bind_processes(self)
         builder.set_process_keys()
 
-        self._all_vars = builder.get_all_variables()
+        self._all_vars = builder.get_variables()
         self._all_vars_dict = None
+
+        self._index_vars = builder.get_variables(var_type=VarType.INDEX)
+        self._index_vars_dict = None
 
         builder.ensure_no_intent_conflict()
 
@@ -449,6 +456,19 @@ class Model(AttrMapping, ContextMixin):
 
         super(Model, self).__init__(self._processes)
         self._initialized = True
+
+    def _get_vars_dict_from_cache(self, attr_name):
+        dict_attr_name = attr_name + "_dict"
+
+        if getattr(self, dict_attr_name) is None:
+            vars_d = defaultdict(list)
+
+            for p_name, var_name in getattr(self, attr_name):
+                vars_d[p_name].append(var_name)
+
+            setattr(self, dict_attr_name, dict(vars_d))
+
+        return getattr(self, dict_attr_name)
 
     @property
     def all_vars(self):
@@ -464,15 +484,22 @@ class Model(AttrMapping, ContextMixin):
         variable names grouped by process.
 
         """
-        if self._all_vars_dict is None:
-            all_vars = defaultdict(list)
+        return self._get_vars_dict_from_cache("_all_vars")
 
-            for p_name, var_name in self._all_vars:
-                all_vars[p_name].append(var_name)
+    def index_vars(self):
+        """Returns all index variables in the model as a list of
+        ``(process_name, var_name)`` tuples (or an empty list).
 
-            self._all_vars_dict = dict(all_vars)
+        """
+        return self._index_vars
 
-        return self._all_vars_dict
+    @property
+    def index_vars_dict(self):
+        """Returns all index variables in the model as a dictionary of lists of
+        variable names grouped by process.
+
+        """
+        return self._get_vars_dict_from_cache("_index_vars")
 
     @property
     def input_vars(self):
@@ -494,15 +521,7 @@ class Model(AttrMapping, ContextMixin):
         variable names grouped by process is returned.
 
         """
-        if self._input_vars_dict is None:
-            inputs = defaultdict(list)
-
-            for p_name, var_name in self._input_vars:
-                inputs[p_name].append(var_name)
-
-            self._input_vars_dict = dict(inputs)
-
-        return self._input_vars_dict
+        return self._get_vars_dict_from_cache("_input_vars")
 
     @property
     def dependent_processes(self):

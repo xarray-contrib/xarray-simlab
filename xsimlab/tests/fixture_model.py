@@ -38,9 +38,13 @@ class InitProfile:
     n_points = xs.variable(
         description="nb. of profile points", converter=int, static=True
     )
+
+    x = xs.index(dims="x")
     u = xs.foreign(Profile, "u", intent="out")
 
     def initialize(self):
+        self.x = np.arange(self.n_points)
+
         self.u = np.zeros(self.n_points)
         self.u[0] = 1.0
 
@@ -192,5 +196,7 @@ def out_dataset(in_dataset):
         ),
     )
     out_ds["add__u_diff"] = ("out", [1, 3, 4])
+
+    out_ds["x"] = ("x", [0.0, 1.0, 2.0, 3.0, 4.0])
 
     return out_ds

@@ -88,6 +88,8 @@ process names and values are objects of ``Process`` subclasses
 
    Model.all_vars
    Model.all_vars_dict
+   Model.index_vars
+   Model.index_vars_dict
    Model.input_vars
    Model.input_vars_dict
    Model.dependent_processes
@@ -143,6 +145,7 @@ Variable
    :toctree: _api_generated/
 
    variable
+   index
    foreign
    group
    on_demand

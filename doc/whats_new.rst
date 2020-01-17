@@ -60,6 +60,9 @@ Enhancements
 - :func:`xsimlab.variable` has now a ``converter`` parameter that can be used to
   convert any input value before (maybe) validating it and setting the variable
   (:issue:`92`).
+- Added :func:`xsimlab.index` for setting index variables (e.g., coordinate
+  labels). Using the xarray extension, those variables are automatically added
+  in the output Dataset as coordinates (:issue:`94`).
 
 Bug fixes
 ~~~~~~~~~
