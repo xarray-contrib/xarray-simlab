@@ -8,6 +8,7 @@ from attr._make import _CountingAttr
 
 class VarType(Enum):
     VARIABLE = "variable"
+    INDEX = "index"
     ON_DEMAND = "on_demand"
     FOREIGN = "foreign"
     GROUP = "group"
@@ -124,7 +125,6 @@ def variable(
         tuple corresponds to a 1-d variable and a n-length tuple corresponds to
         a n-d variable. A list of str or tuple items may also be provided if
         the variable accepts different numbers of dimensions.
-        This should not include a time dimension, which may always be added.
     intent : {'in', 'out', 'inout'}, optional
         Defines whether the variable is an input (i.e., the process needs the
         variable's value for its computation), an output (i.e., the process
@@ -205,6 +205,55 @@ def variable(
     )
 
 
+def index(dims, groups=None, description="", attrs=None):
+    """Create a variable aimed at indexing data.
+
+    The process class in which this variable is declared should set its value
+    (i.e., intent='out') with an index object or an index-compatible object. For
+    example, xarray may accept 1-d arrays, :class:`pandas.Index`,
+    :class:`pandas.MultiIndex`, etc.
+
+    As a simple example, index variable(s) should be used for setting coordinate
+    labels along the dimension(s) of a cartesian grid.
+
+    Parameters
+    ----------
+    dims : str or tuple or list, optional
+        Dimension label(s) of the variable. A string or a 1-length
+        tuple corresponds to a 1-d variable and a n-length tuple corresponds to
+        a n-d variable. A list of str or tuple items may also be provided if
+        the variable accepts different numbers of dimensions. Note that an index
+        variable does not accept scalar values.
+    groups : str or list, optional
+        Variable group(s).
+    description : str, optional
+        Short description of the variable.
+    attrs : dict, optional
+        Dictionnary of additional metadata (e.g., standard_name,
+        units, math_symbol...).
+
+    See Also
+    --------
+    :func:`variable`
+
+    """
+    dims = _as_dim_tuple(dims)
+
+    if tuple() in dims:
+        raise ValueError("An index variable does not accept scalar values")
+
+    metadata = {
+        "var_type": VarType.INDEX,
+        "dims": dims,
+        "intent": VarIntent.OUT,
+        "groups": _as_group_tuple(groups, None),
+        "attrs": attrs or {},
+        "description": description,
+    }
+
+    return attr.attrib(metadata=metadata, init=False, repr=False)
+
+
 def on_demand(dims=(), group=None, groups=None, description="", attrs=None):
     """Create a variable that is computed on demand.
 
@@ -233,7 +282,6 @@ def on_demand(dims=(), group=None, groups=None, description="", attrs=None):
         tuple corresponds to a 1-d variable and a n-length tuple corresponds to
         a n-d variable. A list of str or tuple items may also be provided if
         the variable accepts different numbers of dimensions.
-        This should not include a time dimension, which may always be added.
     group : str, optional
         Variable group (depreciated, use ``groups`` instead).
     groups : str or list, optional
