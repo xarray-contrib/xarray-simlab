@@ -4,21 +4,21 @@ from ..process import SimulationStage
 
 
 def runtime_hook(stage, level="model", trigger="post"):
-    """Decorator that allows a function or a method be called
+    """Decorator that allows to call a function or a method
     at one or more specific times during a simulation.
 
-    The decorated function must have the following signature:
-    ``func(runtime_context, store)``.
+    The decorated function / method must have the following signature:
+    ``func(context, state)`` or ``meth(self, context, state)``.
 
     Parameters
     ----------
     stage : {'initialize', 'run_step', 'finalize_step', 'finalize'}
-        The simulation stage at which the function is called.
+        The simulation stage at which to call the function.
     level : {'model', 'process'}
         Sets whether the simulation stage is treated model-wise ('model')
-        or process-wise ('process'). For the model-wise case (default), the
+        or process-wise ('process'). In the model-wise case (default), the
         function is called only once during the execution of the simulation
-        stage. For the process-wise case, the function is executed as many
+        stage. In the process-wise case, the function is executed as many
         times as there are processes in the model that provide an
         implementation of that simulation stage.
     trigger : {'pre', 'post'}
@@ -46,7 +46,7 @@ def _is_hook(func):
     return hasattr(func, "__xsimlab_hook__")
 
 
-class RuntimeDiagnostic:
+class RuntimeDiagnostics:
 
     def __init__(self, hooks=None):
         if hooks is None:
