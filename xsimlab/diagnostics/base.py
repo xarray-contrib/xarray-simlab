@@ -3,6 +3,9 @@ import inspect
 from ..process import SimulationStage
 
 
+__all__ = ("runtime_hook", "RuntimeDiagnostics")
+
+
 def runtime_hook(stage, level="model", trigger="post"):
     """Decorator that allows to call a function or a method
     at one or more specific times during a simulation.
@@ -42,22 +45,76 @@ def runtime_hook(stage, level="model", trigger="post"):
     return wrap
 
 
-def _is_hook(func):
-    return hasattr(func, "__xsimlab_hook__")
+def _get_hook_info(func):
+    return getattr(func, "__xsimlab_hook__", False)
 
 
 class RuntimeDiagnostics:
+    """Base class for simulation runtime diagnostics.
+
+    Create some runtime hook functions
+
+    >>> @runtime_hook('initialize', 'model', 'pre')
+    ... def start(context, state):
+    ...     pass
+
+    >>> @runtime_hook('run_step', 'model', 'post')
+    ... def after_step(context, state):
+    ...     pass
+
+    You may then create a ``RuntimeDiagnostics`` object with any number
+    of runtime hooks
+
+    >>> rd = RuntimeDiagnostics(hooks=[start, after_step])
+
+    And use it either as a context manager over a model run call
+
+    >>> with rd:
+    ...    in_dataset.xsimlab.run(model=model)
+
+    Or globally with the ``register`` method
+
+    >>> rd.register()
+    >>> rd.unregister()
+
+    Alternatively subclass ``RuntimeDiagnostics`` with some runtime hook
+    methods
+
+    >>> class PrintStep(RuntimeDiagnostics):
+    ...     @runtime_hook('run_step', 'model', 'pre')
+    ...     def before_step(self, context, state):
+    ...         print(f"starting step {context['step']}")
+
+    >>> with PrintStep():
+    ...     in_dataset.xsimlab.run(model=model)
+
+    """
 
     def __init__(self, hooks=None):
+        """
+        Parameters
+        ----------
+        hooks : list, optional
+            A list of runtime_hook decorated functions.
+
+        See Also
+        --------
+        :func:`runtime_hook`
+
+        """
         if hooks is None:
             hooks = []
 
-        if not all(_is_hook(h) for h in hooks):
-            raise TypeError("'hooks' must be an iterable of runtime_hook decorated function")
+        if not all(_get_hook_info(h) for h in hooks):
+            raise TypeError(
+                "'hooks' must be an iterable of runtime_hook decorated functions"
+            )
 
         self._hooks = hooks
 
     def _get_hooks(self):
-        hook_methods = [m for _, m in inspect.getmembers(self, predicate=_is_hook)]
+        hook_methods = [
+            m for _, m in inspect.getmembers(self, predicate=_get_hook_info)
+        ]
 
-        return getattr(self, '_hooks', []) + hook_methods
+        return getattr(self, "_hooks", []) + hook_methods
