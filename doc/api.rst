@@ -164,3 +164,16 @@ listed below. These are defined in ``xsimlab.validators``.
    is_subdtype
 
 .. _`attrs' validators`: https://www.attrs.org/en/stable/examples.html#validators
+
+Diagnostics
+===========
+
+Simulation runtime diagnostics classes and methods are defined in
+``xsimlab.diagnostics``.
+
+.. currentmodule:: xsimlab.diagnostics
+.. autosummary::
+   :toctree: _api_generated/
+
+   runtime_hook
+   RuntimeDiagnostics
