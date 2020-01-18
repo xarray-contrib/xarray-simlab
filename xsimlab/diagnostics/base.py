@@ -11,7 +11,7 @@ def runtime_hook(stage, level="model", trigger="post"):
     at one or more specific times during a simulation.
 
     The decorated function / method must have the following signature:
-    ``func(context, state)`` or ``meth(self, context, state)``.
+    ``func(model, context, state)`` or ``meth(self, model, context, state)``.
 
     Parameters
     ----------
@@ -55,11 +55,11 @@ class RuntimeDiagnostics:
     Create some runtime hook functions
 
     >>> @runtime_hook('initialize', 'model', 'pre')
-    ... def start(context, state):
+    ... def start(model, context, state):
     ...     pass
 
     >>> @runtime_hook('run_step', 'model', 'post')
-    ... def after_step(context, state):
+    ... def after_step(model, context, state):
     ...     pass
 
     You may then create a ``RuntimeDiagnostics`` object with any number
@@ -82,7 +82,7 @@ class RuntimeDiagnostics:
 
     >>> class PrintStep(RuntimeDiagnostics):
     ...     @runtime_hook('run_step', 'model', 'pre')
-    ...     def before_step(self, context, state):
+    ...     def before_step(self, model, context, state):
     ...         print(f"starting step {context['step']}")
 
     >>> with PrintStep():
