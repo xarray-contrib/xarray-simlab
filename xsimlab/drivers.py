@@ -6,6 +6,7 @@ import attr
 import numpy as np
 import xarray as xr
 
+from .diagnostics.base import flatten_diagnostics, group_hooks, RuntimeDiagnostics
 from .utils import variables_dict
 
 
@@ -196,6 +197,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
         output_store,
         check_dims=CheckDimsOption.STRICT,
         validate=ValidateOption.INPUTS,
+        diagnostics=None,
     ):
         self.dataset = dataset
         self.model = model
@@ -220,6 +222,11 @@ class XarraySimulationDriver(BaseSimulationDriver):
         if validate is not None:
             validate = ValidateOption(validate)
         self._validate_option = validate
+
+        if diagnostics is None:
+            diagnostics = set()
+        diagnostics |= RuntimeDiagnostics.active
+        self._runtime_hooks = group_hooks(flatten_diagnostics(diagnostics))
 
     def _check_missing_model_inputs(self):
         """Check if all model inputs have their corresponding variables

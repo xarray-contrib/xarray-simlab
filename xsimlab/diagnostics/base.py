@@ -115,7 +115,7 @@ class RuntimeDiagnostics:
 
     """
 
-    active_hooks = set()
+    active = set()
 
     def __init__(self, *args):
         """
@@ -143,13 +143,11 @@ class RuntimeDiagnostics:
 
     def register(self):
         """Globally register this instance of runtime diagnostics."""
-        for h in self._get_hooks():
-            RuntimeDiagnostics.active_hooks.add(h)
+        RuntimeDiagnostics.active.add(self)
 
     def unregister(self):
         """Globally unresgister this instance of runtime diagnostics."""
-        for h in self._get_hooks():
-            RuntimeDiagnostics.active_hooks.remove(h)
+        RuntimeDiagnostics.active.remove(self)
 
     def __enter__(self):
         self.register()
