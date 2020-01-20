@@ -1,4 +1,5 @@
 import inspect
+from typing import Callable, Dict, Iterable, List, Union
 
 from ..process import SimulationStage
 
@@ -49,6 +50,30 @@ def _get_hook_info(func):
     return getattr(func, "__xsimlab_hook__", False)
 
 
+def group_hooks(
+    hooks: Iterable[Callable],
+) -> Dict[SimulationStage, Dict[str, Dict[str, List[Callable]]]]:
+    """Group a flat sequence of runtime hook functions by
+    simulation stage -> level -> trigger (pre/post)
+
+    """
+    grouped = {}
+
+    for h in hooks:
+        stage, level, trigger = h.__xsimlab_hook__
+
+        if stage not in grouped:
+            grouped[stage] = {}
+        if level not in grouped[stage]:
+            grouped[stage][level] = {}
+        if trigger not in grouped[stage][level]:
+            grouped[stage][level][trigger] = []
+
+        grouped[stage][level][trigger].append(h)
+
+    return grouped
+
+
 class RuntimeDiagnostics:
     """Base class for simulation runtime diagnostics.
 
@@ -90,31 +115,63 @@ class RuntimeDiagnostics:
 
     """
 
-    def __init__(self, hooks=None):
+    active_hooks = set()
+
+    def __init__(self, *args):
         """
         Parameters
         ----------
-        hooks : list, optional
-            A list of runtime_hook decorated functions.
+        *args : callable
+            An abitrary number of runtime_hook decorated functions.
 
         See Also
         --------
         :func:`runtime_hook`
 
         """
-        if hooks is None:
-            hooks = []
+        if not all(_get_hook_info(h) for h in args):
+            raise TypeError("Arguments must be only runtime_hook decorated functions")
 
-        if not all(_get_hook_info(h) for h in hooks):
-            raise TypeError(
-                "'hooks' must be an iterable of runtime_hook decorated functions"
-            )
-
-        self._hooks = hooks
+        self._hook_args = args
 
     def _get_hooks(self):
         hook_methods = [
             m for _, m in inspect.getmembers(self, predicate=_get_hook_info)
         ]
 
-        return getattr(self, "_hooks", []) + hook_methods
+        return getattr(self, "_hook_args", ()) + tuple(hook_methods)
+
+    def register(self):
+        """Globally register this instance of runtime diagnostics."""
+        for h in self._get_hooks():
+            RuntimeDiagnostics.active_hooks.add(h)
+
+    def unregister(self):
+        """Globally unresgister this instance of runtime diagnostics."""
+        for h in self._get_hooks():
+            RuntimeDiagnostics.active_hooks.remove(h)
+
+    def __enter__(self):
+        self.register()
+        return self
+
+    def __exit__(self, typ, value, traceback):
+        self.unregister()
+
+
+def flatten_diagnostics(
+    objects: Iterable[Union[RuntimeDiagnostics, Callable]]
+) -> List[Callable]:
+    hooks = []
+
+    for obj in objects:
+        if isinstance(obj, RuntimeDiagnostics):
+            hooks += list(obj._get_hooks())
+        elif _get_hook_info(obj):
+            hooks.append(obj)
+        else:
+            raise TypeError(
+                "{obj!r} is not a RuntimeDiagnostics object nor a runtime hook decorated function"
+            )
+
+    return hooks
