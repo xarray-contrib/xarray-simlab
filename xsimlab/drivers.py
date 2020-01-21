@@ -80,6 +80,8 @@ class BaseSimulationDriver:
         """Bind the simulation active data store to each process in the
         model.
         """
+        self.model.store = self.store
+
         for p_obj in self.model.values():
             p_obj.__xsimlab_store__ = self.store
 
@@ -442,7 +444,12 @@ class XarraySimulationDriver(BaseSimulationDriver):
         self.initialize_store(in_vars)
         self._maybe_validate_inputs(in_vars)
 
-        self.model.execute("initialize", runtime_context, validate=validate_all)
+        self.model.execute(
+            "initialize",
+            runtime_context,
+            runtime_hooks=self._runtime_hooks,
+            validate=validate_all,
+        )
 
         for step, (_, ds_step) in enumerate(ds_gby_steps):
 
@@ -457,13 +464,25 @@ class XarraySimulationDriver(BaseSimulationDriver):
             self.update_store(in_vars)
             self._maybe_validate_inputs(in_vars)
 
-            self.model.execute("run_step", runtime_context, validate=validate_all)
+            self.model.execute(
+                "run_step",
+                runtime_context,
+                runtime_hooks=self._runtime_hooks,
+                validate=validate_all,
+            )
 
             self._maybe_save_output_vars(step)
 
-            self.model.execute("finalize_step", runtime_context, validate=validate_all)
+            self.model.execute(
+                "finalize_step",
+                runtime_context,
+                runtime_hooks=self._runtime_hooks,
+                validate=validate_all,
+            )
 
         self._maybe_save_output_vars(-1)
-        self.model.execute("finalize", runtime_context)
+        self.model.execute(
+            "finalize", runtime_context, runtime_hooks=self._runtime_hooks
+        )
 
         return self._get_output_dataset()
