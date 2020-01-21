@@ -9,7 +9,7 @@ from .process import (
     get_target_variable,
     SimulationStage,
 )
-from .utils import AttrMapping, ContextMixin
+from .utils import AttrMapping, ContextMixin, Frozen
 from .formatting import repr_model
 
 
@@ -573,7 +573,7 @@ class Model(AttrMapping, ContextMixin):
             return
 
         for h in hooks:
-            h(self, runtime_context, self.store)
+            h(self, Frozen(runtime_context), Frozen(self.store))
 
     def execute(self, stage, runtime_context, runtime_hooks=None, validate=False):
         """Run one stage of a simulation.
