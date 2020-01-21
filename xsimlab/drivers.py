@@ -1,6 +1,6 @@
-from collections.abc import Mapping
 import copy
 from enum import Enum
+from typing import Any, Iterator, Mapping
 
 import attr
 import numpy as np
@@ -20,7 +20,7 @@ class CheckDimsOption(Enum):
     TRANSPOSE = "transpose"
 
 
-class RuntimeContext(Mapping):
+class RuntimeContext(Mapping[str, Any]):
     """A mapping providing runtime information at the current time step."""
 
     _context_keys = (
@@ -41,10 +41,10 @@ class RuntimeContext(Mapping):
         for k, v in kwargs.items():
             self.__setitem__(k, v)
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: str) -> Any:
         return self._context[key]
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: str , value: Any):
         if key not in self._context_keys:
             raise KeyError(
                 f"Invalid key {key!r}, should be one of {self._context_keys!r}"
@@ -52,11 +52,17 @@ class RuntimeContext(Mapping):
 
         self._context[key] = value
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self._context)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[str]:
         return iter(self._context)
+
+    def __contains__(self, key: object) -> bool:
+        return key in self._context
+
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}({self._context!r})"
 
 
 class BaseSimulationDriver:
