@@ -160,6 +160,10 @@ class RuntimeDiagnostics:
 def flatten_diagnostics(
     objects: Iterable[Union[RuntimeDiagnostics, Callable]]
 ) -> List[Callable]:
+    """Return a list of runtime hook functions from a sequence of
+    runtime hook functions or RuntimeDiagnostics objects.
+
+    """
     hooks = []
 
     for obj in objects:
