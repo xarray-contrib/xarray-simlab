@@ -6,7 +6,7 @@ from xsimlab.diagnostics.base import runtime_hook, RuntimeDiagnostics
 
 @xs.process
 class P:
-    u = xs.variable(intent='inout', default=0)
+    u = xs.variable(intent="inout", default=0)
 
     def run_step(self):
         self.u += 1
@@ -14,23 +14,24 @@ class P:
 
 @xs.process
 class Dummy:
-
     def run_step(self):
         pass
 
 
 @pytest.fixture
 def model():
-    return xs.Model({'dummy': Dummy, 'p': P})
+    return xs.Model({"dummy": Dummy, "p": P})
 
 
 def test_runtime_hook():
     with pytest.raises(ValueError, match="level argument.*"):
+
         @runtime_hook("run_step", "invalid", "pre")
         def func1():
             pass
 
     with pytest.raises(ValueError, match="trigger argument.*"):
+
         @runtime_hook("run_step", "model", "invalid")
         def func2():
             pass
@@ -43,7 +44,7 @@ def test_runtime_hook():
         (("run_step", "model", "post"), 1, 1),
         (("run_step", "process", "pre"), 2, None),
         (("run_step", "process", "post"), 2, None),
-    ]
+    ],
 )
 def test_runtime_hook_calls(model, event, expected_ncalls, expected_u):
     inc = [0]
@@ -59,7 +60,7 @@ def test_runtime_hook_calls(model, event, expected_ncalls, expected_u):
         if expected_u is not None:
             assert state[("p", "u")] == expected_u
 
-    in_ds = xs.create_setup(model=model, clocks={'c': [0, 1]})
+    in_ds = xs.create_setup(model=model, clocks={"c": [0, 1]})
     # safe mode disabled so that we can assert _model is model above
     in_ds.xsimlab.run(model=model, diagnostics=[test_hook], safe_mode=False)
 
@@ -67,7 +68,7 @@ def test_runtime_hook_calls(model, event, expected_ncalls, expected_u):
 
 
 def test_runtime_hook_call_frozen(model):
-    in_ds = xs.create_setup(model=model, clocks={'c': [0, 1]})
+    in_ds = xs.create_setup(model=model, clocks={"c": [0, 1]})
 
     @runtime_hook("run_step", "model", "pre")
     def change_context(model, context, state):
@@ -94,7 +95,7 @@ def test_runtime_diagnostics_instance(model, given_as):
 
     rd = RuntimeDiagnostics(test_hook)
 
-    in_ds = xs.create_setup(model=model, clocks={'c': [0, 1]})
+    in_ds = xs.create_setup(model=model, clocks={"c": [0, 1]})
 
     if given_as == "argument":
         in_ds.xsimlab.run(model=model, diagnostics=[rd])
@@ -128,12 +129,11 @@ def test_runtime_diagnostics_subclass(model):
     flag = [False]
 
     class TestDiagnostics(RuntimeDiagnostics):
-
         @runtime_hook("run_step", "model", "pre")
         def test_hook(self, _model, context, state):
             flag[0] = True
 
-    in_ds = xs.create_setup(model=model, clocks={'c': [0, 1]})
+    in_ds = xs.create_setup(model=model, clocks={"c": [0, 1]})
 
     with TestDiagnostics():
         in_ds.xsimlab.run(model=model)
@@ -142,7 +142,7 @@ def test_runtime_diagnostics_subclass(model):
 
 
 def test_diagnostics_arg_type(model):
-    in_ds = xs.create_setup(model=model, clocks={'c': [0, 1]})
+    in_ds = xs.create_setup(model=model, clocks={"c": [0, 1]})
 
     with pytest.raises(TypeError, match=".*not a RuntimeDiagnostics.*"):
         in_ds.xsimlab.run(model=model, diagnostics=[1])

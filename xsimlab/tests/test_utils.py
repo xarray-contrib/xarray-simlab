@@ -109,10 +109,7 @@ def test_frozen():
     with pytest.raises(AttributeError):
         x.update({"c": "C", "b": "B"})
     assert x.mapping == mapping
-    assert repr(x) in (
-        "Frozen({'a': 'A', 'b': 'B'})",
-        "Frozen({'b': 'B', 'a': 'A'})",
-    )
+    assert repr(x) in ("Frozen({'a': 'A', 'b': 'B'})", "Frozen({'b': 'B', 'a': 'A'})",)
     # test iter
     assert set(x) == set(mapping)
     assert len(x) == 2

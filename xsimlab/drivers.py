@@ -44,7 +44,7 @@ class RuntimeContext(Mapping[str, Any]):
     def __getitem__(self, key: str) -> Any:
         return self._context[key]
 
-    def __setitem__(self, key: str , value: Any):
+    def __setitem__(self, key: str, value: Any):
         if key not in self._context_keys:
             raise KeyError(
                 f"Invalid key {key!r}, should be one of {self._context_keys!r}"
