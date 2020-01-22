@@ -233,7 +233,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
 
         if diagnostics is None:
             diagnostics = set()
-        diagnostics |= RuntimeDiagnostics.active
+        diagnostics = set(diagnostics) | RuntimeDiagnostics.active
         self._runtime_hooks = group_hooks(flatten_diagnostics(diagnostics))
 
     def _check_missing_model_inputs(self):
