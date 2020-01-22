@@ -7,6 +7,7 @@ import xsimlab as xs
 from xsimlab.drivers import (
     _get_dims_from_variable,
     BaseSimulationDriver,
+    RuntimeContext,
     XarraySimulationDriver,
 )
 from xsimlab.stores import InMemoryOutputStore
@@ -24,6 +25,18 @@ def xarray_driver(in_dataset, model):
     store = {}
     out_store = InMemoryOutputStore()
     return XarraySimulationDriver(in_dataset, model, store, out_store)
+
+
+def test_runtime_context():
+    with pytest.raises(KeyError, match=".*Invalid key.*"):
+        RuntimeContext(invalid=False)
+
+    assert len(RuntimeContext()) == len(RuntimeContext._context_keys)
+
+    # test iter
+    assert set(RuntimeContext()) == set(RuntimeContext._context_keys)
+
+    assert repr(RuntimeContext()).startswith("RuntimeContext({")
 
 
 class TestBaseDriver:

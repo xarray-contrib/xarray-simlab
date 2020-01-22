@@ -113,3 +113,6 @@ def test_frozen():
         "Frozen({'a': 'A', 'b': 'B'})",
         "Frozen({'b': 'B', 'a': 'A'})",
     )
+    # test iter
+    assert set(x) == set(mapping)
+    assert len(x) == 2
