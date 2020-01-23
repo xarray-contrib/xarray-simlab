@@ -566,16 +566,16 @@ class Model(AttrMapping, ContextMixin):
             show_variables=show_variables,
         )
 
-    def _call_hooks(self, runtime_hooks, runtime_context, stage, level, trigger):
+    def _call_hooks(self, hooks, runtime_context, stage, level, trigger):
         try:
-            hooks = runtime_hooks[stage][level][trigger]
+            event_hooks = hooks[stage][level][trigger]
         except KeyError:
             return
 
-        for h in hooks:
+        for h in event_hooks:
             h(self, Frozen(runtime_context), Frozen(self.store))
 
-    def execute(self, stage, runtime_context, runtime_hooks=None, validate=False):
+    def execute(self, stage, runtime_context, hooks=None, validate=False):
         """Run one stage of a simulation.
 
         This shouldn't be called directly, except for debugging purpose.
@@ -587,7 +587,7 @@ class Model(AttrMapping, ContextMixin):
         runtime_context : dict
             Dictionary containing runtime variables (e.g., time step
             duration, current step).
-        runtime_hooks : dict, optional
+        hooks : dict, optional
             Runtime hook callables, grouped by simulation stage, level and
             trigger pre/post.
         validate : bool, optional
@@ -597,25 +597,25 @@ class Model(AttrMapping, ContextMixin):
             it may significantly impact performance.
 
         """
-        if runtime_hooks is None:
-            runtime_hooks = {}
+        if hooks is None:
+            hooks = {}
 
         stage = SimulationStage(stage)
 
-        self._call_hooks(runtime_hooks, runtime_context, stage, "model", "pre")
+        self._call_hooks(hooks, runtime_context, stage, "model", "pre")
 
         for p_name, p_obj in self._processes.items():
             executor = p_obj.__xsimlab_executor__
 
-            self._call_hooks(runtime_hooks, runtime_context, stage, "process", "pre")
+            self._call_hooks(hooks, runtime_context, stage, "process", "pre")
             executor.execute(p_obj, stage, runtime_context)
-            self._call_hooks(runtime_hooks, runtime_context, stage, "process", "post")
+            self._call_hooks(hooks, runtime_context, stage, "process", "post")
 
             if validate:
                 for pn in self._processes_to_validate[p_name]:
                     attr.validate(self._processes[pn])
 
-        self._call_hooks(runtime_hooks, runtime_context, stage, "model", "post")
+        self._call_hooks(hooks, runtime_context, stage, "model", "post")
 
     def clone(self):
         """Clone the Model, i.e., create a new Model instance with the same

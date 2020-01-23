@@ -165,15 +165,12 @@ listed below. These are defined in ``xsimlab.validators``.
 
 .. _`attrs' validators`: https://www.attrs.org/en/stable/examples.html#validators
 
-Diagnostics
-===========
+Runtime hooks
+=============
 
-Simulation runtime diagnostics classes and methods are defined in
-``xsimlab.diagnostics``.
-
-.. currentmodule:: xsimlab.diagnostics
+.. currentmodule:: xsimlab
 .. autosummary::
    :toctree: _api_generated/
 
    runtime_hook
-   RuntimeDiagnostics
+   RuntimeHook

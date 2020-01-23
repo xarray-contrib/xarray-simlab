@@ -6,7 +6,7 @@ import attr
 import numpy as np
 import xarray as xr
 
-from .diagnostics.base import flatten_diagnostics, group_hooks, RuntimeDiagnostics
+from .hook import flatten_hooks, group_hooks, RuntimeHook
 from .utils import variables_dict
 
 
@@ -205,7 +205,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
         output_store,
         check_dims=CheckDimsOption.STRICT,
         validate=ValidateOption.INPUTS,
-        diagnostics=None,
+        hooks=None,
     ):
         self.dataset = dataset
         self.model = model
@@ -231,10 +231,10 @@ class XarraySimulationDriver(BaseSimulationDriver):
             validate = ValidateOption(validate)
         self._validate_option = validate
 
-        if diagnostics is None:
-            diagnostics = set()
-        diagnostics = set(diagnostics) | RuntimeDiagnostics.active
-        self._runtime_hooks = group_hooks(flatten_diagnostics(diagnostics))
+        if hooks is None:
+            hooks = set()
+        hooks = set(hooks) | RuntimeHook.active
+        self._hooks = group_hooks(flatten_hooks(hooks))
 
     def _check_missing_model_inputs(self):
         """Check if all model inputs have their corresponding variables
@@ -451,10 +451,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
         self._maybe_validate_inputs(in_vars)
 
         self.model.execute(
-            "initialize",
-            runtime_context,
-            runtime_hooks=self._runtime_hooks,
-            validate=validate_all,
+            "initialize", runtime_context, hooks=self._hooks, validate=validate_all,
         )
 
         for step, (_, ds_step) in enumerate(ds_gby_steps):
@@ -471,10 +468,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
             self._maybe_validate_inputs(in_vars)
 
             self.model.execute(
-                "run_step",
-                runtime_context,
-                runtime_hooks=self._runtime_hooks,
-                validate=validate_all,
+                "run_step", runtime_context, hooks=self._hooks, validate=validate_all,
             )
 
             self._maybe_save_output_vars(step)
@@ -482,13 +476,11 @@ class XarraySimulationDriver(BaseSimulationDriver):
             self.model.execute(
                 "finalize_step",
                 runtime_context,
-                runtime_hooks=self._runtime_hooks,
+                hooks=self._hooks,
                 validate=validate_all,
             )
 
         self._maybe_save_output_vars(-1)
-        self.model.execute(
-            "finalize", runtime_context, runtime_hooks=self._runtime_hooks
-        )
+        self.model.execute("finalize", runtime_context, hooks=self._hooks)
 
         return self._get_output_dataset()
