@@ -63,6 +63,9 @@ Enhancements
 - Added :func:`xsimlab.index` for setting index variables (e.g., coordinate
   labels). Using the xarray extension, those variables are automatically added
   in the output Dataset as coordinates (:issue:`94`).
+- Added simulation runtime hooks (:issue:`95`). Hooks can be created by using
+  either the :func:`~xsimlab.runtime_hook` decorator or the
+  :class:`~xsimlab.RuntimeHook` class.
 
 Bug fixes
 ~~~~~~~~~
