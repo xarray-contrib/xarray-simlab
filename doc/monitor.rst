@@ -54,7 +54,7 @@ prints the step number as the simulation proceeds:
 
 Runtime hook functions are always called with the following 3 arguments:
 
-- ``model``: the Model instance currently running
+- ``model``: the instance of :class:`~xsimlab.Model` that is running
 - ``context``: a read-only dictionary that contains information about simulation
   runtime (see :func:`~xsimlab.runtime` for a list of available keys)
 - ``state``: a read-only dictionary that contains the simulation state, where
@@ -88,29 +88,22 @@ call or globally with its ``register`` method:
 
    In [9]: out_ds = in_ds.xsimlab.run(model=model2)
 
-   In [10]: print_steps.unregister()  # no print
+   In [10]: print_steps.unregister()
 
-   In [11]: out_ds = in_ds.xsimlab.run(model=model2)
+   In [11]: out_ds = in_ds.xsimlab.run(model=model2)  # no print
 
 Another advantage is that you can subclass ``RuntimeHook`` and add decorated
-methods that may share some state
+methods that may share some state:
 
-.. ipython::
+.. ipython:: python
+   :suppress:
 
-   In [12]: import time
+   from runtime_hook_subclass import PrintStepTime
+
+.. literalinclude:: scripts/runtime_hook_subclass.py
+   :lines: 7-19
 
 .. ipython:: python
 
-   class PrintStepTime:
-       @runtime_hook('run_step', 'model', 'pre')
-       def start_step(self, model, context, state):
-           self._start_time = time.time()
-       @runtime_hook('run_step', 'model', 'post')
-       def finish_step(self, model, context, state):
-           step_time = time.time() - self._start_time
-           print(f"Step {context['step']} took {step_time} seconds")
-
-.. ipython::
-
-   In [14]: #with PrintStepTime():
-       ...: #    in_ds.xsimlab.run(model=model2)
+   with PrintStepTime():
+       in_ds.xsimlab.run(model=model2)
