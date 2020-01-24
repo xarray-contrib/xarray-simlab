@@ -101,7 +101,7 @@ methods that may share some state:
    from runtime_hook_subclass import PrintStepTime
 
 .. literalinclude:: scripts/runtime_hook_subclass.py
-   :lines: 7-19
+   :lines: 7-18
 
 .. ipython:: python
 
