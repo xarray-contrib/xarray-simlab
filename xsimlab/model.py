@@ -9,7 +9,7 @@ from .process import (
     get_target_variable,
     SimulationStage,
 )
-from .utils import AttrMapping, ContextMixin
+from .utils import AttrMapping, ContextMixin, Frozen
 from .formatting import repr_model
 
 
@@ -454,6 +454,9 @@ class Model(AttrMapping, ContextMixin):
         self._dep_processes = builder.get_process_dependencies()
         self._processes = builder.get_sorted_processes()
 
+        # overwritten by simulation drivers
+        self.store = {}
+
         super(Model, self).__init__(self._processes)
         self._initialized = True
 
@@ -563,7 +566,16 @@ class Model(AttrMapping, ContextMixin):
             show_variables=show_variables,
         )
 
-    def execute(self, stage, runtime_context, validate=False):
+    def _call_hooks(self, hooks, runtime_context, stage, level, trigger):
+        try:
+            event_hooks = hooks[stage][level][trigger]
+        except KeyError:
+            return
+
+        for h in event_hooks:
+            h(self, Frozen(runtime_context), Frozen(self.store))
+
+    def execute(self, stage, runtime_context, hooks=None, validate=False):
         """Run one stage of a simulation.
 
         This shouldn't be called directly, except for debugging purpose.
@@ -575,6 +587,9 @@ class Model(AttrMapping, ContextMixin):
         runtime_context : dict
             Dictionary containing runtime variables (e.g., time step
             duration, current step).
+        hooks : dict, optional
+            Runtime hook callables, grouped by simulation stage, level and
+            trigger pre/post.
         validate : bool, optional
             If True, run the variable validators in the corresponding
             processes after a process (maybe) sets values through its foreign
@@ -582,13 +597,25 @@ class Model(AttrMapping, ContextMixin):
             it may significantly impact performance.
 
         """
+        if hooks is None:
+            hooks = {}
+
+        stage = SimulationStage(stage)
+
+        self._call_hooks(hooks, runtime_context, stage, "model", "pre")
+
         for p_name, p_obj in self._processes.items():
             executor = p_obj.__xsimlab_executor__
-            executor.execute(p_obj, SimulationStage(stage), runtime_context)
+
+            self._call_hooks(hooks, runtime_context, stage, "process", "pre")
+            executor.execute(p_obj, stage, runtime_context)
+            self._call_hooks(hooks, runtime_context, stage, "process", "post")
 
             if validate:
                 for pn in self._processes_to_validate[p_name]:
                     attr.validate(self._processes[pn])
+
+        self._call_hooks(hooks, runtime_context, stage, "model", "post")
 
     def clone(self):
         """Clone the Model, i.e., create a new Model instance with the same

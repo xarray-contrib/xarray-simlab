@@ -548,7 +548,14 @@ class SimlabAccessor:
 
         return ds
 
-    def run(self, model=None, check_dims="strict", validate="inputs", safe_mode=True):
+    def run(
+        self,
+        model=None,
+        check_dims="strict",
+        validate="inputs",
+        hooks=None,
+        safe_mode=True,
+    ):
         """Run the model.
 
         Parameters
@@ -579,6 +586,11 @@ class SimlabAccessor:
             The latter may significantly impact performance, but it may be
             useful for debugging.
             If None is given, no validation is performed.
+        hooks : list, optional
+            One or more runtime hooks, i.e., functions decorated with
+            :func:`~xsimlab.runtime_hook` or instances of
+            :class:`~xsimlab.RuntimeHook`. The latter can also be used using
+            the ``with`` statement or using their ``register()`` method.
         safe_mode : bool, optional
             If True (default), it is safe to run multiple simulations
             simultaneously. Generally safe mode shouldn't be disabled, except
@@ -605,6 +617,7 @@ class SimlabAccessor:
             output_store,
             check_dims=check_dims,
             validate=validate,
+            hooks=hooks,
         )
 
         return driver.run_model()

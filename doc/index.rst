@@ -35,6 +35,7 @@ Documentation index
 * :doc:`create_model`
 * :doc:`inspect_model`
 * :doc:`run_model`
+* :doc:`monitor`
 * :doc:`testing`
 
 .. toctree::
@@ -46,6 +47,7 @@ Documentation index
    create_model
    inspect_model
    run_model
+   monitor
    testing
 
 **Help & Reference**

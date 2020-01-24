@@ -164,3 +164,13 @@ listed below. These are defined in ``xsimlab.validators``.
    is_subdtype
 
 .. _`attrs' validators`: https://www.attrs.org/en/stable/examples.html#validators
+
+Runtime hooks
+=============
+
+.. currentmodule:: xsimlab
+.. autosummary::
+   :toctree: _api_generated/
+
+   runtime_hook
+   RuntimeHook

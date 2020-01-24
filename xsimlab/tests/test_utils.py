@@ -97,3 +97,19 @@ class TestAttrMapping:
 
     def test_dir(self, attr_mapping):
         assert "a" in dir(attr_mapping)
+
+
+def test_frozen():
+    mapping = {"a": "A", "b": "B"}
+    x = utils.Frozen(mapping)
+    with pytest.raises(TypeError):
+        x["foo"] = "bar"
+    with pytest.raises(TypeError):
+        del x["a"]
+    with pytest.raises(AttributeError):
+        x.update({"c": "C", "b": "B"})
+    assert x.mapping == mapping
+    assert repr(x) in ("Frozen({'a': 'A', 'b': 'B'})", "Frozen({'b': 'B', 'a': 'A'})",)
+    # test iter
+    assert set(x) == set(mapping)
+    assert len(x) == 2

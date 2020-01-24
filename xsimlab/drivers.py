@@ -1,11 +1,12 @@
-from collections.abc import Mapping
 import copy
 from enum import Enum
+from typing import Any, Iterator, Mapping
 
 import attr
 import numpy as np
 import xarray as xr
 
+from .hook import flatten_hooks, group_hooks, RuntimeHook
 from .utils import variables_dict
 
 
@@ -19,7 +20,7 @@ class CheckDimsOption(Enum):
     TRANSPOSE = "transpose"
 
 
-class RuntimeContext(Mapping):
+class RuntimeContext(Mapping[str, Any]):
     """A mapping providing runtime information at the current time step."""
 
     _context_keys = (
@@ -40,10 +41,10 @@ class RuntimeContext(Mapping):
         for k, v in kwargs.items():
             self.__setitem__(k, v)
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: str) -> Any:
         return self._context[key]
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: str, value: Any):
         if key not in self._context_keys:
             raise KeyError(
                 f"Invalid key {key!r}, should be one of {self._context_keys!r}"
@@ -51,11 +52,17 @@ class RuntimeContext(Mapping):
 
         self._context[key] = value
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self._context)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[str]:
         return iter(self._context)
+
+    def __contains__(self, key: object) -> bool:
+        return key in self._context
+
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}({self._context!r})"
 
 
 class BaseSimulationDriver:
@@ -79,6 +86,8 @@ class BaseSimulationDriver:
         """Bind the simulation active data store to each process in the
         model.
         """
+        self.model.store = self.store
+
         for p_obj in self.model.values():
             p_obj.__xsimlab_store__ = self.store
 
@@ -196,6 +205,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
         output_store,
         check_dims=CheckDimsOption.STRICT,
         validate=ValidateOption.INPUTS,
+        hooks=None,
     ):
         self.dataset = dataset
         self.model = model
@@ -220,6 +230,11 @@ class XarraySimulationDriver(BaseSimulationDriver):
         if validate is not None:
             validate = ValidateOption(validate)
         self._validate_option = validate
+
+        if hooks is None:
+            hooks = set()
+        hooks = set(hooks) | RuntimeHook.active
+        self._hooks = group_hooks(flatten_hooks(hooks))
 
     def _check_missing_model_inputs(self):
         """Check if all model inputs have their corresponding variables
@@ -435,7 +450,9 @@ class XarraySimulationDriver(BaseSimulationDriver):
         self.initialize_store(in_vars)
         self._maybe_validate_inputs(in_vars)
 
-        self.model.execute("initialize", runtime_context, validate=validate_all)
+        self.model.execute(
+            "initialize", runtime_context, hooks=self._hooks, validate=validate_all,
+        )
 
         for step, (_, ds_step) in enumerate(ds_gby_steps):
 
@@ -450,13 +467,20 @@ class XarraySimulationDriver(BaseSimulationDriver):
             self.update_store(in_vars)
             self._maybe_validate_inputs(in_vars)
 
-            self.model.execute("run_step", runtime_context, validate=validate_all)
+            self.model.execute(
+                "run_step", runtime_context, hooks=self._hooks, validate=validate_all,
+            )
 
             self._maybe_save_output_vars(step)
 
-            self.model.execute("finalize_step", runtime_context, validate=validate_all)
+            self.model.execute(
+                "finalize_step",
+                runtime_context,
+                hooks=self._hooks,
+                validate=validate_all,
+            )
 
         self._maybe_save_output_vars(-1)
-        self.model.execute("finalize", runtime_context)
+        self.model.execute("finalize", runtime_context, hooks=self._hooks)
 
         return self._get_output_dataset()
