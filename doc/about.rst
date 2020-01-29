@@ -77,7 +77,7 @@ by Jake VanderPlas.
        ...:     model=model,
        ...:     clocks={'step': np.arange(9)},
        ...:     input_vars={'init__pos': ('point_xy', [4, 5])},
-       ...:     output_vars={'gol__world': 'step'}
+       ...:     output_vars={'step': ['gol__world']}
        ...: )
        ...:
        ...: output_dataset = input_dataset.xsimlab.run(model=model)
