@@ -225,7 +225,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
             check_dims = CheckDimsOption(check_dims)
         self._check_dims_option = check_dims
 
-        self._transposed_vars = {}
+        self._transposed_dims = {}
 
         if validate is not None:
             validate = ValidateOption(validate)
@@ -282,7 +282,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
         transpose = self._check_dims_option is CheckDimsOption.TRANSPOSE
 
         if transpose and xr_dims_set in dims_set:
-            self._transposed_vars[(p_name, var_name)] = xr_var.dims
+            self._transposed_dims[(p_name, var_name)] = xr_var.dims
             xr_var = xr_var.transpose(*dims_set[xr_dims_set])
 
         if (strict or transpose) and xr_var.dims not in dims:
@@ -345,7 +345,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
                 data = data[0]
 
         dims = _get_dims_from_variable(data, var, clock)
-        original_dims = self._transposed_vars.get(key)
+        original_dims = self._transposed_dims.get(key)
 
         if clock is not None:
             dims = (clock,) + dims
