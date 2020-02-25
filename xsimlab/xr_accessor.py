@@ -250,6 +250,26 @@ class SimlabAccessor:
 
             self._ds[xr_var_name] = xr_var
 
+    def _set_output_vars_attr(self, clock, value):
+        # avoid update attrs in original dataset
+
+        if clock is None:
+            attrs = self._ds.attrs.copy()
+        else:
+            attrs = self._ds[clock].attrs.copy()
+
+        if value is None:
+            attrs.pop(self._output_vars_key, None)
+        else:
+            attrs[self._output_vars_key] = value
+
+        if clock is None:
+            self._ds.attrs = attrs
+        else:
+            new_coord = self._ds.coords[clock].copy()
+            new_coord.attrs = attrs
+            self._ds[clock] = new_coord
+
     def _set_output_vars(self, model, output_vars, clear=False):
         # TODO: remove this ugly code (depreciated output_vars format)
         o_vars = {}
@@ -297,18 +317,13 @@ class SimlabAccessor:
 
         for clock, var_list in clock_vars.items():
             var_str = ",".join(var_list)
-
-            if clock is None:
-                self._ds.attrs[self._output_vars_key] = var_str
-            else:
-                coord = self.clock_coords[clock]
-                coord.attrs[self._output_vars_key] = var_str
+            self._set_output_vars_attr(clock, var_str)
 
     def _reset_output_vars(self, model, output_vars):
-        self._ds.attrs.pop(self._output_vars_key, None)
+        self._set_output_vars_attr(None, None)
 
-        for coord in self.clock_coords.values():
-            coord.attrs.pop(self._output_vars_key, None)
+        for clock in self.clock_coords:
+            self._set_output_vars_attr(clock, None)
 
         self._set_output_vars(model, output_vars, clear=True)
 

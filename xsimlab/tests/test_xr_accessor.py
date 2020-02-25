@@ -248,6 +248,10 @@ class TestSimlabAccessor:
         assert sorted(filtered_ds.xsimlab.clock_coords) == ["clock", "out"]
         assert filtered_ds.out.attrs[self._output_vars_key] == "roll__u_diff"
 
+        # test unchanged attributes in original dataset
+        assert in_dataset.out.attrs[self._output_vars_key] == "roll__u_diff,add__u_diff"
+        assert in_dataset.attrs[self._output_vars_key] == "profile__u_opp"
+
     def test_set_output_vars(self, model):
         ds = xr.Dataset()
         ds["clock"] = (
