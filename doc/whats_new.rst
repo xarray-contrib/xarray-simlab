@@ -72,6 +72,8 @@ Bug fixes
 
 - Remove ``attrs`` 19.2.0 depreciation warning (:issue:`68`).
 - Fix compatibility with xarray 0.14.1 (:issue:`69`).
+- Avoid update in-place attributes in original/input xarray Datasets
+  (:issue:`101`).
 
 v0.3.0 (30 September 2019)
 --------------------------
