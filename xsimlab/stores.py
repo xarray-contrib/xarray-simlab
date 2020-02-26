@@ -183,7 +183,7 @@ class ZarrOutputStore:
         # reset consolidated since metadata has just been updated
         self.consolidated = False
 
-    def write_output_vars(self, state: MutableMapping, istep: int):
+    def write_output_vars(self, istep: int):
         for clock, var_keys in self.output_vars.items():
             if not self.output_steps[clock][istep]:
                 continue
@@ -205,7 +205,7 @@ class ZarrOutputStore:
 
             self.clock_incs[clock] += 1
 
-    def write_index_vars(self, state: MutableMapping):
+    def write_index_vars(self):
         for var_key in self.model.index_vars:
             _, vname = var_key
             self._create_zarr_dataset(var_key, name=vname)

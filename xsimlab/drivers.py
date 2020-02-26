@@ -367,7 +367,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
                 "run_step", runtime_context, hooks=self._hooks, validate=validate_all,
             )
 
-            self.output_store.write_output_vars(self.store, step)
+            self.output_store.write_output_vars(step)
 
             self.model.execute(
                 "finalize_step",
@@ -376,8 +376,8 @@ class XarraySimulationDriver(BaseSimulationDriver):
                 validate=validate_all,
             )
 
-        self.output_store.write_output_vars(self.store, -1)
-        self.output_store.write_index_vars(self.store)
+        self.output_store.write_output_vars(-1)
+        self.output_store.write_index_vars()
 
         self.model.execute("finalize", runtime_context, hooks=self._hooks)
 
