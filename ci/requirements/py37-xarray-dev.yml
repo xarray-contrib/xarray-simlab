@@ -6,6 +6,7 @@ dependencies:
   - python=3.7
   - pytest
   - numpy
+  - zarr
   - pip:
     - git+https://github.com/pydata/xarray.git
     - coveralls

@@ -15,3 +15,4 @@ dependencies:
   - nbconvert=5.6.0
   - sphinx=1.8.5
   - pandoc=2.7.3
+  - zarr=2.4.0
