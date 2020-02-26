@@ -1,18 +1,18 @@
 import numpy as np
 from numpy.testing import assert_array_equal
 
-from xsimlab.stores import InMemoryOutputStore
+from xsimlab.stores import _get_output_steps_by_clock
 
 
-def test_in_memory_output_store():
-    out_store = InMemoryOutputStore()
-    key = ("some_process", "some_var")
+def test_get_output_steps_by_clock(in_dataset):
+    expected = {
+        "clock": np.array([True, True, True, True, True]),
+        "out": np.array([True, False, True, False, True]),
+        None: np.array([False, False, False, False, True]),
+    }
 
-    arr = np.array([1, 2, 3])
-    out_store.append(key, arr)
-    arr[:] = [4, 5, 6]
-    out_store.append(key, arr)
+    actual = _get_output_steps_by_clock(in_dataset)
 
-    expected = np.array([[1, 2, 3], [4, 5, 6]])
-
-    assert_array_equal(out_store[key], expected)
+    assert actual.keys() == expected.keys()
+    for k in expected:
+        assert_array_equal(actual[k], expected[k])

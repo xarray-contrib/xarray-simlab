@@ -1,6 +1,6 @@
 from collections import defaultdict
 from collections.abc import MutableMapping
-from typing import Any, Dict, Tuple, Union
+from typing import Any, Callable, Dict, Tuple, Union
 
 import numpy as np
 import xarray as xr
@@ -22,11 +22,32 @@ def _get_output_vars_by_clock(dataset: xr.Dataset) -> Dict[str, Tuple[str, str]]
     return out_vars
 
 
-def _get_output_vars_str(dataset: xr.Dataset) -> Dict[Tuple[str, str], str]:
-    return {
-        (pname, vname): pname + "__" + vname
-        for (pname, vname) in dataset.xsimlab.output_vars
-    }
+def _variable_value_getter(process_obj: Any, var_name: str) -> Callable:
+    def value_getter():
+        return getattr(process_obj, var_name)
+
+    return value_getter
+
+
+def _get_var_info(dataset: xr.Dataset, model: Model) -> Dict[Tuple[str, str], Dict]:
+    var_info = {}
+
+    var_clocks = dataset.xsimlab.output_vars.copy()
+    var_clocks.update({vk: None for vk in model.index_vars})
+
+    for var_key, clock in var_clocks.items():
+        p_name, v_name = var_key
+        p_obj = model[p_name]
+        v_obj = variables_dict(type(p_obj))[v_name]
+
+        var_info[var_key] = {
+            "clock": clock,
+            "name": f"{p_name}__{v_name}",
+            "obj": v_obj,
+            "value_getter": _variable_value_getter(p_obj, v_name),
+        }
+
+    return var_info
 
 
 def _get_output_steps_by_clock(dataset: xr.Dataset) -> Dict[str, np.ndarray]:
@@ -57,7 +78,10 @@ def _get_clock_sizes(dataset: xr.Dataset) -> Dict[str, int]:
 
 
 def _init_clock_incrementers(dataset: xr.Dataset) -> Dict[str, int]:
-    return {clock: 0 for clock in dataset.xsimlab.clock_coords}
+    incs = {clock: 0 for clock in dataset.xsimlab.clock_coords}
+    incs[None] = 0
+
+    return incs
 
 
 class ZarrOutputStore:
@@ -82,23 +106,33 @@ class ZarrOutputStore:
             self.zgroup = zarr.group(store=zobject)
 
         self.output_vars = _get_output_vars_by_clock(dataset)
-        self.output_vars_str = _get_output_vars_str(dataset)
         self.output_steps = _get_output_steps_by_clock(dataset)
+
+        self.var_info = _get_var_info(dataset, model)
 
         self.clock_sizes = _get_clock_sizes(dataset)
         self.clock_incs = _init_clock_incrementers(dataset)
 
     def write_input_xr_dataset(self):
-        # output variables already in input dataset will be replaced
-        ovars = self.dataset.xsimlab.output_vars.keys()
-        ds = self.dataset.drop(list(ovars), errors="ignore")
+        # output/index variables already in input dataset will be replaced
+        drop_vars = [vi["name"] for vi in self.var_info.values()]
+        ds = self.dataset.drop(drop_vars, errors="ignore")
 
         ds.xsimlab._reset_output_vars(self.model, {})
         ds.to_zarr(self.zgroup.store, group=self.zgroup.path, mode="a")
 
-    def _create_zarr_dataset(
-        self, var_key: Tuple[str, str], name: str, array: Any, clock: str
-    ):
+    def _create_zarr_dataset(self, var_key: Tuple[str, str], name=None):
+        if name is None:
+            name = self.var_info[var_key]["name"]
+
+        value = self.var_info[var_key]["value_getter"]()
+        if np.isscalar(value):
+            array = np.asarray(value)
+        else:
+            array = value
+
+        clock = self.var_info[var_key]["clock"]
+
         if clock is None:
             shape = array.shape
             chunks = True  # auto chunks
@@ -120,14 +154,11 @@ class ZarrOutputStore:
             compressor=compressor,
             # TODO: smarter fill_value based on array dtype
             #       (0 may be non-missing value)
-            fill_value=0,
+            # fill_value=0,
         )
 
         # add dimension labels and variable attributes as metadata
-        p_name, var_name = var_key
-        p_obj = self.model[p_name]
-        var = variables_dict(type(p_obj))[var_name]
-
+        var = self.var_info[var_key]["obj"]
         dim_labels = None
 
         for dims in var.metadata["dims"]:
@@ -137,7 +168,7 @@ class ZarrOutputStore:
         if dim_labels is None:
             raise ValueError(
                 f"Output array of {array.ndim} dimension(s) "
-                f"for variable '{p_name}__{var_name}' doesn't match any of"
+                f"for variable '{name}' doesn't match any of"
                 f"its accepted dimension(s): {var.metadata['dims']}"
             )
 
@@ -145,7 +176,8 @@ class ZarrOutputStore:
             dim_labels.insert(0, clock)
 
         zdataset.attrs[_DIMENSION_KEY] = tuple(dim_labels)
-        zdataset.attrs["description"] = var.metadata["description"]
+        if var.metadata["description"]:
+            zdataset.attrs["description"] = var.metadata["description"]
         zdataset.attrs.update(var.metadata["attrs"])
 
         # reset consolidated since metadata has just been updated
@@ -160,20 +192,26 @@ class ZarrOutputStore:
 
             if clock_inc == 0:
                 for vk in var_keys:
-                    name = self.output_vars_str[vk]
-                    self._create_zarr_dataset(vk, name, state[vk], clock)
+                    self._create_zarr_dataset(vk)
 
             for vk in var_keys:
-                vk_str = self.output_vars_str[vk]
-                self.zgroup[vk_str][clock_inc] = state[vk]
+                zkey = self.var_info[vk]["name"]
+                array = self.var_info[vk]["value_getter"]()
+
+                if clock is None:
+                    self.zgroup[zkey][:] = array
+                else:
+                    self.zgroup[zkey][clock_inc] = array
 
             self.clock_incs[clock] += 1
 
     def write_index_vars(self, state: MutableMapping):
         for var_key in self.model.index_vars:
             _, vname = var_key
-            self._create_zarr_dataset(var_key, vname, state[var_key], None)
-            self.zgroup[vname][:] = state[var_key]
+            self._create_zarr_dataset(var_key, name=vname)
+
+            array = self.var_info[var_key]["value_getter"]()
+            self.zgroup[vname][:] = array
 
     def consolidate(self):
         zarr.consolidate_metadata(self.zgroup.store)

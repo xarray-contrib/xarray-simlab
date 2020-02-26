@@ -182,16 +182,10 @@ class XarraySimulationDriver(BaseSimulationDriver):
 
         super(XarraySimulationDriver, self).__init__(model, store)
 
-        self.output_store = ZarrOutputStore(dataset, model, zobject)
-
-        self.master_clock_dim = dataset.xsimlab.master_clock_dim
-        if self.master_clock_dim is None:
+        if self.dataset.xsimlab.master_clock_dim is None:
             raise ValueError("Missing master clock dimension / coordinate")
 
         self._check_missing_model_inputs()
-
-        self.output_vars = dataset.xsimlab.output_vars
-        self.output_save_steps = self._get_output_save_steps()
 
         if check_dims is not None:
             check_dims = CheckDimsOption(check_dims)
@@ -207,6 +201,8 @@ class XarraySimulationDriver(BaseSimulationDriver):
             hooks = set()
         hooks = set(hooks) | RuntimeHook.active
         self._hooks = group_hooks(flatten_hooks(hooks))
+
+        self.output_store = ZarrOutputStore(dataset, model, zobject)
 
     def _check_missing_model_inputs(self):
         """Check if all model inputs have their corresponding variables
@@ -269,7 +265,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
         return input_vars
 
     def _get_runtime_datasets(self):
-        mclock_dim = self.master_clock_dim
+        mclock_dim = self.dataset.xsimlab.master_clock_dim
         mclock_coord = self.dataset[mclock_dim]
 
         init_data_vars = {
@@ -306,8 +302,9 @@ class XarraySimulationDriver(BaseSimulationDriver):
 
         out_ds = self.output_store.open_as_xr_dataset()
 
-        # replace index variables data with simulation data (could be Index objects)
-        for key in self.model.index_vars():
+        # replace index variables data with simulation data
+        # (could be advanced Index objects that don't support serialization)
+        for key in self.model.index_vars:
             _, var_name = key
             out_ds[var_name].data = self.store[key]
 
@@ -317,6 +314,10 @@ class XarraySimulationDriver(BaseSimulationDriver):
 
             reordered_dims = [d for d in xr_var.dims if d not in dims]
             reordered_dims += dims
+
+            if not xr_var.chunks:
+                # TODO: transpose does not work on lazily loaded zarr datasets with no chunks
+                xr_var.load()
 
             out_ds[xr_var_name] = xr_var.transpose(*reordered_dims)
 
