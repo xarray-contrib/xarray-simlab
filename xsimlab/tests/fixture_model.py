@@ -158,7 +158,7 @@ def in_dataset():
     )
 
     ds["clock"].attrs[svars_key] = "profile__u"
-    ds["out"].attrs[svars_key] = "roll__u_diff," "add__u_diff"
+    ds["out"].attrs[svars_key] = "roll__u_diff,add__u_diff"
     ds.attrs[svars_key] = "profile__u_opp"
 
     return ds
