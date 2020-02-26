@@ -11,7 +11,6 @@ from xarray import as_variable, Dataset, register_dataset_accessor
 
 from .drivers import XarraySimulationDriver
 from .model import Model
-from .stores import InMemoryOutputStore
 from .utils import variables_dict
 
 
@@ -623,13 +622,12 @@ class SimlabAccessor:
             model = model.clone()
 
         store = {}
-        output_store = InMemoryOutputStore()
 
         driver = XarraySimulationDriver(
             self._ds,
             model,
             store,
-            output_store,
+            None,
             check_dims=check_dims,
             validate=validate,
             hooks=hooks,
