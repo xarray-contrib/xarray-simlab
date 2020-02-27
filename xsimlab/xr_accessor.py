@@ -567,6 +567,7 @@ class SimlabAccessor:
         model=None,
         check_dims="strict",
         validate="inputs",
+        output_store=None,
         hooks=None,
         safe_mode=True,
     ):
@@ -600,6 +601,13 @@ class SimlabAccessor:
             The latter may significantly impact performance, but it may be
             useful for debugging.
             If None is given, no validation is performed.
+        output_store : str or :class:`zarr.Group` object, optional
+            If a string (path) is given, output simulation data
+            will be saved in that specified directory in the file
+            system. If None is given (default), all output data
+            will be saved in memory. This parameter also directly
+            accepts a zarr group object or (most of) zarr store
+            objects for more storage options (see notes below).
         hooks : list, optional
             One or more runtime hooks, i.e., functions decorated with
             :func:`~xsimlab.runtime_hook` or instances of
@@ -610,10 +618,21 @@ class SimlabAccessor:
             simultaneously. Generally safe mode shouldn't be disabled, except
             in a few cases (e.g., debugging).
 
+        Notes
+        -----
+        xarray-simlab uses the zarr library (https://zarr.readthedocs.io) to
+        save model inputs and outputs during a simulation. zarr provides a
+        common interface to multiple storage solutions (e.g., in memory, on
+        disk, cloud-based storage, databases, etc.). Some stores may not work
+        well with xarray-simlab, though. For example
+        :class:`zarr.storage.ZipStore` is not supported because it is not
+        possible to write data to a dataset after it has been created.
+
         Returns
         -------
         output : Dataset
-            Another Dataset with both model inputs and outputs.
+            Another Dataset with both model inputs and outputs. The data is lazily
+            loaded from the zarr store used to save inputs and outputs.
 
         """
         model = _maybe_get_model_from_context(model)
@@ -627,7 +646,7 @@ class SimlabAccessor:
             self._ds,
             model,
             store,
-            None,
+            output_store,
             check_dims=check_dims,
             validate=validate,
             hooks=hooks,
