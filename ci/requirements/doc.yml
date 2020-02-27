@@ -1,7 +1,6 @@
 name: xarray-simlab-doc
 channels:
   - conda-forge
-  - defaults
 dependencies:
   - attrs=19.2.0
   - python=3.7
