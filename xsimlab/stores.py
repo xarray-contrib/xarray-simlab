@@ -1,4 +1,3 @@
-from collections import defaultdict
 from collections.abc import MutableMapping
 from typing import Any, Callable, Dict, Tuple, Union
 
@@ -13,15 +12,6 @@ from xsimlab.process import variables_dict
 _DIMENSION_KEY = "_ARRAY_DIMENSIONS"
 
 
-def _get_output_vars_by_clock(dataset: xr.Dataset) -> Dict[str, Tuple[str, str]]:
-    out_vars = defaultdict(list)
-
-    for k, clock in dataset.xsimlab.output_vars.items():
-        out_vars[clock].append(k)
-
-    return out_vars
-
-
 def _variable_value_getter(process_obj: Any, var_name: str) -> Callable:
     def value_getter():
         return getattr(process_obj, var_name)
@@ -32,7 +22,7 @@ def _variable_value_getter(process_obj: Any, var_name: str) -> Callable:
 def _get_var_info(dataset: xr.Dataset, model: Model) -> Dict[Tuple[str, str], Dict]:
     var_info = {}
 
-    var_clocks = dataset.xsimlab.output_vars.copy()
+    var_clocks = {k: v for k, v in dataset.xsimlab.output_vars.items()}
     var_clocks.update({vk: None for vk in model.index_vars})
 
     for var_key, clock in var_clocks.items():
@@ -50,47 +40,13 @@ def _get_var_info(dataset: xr.Dataset, model: Model) -> Dict[Tuple[str, str], Di
     return var_info
 
 
-def _get_output_steps_by_clock(dataset: xr.Dataset) -> Dict[str, np.ndarray]:
-    """Returns a dictionary where keys are names of clock coordinates and
-    values are numpy boolean arrays that specify whether or not to
-    save outputs at every step of a simulation.
-
-    """
-    output_steps = {}
-
-    mclock_dim = dataset.xsimlab.master_clock_dim
-    master_coord = dataset[mclock_dim]
-
-    for clock, coord in dataset.xsimlab.clock_coords.items():
-        if clock == mclock_dim:
-            output_steps[clock] = np.ones_like(coord.values, dtype=bool)
-        else:
-            output_steps[clock] = np.in1d(master_coord.values, coord.values)
-
-    output_steps[None] = np.zeros_like(master_coord.values, dtype=bool)
-    output_steps[None][-1] = True
-
-    return output_steps
-
-
-def _get_clock_sizes(dataset: xr.Dataset) -> Dict[str, int]:
-    return {clock: coord.size for clock, coord in dataset.xsimlab.clock_coords.items()}
-
-
-def _init_clock_incrementers(dataset: xr.Dataset) -> Dict[str, int]:
-    incs = {clock: 0 for clock in dataset.xsimlab.clock_coords}
-    incs[None] = 0
-
-    return incs
-
-
 def _default_fill_value_from_dtype(dtype):
-    if dtype.kind == 'f':
+    if dtype.kind == "f":
         return np.nan
-    elif dtype.kind in 'c':
+    elif dtype.kind in "c":
         return (
             _default_fill_value_from_dtype(dtype.type().real.dtype),
-            _default_fill_value_from_dtype(dtype.type().imag.dtype)
+            _default_fill_value_from_dtype(dtype.type().imag.dtype),
         )
     else:
         return 0
@@ -117,13 +73,17 @@ class ZarrOutputStore:
         else:
             self.zgroup = zarr.group(store=zobject)
 
-        self.output_vars = _get_output_vars_by_clock(dataset)
-        self.output_steps = _get_output_steps_by_clock(dataset)
+        self.output_vars = dataset.xsimlab.output_vars_by_clock
+        self.output_save_steps = dataset.xsimlab.get_output_save_steps()
 
         self.var_info = _get_var_info(dataset, model)
 
-        self.clock_sizes = _get_clock_sizes(dataset)
-        self.clock_incs = _init_clock_incrementers(dataset)
+        self.mclock_dim = dataset.xsimlab.master_clock_dim
+        self.clock_sizes = dataset.xsimlab.clock_sizes
+
+        # initialize clock incrementers
+        self.clock_incs = {clock: 0 for clock in dataset.xsimlab.clock_coords}
+        self.clock_incs[None] = 0
 
     def write_input_xr_dataset(self):
         # output/index variables already in input dataset will be replaced
@@ -197,8 +157,12 @@ class ZarrOutputStore:
         self.consolidated = False
 
     def write_output_vars(self, istep: int):
+        save_istep = self.output_save_steps.isel(**{self.mclock_dim: istep})
+
         for clock, var_keys in self.output_vars.items():
-            if not self.output_steps[clock][istep]:
+            if clock is None and istep != -1:
+                continue
+            if not save_istep.data_vars.get(clock, True):
                 continue
 
             clock_inc = self.clock_incs[clock]
