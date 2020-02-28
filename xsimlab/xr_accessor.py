@@ -11,7 +11,7 @@ from xarray import as_variable, Dataset, register_dataset_accessor
 
 from .drivers import XarraySimulationDriver
 from .model import Model
-from .utils import variables_dict
+from .utils import Frozen, variables_dict
 
 
 @register_dataset_accessor("filter")
@@ -133,17 +133,31 @@ class SimlabAccessor:
     def __init__(self, ds):
         self._ds = ds
         self._master_clock_dim = None
+        self._clock_coords = None
 
     @property
     def clock_coords(self):
-        """Dictionary of :class:`xarray.DataArray` objects corresponding to
-        clock coordinates.
+        """Mapping from clock dimensions to :class:`xarray.DataArray` objects
+        corresponding to their coordinates.
+
+        Cannot be modified directly.
         """
-        return {
-            k: coord
-            for k, coord in self._ds.coords.items()
-            if self._clock_key in coord.attrs
-        }
+        if self._clock_coords is None:
+            self._clock_coords = {
+                k: coord
+                for k, coord in self._ds.coords.items()
+                if self._clock_key in coord.attrs
+            }
+
+        return Frozen(self._clock_coords)
+
+    @property
+    def clock_sizes(self):
+        """Mapping from clock dimensions to lengths.
+
+        Cannot be modified directly.
+        """
+        return Frozen({k: coord.size for k, coord in self.clock_coords.items()})
 
     @property
     def master_clock_dim(self):
@@ -155,6 +169,10 @@ class SimlabAccessor:
         :meth:`Dataset.xsimlab.update_clocks`
 
         """
+        # it is fine to cache the value here as inconsistency may appear
+        # only when deleting the master clock coordinate from the dataset,
+        # which would raise early anyway
+
         if self._master_clock_dim is not None:
             return self._master_clock_dim
         else:
@@ -164,6 +182,47 @@ class SimlabAccessor:
                     self._master_clock_dim = dim
                     return dim
             return None
+
+    @property
+    def master_clock_coord(self):
+        """Master clock coordinate (as a :class:`xarray.DataArray` object).
+
+        Returns None if no master clock is defined in the dataset.
+        """
+        return self._ds.get(self.master_clock_dim)
+
+    @property
+    def nsteps(self):
+        """Number of simulation steps, computed from the master
+        clock coordinate.
+
+        Returns 0 if no master clock is defined in the dataset.
+
+        """
+        if self.master_clock_dim is None:
+            return 0
+        else:
+            return self._ds[self.master_clock_dim].size - 1
+
+    def get_output_save_steps(self):
+        """Returns save steps for each clock as boolean values.
+
+        Returns
+        -------
+        save_steps : :class:`xarray.Dataset`
+            A new Dataset with boolean data variables for each clock
+            dimension other than the master clock, where values specify
+            whether or not to save outputs at every step of a simulation.
+
+        """
+        ds = Dataset(coords={self.master_clock_dim: self.master_clock_coord})
+
+        for clock, coord in self.clock_coords.items():
+            if clock != self.master_clock_dim:
+                save_steps = np.in1d(self.master_clock_coord.values, coord.values)
+                ds[clock] = (self.master_clock_dim, save_steps)
+
+        return ds
 
     def _set_clock_coord(self, dim, data):
         xr_var = as_variable(data, name=dim)
@@ -292,7 +351,7 @@ class SimlabAccessor:
         # end of depreciated code block
 
         if not clear:
-            _output_vars = self.output_vars
+            _output_vars = {k: v for k, v in self.output_vars.items()}
             _output_vars.update(output_vars)
             output_vars = _output_vars
 
@@ -318,6 +377,10 @@ class SimlabAccessor:
             var_str = ",".join(var_list)
             self._set_output_vars_attr(clock, var_str)
 
+        # reset clock_coords cache as attributes of those coords
+        # may have been updated
+        self._clock_coords = None
+
     def _reset_output_vars(self, model, output_vars):
         self._set_output_vars_attr(None, None)
 
@@ -332,6 +395,7 @@ class SimlabAccessor:
         ``('p_name', 'var_name')`` tuples - as keys and the clock dimension
         names (or None) on which to save snapshots as values.
 
+        Cannot be modified directly.
         """
 
         def xr_attr_to_dict(attrs, clock):
@@ -349,7 +413,20 @@ class SimlabAccessor:
 
         o_vars.update(xr_attr_to_dict(self._ds.attrs, None))
 
-        return o_vars
+        return Frozen(o_vars)
+
+    @property
+    def output_vars_by_clock(self):
+        """Returns a dictionary of output variables grouped by clock (keys).
+
+        Cannot be modified directly.
+        """
+        o_vars = defaultdict(list)
+
+        for k, clock in self.output_vars.items():
+            o_vars[clock].append(k)
+
+        return Frozen(dict(o_vars))
 
     def update_clocks(self, model=None, clocks=None, master_clock=None):
         """Set or update clock coordinates.
@@ -653,19 +730,6 @@ class SimlabAccessor:
         )
 
         return driver.run_model()
-
-    def run_multi(self):
-        """Run multiple models.
-
-        Not yet implemented.
-
-        See Also
-        --------
-        :meth:`xarray.Dataset.xsimlab.run`
-
-        """
-        # TODO:
-        raise NotImplementedError()
 
 
 def create_setup(

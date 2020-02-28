@@ -39,8 +39,12 @@ properties listed below. Proper use of this accessor should be like:
    :template: autosummary/accessor_attribute.rst
 
    Dataset.xsimlab.clock_coords
+   Dataset.xsimlab.clock_sizes
    Dataset.xsimlab.master_clock_dim
+   Dataset.xsimlab.master_clock_coord
+   Dataset.xsimlab.nsteps
    Dataset.xsimlab.output_vars
+   Dataset.xsimlab.output_vars_by_clock
 
 **Methods**
 
@@ -53,6 +57,7 @@ properties listed below. Proper use of this accessor should be like:
    Dataset.xsimlab.reset_vars
    Dataset.xsimlab.filter_vars
    Dataset.xsimlab.run
+   Dataset.xsimlab.get_output_save_steps
 
 Model
 =====
