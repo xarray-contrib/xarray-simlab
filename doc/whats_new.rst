@@ -66,6 +66,8 @@ Enhancements
 - Added simulation runtime hooks (:issue:`95`). Hooks can be created by using
   either the :func:`~xsimlab.runtime_hook` decorator or the
   :class:`~xsimlab.RuntimeHook` class.
+- Added some useful properties and methods to the ``xarray.Dataset.xsimlab``
+  extension (:issue:`103`).
 
 Bug fixes
 ~~~~~~~~~
