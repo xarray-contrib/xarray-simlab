@@ -153,7 +153,7 @@ class TestSimlabAccessor:
             data_vars={
                 "clock1": ("clock", [True, False, True, False, True]),
                 "clock2": ("clock", [True, False, False, False, True]),
-            }
+            },
         )
 
         xr.testing.assert_identical(ds.xsimlab.get_output_save_steps(), expected)
@@ -336,9 +336,7 @@ class TestSimlabAccessor:
         o_vars = {("roll", "u_diff"): "clock", ("add", "u_diff"): None}
 
         ds = xs.create_setup(
-            model=model,
-            clocks={"clock": [0, 2, 4, 6, 8]},
-            output_vars=o_vars,
+            model=model, clocks={"clock": [0, 2, 4, 6, 8]}, output_vars=o_vars,
         )
 
         expected = {"clock": [("roll", "u_diff")], None: [("add", "u_diff")]}
