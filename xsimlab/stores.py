@@ -84,6 +84,18 @@ def _init_clock_incrementers(dataset: xr.Dataset) -> Dict[str, int]:
     return incs
 
 
+def _default_fill_value_from_dtype(dtype):
+    if dtype.kind == 'f':
+        return np.nan
+    elif dtype.kind in 'c':
+        return (
+            _default_fill_value_from_dtype(dtype.type().real.dtype),
+            _default_fill_value_from_dtype(dtype.type().imag.dtype)
+        )
+    else:
+        return 0
+
+
 class ZarrOutputStore:
     def __init__(
         self,
@@ -122,6 +134,8 @@ class ZarrOutputStore:
         ds.to_zarr(self.zgroup.store, group=self.zgroup.path, mode="a")
 
     def _create_zarr_dataset(self, var_key: Tuple[str, str], name=None):
+        var = self.var_info[var_key]["obj"]
+
         if name is None:
             name = self.var_info[var_key]["name"]
 
@@ -154,11 +168,10 @@ class ZarrOutputStore:
             compressor=compressor,
             # TODO: smarter fill_value based on array dtype
             #       (0 may be non-missing value)
-            # fill_value=0,
+            fill_value=_default_fill_value_from_dtype(array.dtype),
         )
 
         # add dimension labels and variable attributes as metadata
-        var = self.var_info[var_key]["obj"]
         dim_labels = None
 
         for dims in var.metadata["dims"]:
