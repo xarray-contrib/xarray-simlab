@@ -107,11 +107,10 @@ class ZarrOutputStore:
 
         if clock is None:
             shape = array.shape
-            chunks = True  # auto chunks
         else:
             shape = (self.clock_sizes[clock],) + tuple(array.shape)
-            chunks = (1,) + tuple(array.shape)
 
+        chunks = True
         compressor = "default"
 
         # TODO: more performance assessment
