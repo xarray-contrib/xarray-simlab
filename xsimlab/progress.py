@@ -19,7 +19,7 @@ class ProgressBar(RuntimeHook):
         self.pbar_dict.update(total=context["step_total"].values)
         self.pbar_model = tqdm(**self.pbar_dict)
 
-    @runtime_hook("run_step", "model", trigger="post")
+    @runtime_hook("run_step", trigger="post")
     def update_bar(self, mode, context, state):
         self.pbar_model.update(1)
 
