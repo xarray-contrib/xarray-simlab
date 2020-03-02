@@ -8,6 +8,7 @@ class ProgressBar(RuntimeHook):
     Progress bar implementation using the tqdm package.
     For additional customization, see: https://tqdm.github.io/docs/tqdm/
     """
+
     def __init__(self, **kwargs):
         self.pbar_dict = {}
         if kwargs:
@@ -15,7 +16,7 @@ class ProgressBar(RuntimeHook):
 
     @runtime_hook("initialize", trigger="pre")
     def init_bar(self, model, context, state):
-        self.pbar_dict.update(total=context['step_total'].values)
+        self.pbar_dict.update(total=context["step_total"].values)
         self.pbar_model = tqdm(**self.pbar_dict)
 
     @runtime_hook("run_step", "model", trigger="post")
