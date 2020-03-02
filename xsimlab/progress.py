@@ -1,6 +1,6 @@
 from xsimlab.hook import RuntimeHook, runtime_hook
 
-from tqdm.notebook import tqdm
+from tqdm.auto import tqdm
 
 
 class ProgressBar(RuntimeHook):
