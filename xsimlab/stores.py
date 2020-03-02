@@ -40,13 +40,13 @@ def _get_var_info(dataset: xr.Dataset, model: Model) -> Dict[Tuple[str, str], Di
     return var_info
 
 
-def _default_fill_value_from_dtype(dtype):
+def default_fill_value_from_dtype(dtype):
     if dtype.kind == "f":
         return np.nan
     elif dtype.kind in "c":
         return (
-            _default_fill_value_from_dtype(dtype.type().real.dtype),
-            _default_fill_value_from_dtype(dtype.type().imag.dtype),
+            default_fill_value_from_dtype(dtype.type().real.dtype),
+            default_fill_value_from_dtype(dtype.type().imag.dtype),
         )
     else:
         return 0
@@ -99,11 +99,9 @@ class ZarrOutputStore:
         if name is None:
             name = self.var_info[var_key]["name"]
 
-        value = self.var_info[var_key]["value_getter"]()
-        if np.isscalar(value):
-            array = np.asarray(value)
-        else:
-            array = value
+        array = self.var_info[var_key]["value_getter"]()
+        if np.isscalar(array):
+            array = np.asarray(array)
 
         clock = self.var_info[var_key]["clock"]
 
@@ -127,9 +125,7 @@ class ZarrOutputStore:
             chunks=chunks,
             dtype=array.dtype,
             compressor=compressor,
-            # TODO: smarter fill_value based on array dtype
-            #       (0 may be non-missing value)
-            fill_value=_default_fill_value_from_dtype(array.dtype),
+            fill_value=default_fill_value_from_dtype(array.dtype),
         )
 
         # add dimension labels and variable attributes as metadata
@@ -142,7 +138,7 @@ class ZarrOutputStore:
         if dim_labels is None:
             raise ValueError(
                 f"Output array of {array.ndim} dimension(s) "
-                f"for variable '{name}' doesn't match any of"
+                f"for variable '{name}' doesn't match any of "
                 f"its accepted dimension(s): {var.metadata['dims']}"
             )
 
