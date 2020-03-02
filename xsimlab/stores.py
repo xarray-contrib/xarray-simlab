@@ -196,7 +196,7 @@ class ZarrOutputStore:
         else:
             chunks = "auto"
 
-        return xr.open_zarr(
+        ds = xr.open_zarr(
             self.zgroup.store,
             group=self.zgroup.path,
             chunks=chunks,
@@ -204,3 +204,9 @@ class ZarrOutputStore:
             # disable mask (not nice with zarr default fill_value=0)
             mask_and_scale=False,
         )
+
+        if self.in_memory:
+            # lazy loading may be confusing for the default, in-memory option
+            return ds.load()
+        else:
+            return ds
