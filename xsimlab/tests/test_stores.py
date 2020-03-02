@@ -47,7 +47,7 @@ class TestZarrOutputStore:
 
         out_store.write_output_vars(0)
 
-        ztest = zarr.open_group(out_store.zgroup.store, mode='r')
+        ztest = zarr.open_group(out_store.zgroup.store, mode="r")
 
         assert ztest.profile__u.shape == (in_dataset.clock.size, 3)
         assert_array_equal(ztest.profile__u[0], np.array([1.0, 2.0, 3.0]))
@@ -85,7 +85,7 @@ class TestZarrOutputStore:
         model.store[("init_profile", "x")] = np.array([1.0, 2.0, 3.0])
 
         out_store.write_index_vars()
-        ztest = zarr.open_group(out_store.zgroup.store, mode='r')
+        ztest = zarr.open_group(out_store.zgroup.store, mode="r")
 
         assert_array_equal(ztest.x, np.array([1.0, 2.0, 3.0]))
 
