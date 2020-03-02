@@ -68,6 +68,7 @@ Enhancements
   :class:`~xsimlab.RuntimeHook` class.
 - Added some useful properties and methods to the ``xarray.Dataset.xsimlab``
   extension (:issue:`103`).
+- Save model inputs/outputs using zarr (:issue:`102`).
 
 Bug fixes
 ~~~~~~~~~
