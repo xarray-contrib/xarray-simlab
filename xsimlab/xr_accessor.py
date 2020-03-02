@@ -13,6 +13,7 @@ from .drivers import XarraySimulationDriver
 from .model import Model
 from .stores import InMemoryOutputStore
 from .utils import Frozen, variables_dict
+from .progress import ProgressBar
 
 
 @register_dataset_accessor("filter")
