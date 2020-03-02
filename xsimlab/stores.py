@@ -116,9 +116,10 @@ class ZarrOutputStore:
 
         compressor = "default"
 
-        if self.in_memory:
-            # chunks = False    # assess performance impact first?
-            compressor = None
+        # TODO: more performance assessment
+        # if self.in_memory:
+        #     chunks = False
+        #     compressor = None
 
         zdataset = self.zgroup.create_dataset(
             name,
