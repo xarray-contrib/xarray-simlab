@@ -6,6 +6,7 @@ dependencies:
   - pytest
   - numpy
   - xarray
+  - dask
   - zarr
   - pip:
     - git+https://github.com/python-attrs/attrs.git
