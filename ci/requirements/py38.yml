@@ -7,8 +7,10 @@ dependencies:
   - pytest
   - numpy
   - xarray
+  - dask
   - graphviz
   - python-graphviz
+  - zarr
   - pip:
     - coveralls
     - pytest-cov

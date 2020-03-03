@@ -3,10 +3,9 @@ from enum import Enum
 from typing import Any, Iterator, Mapping
 
 import attr
-import numpy as np
-import xarray as xr
 
 from .hook import flatten_hooks, group_hooks, RuntimeHook
+from .stores import ZarrOutputStore
 from .utils import variables_dict
 
 
@@ -75,10 +74,9 @@ class BaseSimulationDriver:
 
     """
 
-    def __init__(self, model, store, output_store):
+    def __init__(self, model, store):
         self.model = model
         self.store = store
-        self.output_store = output_store
 
         self._bind_store_to_model()
 
@@ -143,17 +141,6 @@ class BaseSimulationDriver:
         """
         self._set_in_store(input_vars, check_static=True)
 
-    def update_output_store(self, output_var_keys):
-        """Update the simulation output store (i.e., append new values to the
-        store) from snapshots of variables given in ``output_var_keys`` list.
-        """
-        for key in output_var_keys:
-            p_name, var_name = key
-            p_obj = self.model._processes[p_name]
-            value = getattr(p_obj, var_name)
-
-            self.output_store.append(key, value)
-
     def validate(self, p_names):
         """Run validators for all processes given in `p_names`."""
 
@@ -165,23 +152,6 @@ class BaseSimulationDriver:
         implemented in sub-classes).
         """
         raise NotImplementedError()
-
-
-def _get_dims_from_variable(array, var, clock):
-    """Given an array with numpy compatible interface and a
-    (xarray-simlab) variable, return dimension labels for the
-    array.
-
-    """
-    ndim = array.ndim
-    if clock is not None:
-        ndim -= 1  # ignore clock dimension
-
-    for dims in var.metadata["dims"]:
-        if len(dims) == ndim:
-            return dims
-
-    return tuple()
 
 
 class XarraySimulationDriver(BaseSimulationDriver):
@@ -202,7 +172,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
         dataset,
         model,
         store,
-        output_store,
+        zobject,
         check_dims=CheckDimsOption.STRICT,
         validate=ValidateOption.INPUTS,
         hooks=None,
@@ -210,22 +180,18 @@ class XarraySimulationDriver(BaseSimulationDriver):
         self.dataset = dataset
         self.model = model
 
-        super(XarraySimulationDriver, self).__init__(model, store, output_store)
+        super(XarraySimulationDriver, self).__init__(model, store)
 
-        self.master_clock_dim = dataset.xsimlab.master_clock_dim
-        if self.master_clock_dim is None:
+        if self.dataset.xsimlab.master_clock_dim is None:
             raise ValueError("Missing master clock dimension / coordinate")
 
         self._check_missing_model_inputs()
-
-        self.output_vars = dataset.xsimlab.output_vars
-        self.output_save_steps = self._get_output_save_steps()
 
         if check_dims is not None:
             check_dims = CheckDimsOption(check_dims)
         self._check_dims_option = check_dims
 
-        self._transposed_vars = {}
+        self._original_dims = {}
 
         if validate is not None:
             validate = ValidateOption(validate)
@@ -235,6 +201,8 @@ class XarraySimulationDriver(BaseSimulationDriver):
             hooks = set()
         hooks = set(hooks) | RuntimeHook.active
         self._hooks = group_hooks(flatten_hooks(hooks))
+
+        self.output_store = ZarrOutputStore(dataset, model, zobject)
 
     def _check_missing_model_inputs(self):
         """Check if all model inputs have their corresponding variables
@@ -251,26 +219,6 @@ class XarraySimulationDriver(BaseSimulationDriver):
         if missing_xr_vars:
             raise KeyError(f"Missing variables {missing_xr_vars} in Dataset")
 
-    def _get_output_save_steps(self):
-        """Returns a dictionary where keys are names of clock coordinates and
-        values are numpy boolean arrays that specify whether or not to
-        save outputs at every step of a simulation.
-        """
-        save_steps = {}
-
-        master_coord = self.dataset[self.master_clock_dim]
-
-        for clock, coord in self.dataset.xsimlab.clock_coords.items():
-            if clock == self.master_clock_dim:
-                save_steps[clock] = np.ones_like(coord.values, dtype=bool)
-            else:
-                save_steps[clock] = np.in1d(master_coord.values, coord.values)
-
-        save_steps[None] = np.zeros_like(master_coord.values, dtype=bool)
-        save_steps[None][-1] = True
-
-        return save_steps
-
     def _maybe_transpose(self, xr_var, p_name, var_name):
         var = variables_dict(self.model[p_name].__class__)[var_name]
 
@@ -282,7 +230,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
         transpose = self._check_dims_option is CheckDimsOption.TRANSPOSE
 
         if transpose and xr_dims_set in dims_set:
-            self._transposed_vars[(p_name, var_name)] = xr_var.dims
+            self._original_dims[xr_var.name] = xr_var.dims
             xr_var = xr_var.transpose(*dims_set[xr_dims_set])
 
         if (strict or transpose) and xr_var.dims not in dims:
@@ -316,87 +264,8 @@ class XarraySimulationDriver(BaseSimulationDriver):
 
         return input_vars
 
-    def _maybe_save_output_vars(self, istep):
-        var_list = []
-
-        for key, clock in self.output_vars.items():
-            if self.output_save_steps[clock][istep]:
-                var_list.append(key)
-
-        self.update_output_store(var_list)
-
-    def _to_xr_variable(self, key, clock, index=False):
-        """Convert an output variable to a xarray.Variable object.
-
-        Maybe transpose the variable to match the dimension order
-        of the variable given in the input dataset (if any).
-
-        """
-        p_name, var_name = key
-        p_obj = self.model[p_name]
-        var = variables_dict(type(p_obj))[var_name]
-
-        if index:
-            # get index directly from simulation store
-            data = self.store[key]
-        else:
-            data = self.output_store[key]
-            if clock is None:
-                data = data[0]
-
-        dims = _get_dims_from_variable(data, var, clock)
-        original_dims = self._transposed_vars.get(key)
-
-        if clock is not None:
-            dims = (clock,) + dims
-
-            if original_dims is not None:
-                original_dims = (clock,) + original_dims
-
-        attrs = var.metadata["attrs"].copy()
-        if var.metadata["description"]:
-            attrs["description"] = var.metadata["description"]
-
-        xr_var = xr.Variable(dims, data, attrs=attrs)
-
-        if original_dims is not None:
-            # TODO: use ellipsis for clock dim in transpose
-            # added in xarray 0.14.1 (too recent)
-            xr_var = xr_var.transpose(*original_dims)
-
-        return xr_var
-
-    def _get_output_dataset(self):
-        """Return a new dataset as a copy of the input dataset updated with
-        output variables and index variables.
-        """
-        out_ds = self.dataset.copy()
-
-        # add/update output variables
-        xr_vars = {}
-
-        for key, clock in self.output_vars.items():
-            var_name = "__".join(key)
-            xr_vars[var_name] = self._to_xr_variable(key, clock, index=False)
-
-        out_ds.update(xr_vars)
-
-        # remove output_vars attributes in output dataset
-        out_ds.xsimlab._reset_output_vars(self.model, {})
-
-        # add/update index variables
-        xr_coords = {}
-
-        for key in self.model.index_vars():
-            _, var_name = key
-            xr_coords[var_name] = self._to_xr_variable(key, None, index=True)
-
-        out_ds.coords.update(xr_coords)
-
-        return out_ds
-
     def _get_runtime_datasets(self):
-        mclock_dim = self.master_clock_dim
+        mclock_dim = self.dataset.xsimlab.master_clock_dim
         mclock_coord = self.dataset[mclock_dim]
 
         init_data_vars = {
@@ -428,6 +297,32 @@ class XarraySimulationDriver(BaseSimulationDriver):
         if self._validate_option is not None:
             self.validate(p_names)
 
+    def _get_output_dataset(self):
+        self.output_store.consolidate()
+
+        out_ds = self.output_store.open_as_xr_dataset()
+
+        # replace index variables data with simulation data
+        # (could be advanced Index objects that don't support serialization)
+        for key in self.model.index_vars:
+            _, var_name = key
+            out_ds[var_name].data = self.store[key]
+
+        # transpose back
+        for xr_var_name, dims in self._original_dims.items():
+            xr_var = out_ds[xr_var_name]
+
+            reordered_dims = [d for d in xr_var.dims if d not in dims]
+            reordered_dims += dims
+
+            if not xr_var.chunks:
+                # TODO: transpose does not work on lazily loaded zarr datasets with no chunks
+                xr_var.load()
+
+            out_ds[xr_var_name] = xr_var.transpose(*reordered_dims)
+
+        return out_ds
+
     def run_model(self):
         """Run the model and return a new Dataset with all the simulation
         inputs and outputs.
@@ -438,6 +333,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
           'finalize_step' stages or at the end of the simulation.
 
         """
+        self.output_store.write_input_xr_dataset()
         ds_init, ds_gby_steps = self._get_runtime_datasets()
 
         validate_all = self._validate_option is ValidateOption.ALL
@@ -471,7 +367,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
                 "run_step", runtime_context, hooks=self._hooks, validate=validate_all,
             )
 
-            self._maybe_save_output_vars(step)
+            self.output_store.write_output_vars(step)
 
             self.model.execute(
                 "finalize_step",
@@ -480,7 +376,9 @@ class XarraySimulationDriver(BaseSimulationDriver):
                 validate=validate_all,
             )
 
-        self._maybe_save_output_vars(-1)
+        self.output_store.write_output_vars(-1)
+        self.output_store.write_index_vars()
+
         self.model.execute("finalize", runtime_context, hooks=self._hooks)
 
         return self._get_output_dataset()

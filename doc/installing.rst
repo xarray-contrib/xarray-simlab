@@ -10,6 +10,7 @@ Required dependencies
 - `attrs <http://www.attrs.org>`__ (18.2.0 or later)
 - `numpy <http://www.numpy.org/>`__
 - `xarray <http://xarray.pydata.org>`__ (0.10.0 or later)
+- `zarr <https://zarr.readthedocs.io>`__ (2.3.0 or later)
 
 Optional dependencies
 ---------------------
