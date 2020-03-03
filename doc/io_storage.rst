@@ -21,8 +21,8 @@ Using xarray
 
 The :class:`xarray.Dataset` structure, used for both simulation inputs and
 outputs, already supports serialization and I/O to several file formats, among
-which netCDF_ is the recommended format. For more information, see the `reading
-and writing files`_ section of xarray's docs.
+which netCDF_ is the recommended format. For more information, see section
+`reading and writing files`_ in xarray's docs.
 
 .. _netCDF: https://www.unidata.ucar.edu/software/netcdf/
 .. _`reading and writing files`: http://xarray.pydata.org/en/stable/io.html
@@ -62,7 +62,7 @@ You can save the dataset here above, e.g., using :meth:`xarray.Dataset.to_netcdf
 
    ds.to_netcdf("model2_setup.nc")
 
-So that you can reload this setup later or elsewhere before running a
+You can then reload this setup later or elsewhere before starting a new
 simulation:
 
 .. ipython:: python
@@ -72,9 +72,9 @@ simulation:
    out_ds = in_ds.xsimlab.run(model=model2)
    out_ds
 
-The latter dataset ``out_ds`` contains both the inputs and outputs of this model
-run, that you can also write to a netCDF file or any other format supported by
-xarray, e.g.,
+The latter dataset ``out_ds`` contains both the inputs and the outputs of this
+model run. Likewise, You can write it to a netCDF file or any other format
+supported by xarray, e.g.,
 
 .. ipython:: python
 
@@ -84,11 +84,11 @@ Using zarr
 ----------
 
 When :meth:`xarray.Dataset.xsimlab.run` is called, xarray-simlab uses the zarr_
-library to efficiently store (i.e., with compression) both the inputs and the
-outputs. The output data is stored progressively as the simulation proceeds.
+library to efficiently store (i.e., with compression) both simulation input and
+output data. The output data is stored progressively as the simulation proceeds.
 
-By default all this data is saved into memory. When the amount of model I/O data
-is bigger, it is recommended to save the data on disk. For example, you can
+By default all this data is saved into memory. For large amounts of model I/O
+data, however, it is recommended to save the data on disk. For example, you can
 specify a directory where to store it:
 
 .. ipython:: python
@@ -116,19 +116,20 @@ to overwrite a directory that has been used for old model runs:
    distributed/cloud and database storage systems (see `storage alternatives`_
    in zarr's tutorial). Note, however, that a few alternatives won't work well
    with xarray-simlab. For example, :class:`zarr.ZipStore` doesn't support
-   feeding a dataset once it has been created.
+   feeding a zarr dataset once it has been created.
 
 Regardless of the chosen alternative, :meth:`xarray.Dataset.xsimlab.run` returns
-a ``xarray.Dataset`` containing the data (lazily) loaded from the zarr store:
+a ``xarray.Dataset`` object that contains the data (lazily) loaded from the zarr
+store:
 
 .. ipython:: python
 
    out_ds
 
-Zarr stores large multi-dimensional arrays as contiguous chunks. Xarray keeps track of
-those chunks, which enables efficient, parallel post-processing or visualization
-via the dask_ library (see the `parallel computing with Dask`_ section in
-xarray's docs).
+Zarr stores large multi-dimensional arrays as contiguous chunks. When opened as
+a ``xarray.Dataset``, xarray keeps track of those chunks, which enables efficient
+and parallel post-processing via the dask_ library (see section `parallel
+computing with Dask`_ in xarray's docs).
 
 .. _`storage alternatives`: https://zarr.readthedocs.io/en/stable/tutorial.html#storage-alternatives
 .. _`parallel computing with Dask`: http://xarray.pydata.org/en/stable/dask.html
