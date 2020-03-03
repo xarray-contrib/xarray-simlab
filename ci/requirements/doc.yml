@@ -1,6 +1,7 @@
 name: xarray-simlab-doc
 channels:
   - conda-forge
+  - defaults
 dependencies:
   - alabaster=0.7.12=py_0
   - appnope=0.1.0=py37_1000
