@@ -207,6 +207,11 @@ class ZarrOutputStore:
 
         if self.in_memory:
             # lazy loading may be confusing for the default, in-memory option
-            return ds.load()
+            ds.load()
         else:
-            return ds
+            # load scalar data vars (there might be many of them: model params)
+            for da in ds.data_vars.values():
+                if not da.dims:
+                    da.load()
+
+        return ds
