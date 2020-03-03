@@ -3,17 +3,27 @@ channels:
   - conda-forge
 dependencies:
   - attrs=19.2.0
-  - python=3.7
+  - bokeh=1.4.0
+  - cftime=1.0.4.2
+  - dask=2.11.0
+  - graphviz=2.40.1
+  - hdf4=4.2.13
+  - hdf5=1.10.5
+  - ipython=7.8.0
+  - libnetcdf=4.7.3
+  - lz4-c=1.8.3
+  - matplotlib=3.0.2
+  - nbconvert=5.6.0
+  - netcdf4=1.5.3
   - numpy=1.17.2
   - pandas=0.25.1
-  - xarray=0.13.0
-  - netcdf4=1.5.3
-  - dask=2.11.0
-  - ipython=7.8.0
-  - matplotlib=3.0.2
-  - graphviz
-  - python-graphviz
-  - nbconvert=5.6.0
-  - sphinx=1.8.5
   - pandoc=2.7.3
+  - python=3.7.6
+  - python-graphviz=0.13.2
+  - sphinx=1.8.5
+  - xarray=0.13.0
   - zarr=2.4.0
+  - zict=2.0.0
+  - zipp=3.0.0
+  - zlib=1.2.11
+  - zstd=1.4.4
