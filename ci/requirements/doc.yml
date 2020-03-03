@@ -1,21 +1,20 @@
 name: xarray-simlab-doc
 channels:
-  - conda-forge
+  - defaults
 dependencies:
   - graphviz=2.40.1
   - netcdf4=1.5.3
   - numpy=1.17.2
-  - pandoc=2.7.3
   - pip
   - python=3.7.6
   - python-graphviz=0.13.2
-  - sphinx=1.8.5
-  - zarr=2.4.0
+  - zarr=2.3.2
   - pip:
       - attrs==19.2.0
       - dask==2.11.0
       - ipython==7.8.0
       - matplotlib==3.0.2
       - nbconvert==5.6.0
+      - sphinx==1.8.5
       - toolz
       - xarray==0.13.0
