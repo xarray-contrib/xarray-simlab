@@ -62,6 +62,8 @@ def test_foreign():
         foreign(ExampleProcess, "some_var", intent="inout")
     assert "intent='inout' is not supported" in str(excinfo.value)
 
-    actual = attr.fields(ExampleProcess).out_foreign_var.metadata["description"]
-    expected = attr.fields(AnotherProcess).another_var.metadata["description"]
-    assert actual == expected
+    var = attr.fields(ExampleProcess).out_foreign_var
+    ref_var = attr.fields(AnotherProcess).another_var
+
+    for k in ("description", "attrs"):
+        assert var.metadata[k] == ref_var.metadata[k]

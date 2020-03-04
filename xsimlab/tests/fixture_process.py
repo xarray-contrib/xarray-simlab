@@ -23,7 +23,7 @@ class SomeProcess:
 class AnotherProcess:
     """Just used for foreign variables in ExampleProcess."""
 
-    another_var = xs.variable(description="original description")
+    another_var = xs.variable(description="original description", attrs={"unit": "m"})
     some_var = xs.foreign(SomeProcess, "some_var")
 
 
