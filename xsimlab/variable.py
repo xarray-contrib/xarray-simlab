@@ -350,7 +350,7 @@ def foreign(other_process_cls, var_name, intent="in"):
         "var_name": var_name,
         "intent": VarIntent(intent),
         "description": description,
-        "attrs": attrs
+        "attrs": attrs,
     }
 
     if VarIntent(intent) == VarIntent.OUT:
