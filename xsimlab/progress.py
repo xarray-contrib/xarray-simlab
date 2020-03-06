@@ -27,7 +27,6 @@ class ProgressBar(RuntimeHook):
     ...    out_ds = in_ds.xsimlab.run(model=model)
 
     Globally with `register` method:
-
     >>> pbar = xs.progress.ProgressBar()
     >>> pbar.register()
     >>> out_ds = in_ds.xsimlab.run(model=model)
@@ -59,13 +58,13 @@ class ProgressBar(RuntimeHook):
 
     @runtime_hook("run_step", trigger="post")
     def update_bar(self, mode, context, state):
-        self.pbar_model.set_description(
+        self.pbar_model.set_description_str(
             f"run step {context['step']}/{context['nsteps']}"
         )
         self.pbar_model.update(1)
 
     @runtime_hook("finalize", trigger="post")
     def close_bar(self, model, context, state):
-        self.pbar_model.set_description("finalize")
+        self.pbar_model.set_description_str("finalize")
         self.pbar_model.update(1)
         self.pbar_model.close()
