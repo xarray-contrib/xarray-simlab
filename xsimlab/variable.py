@@ -340,14 +340,15 @@ def foreign(other_process_cls, var_name, intent="in"):
     if intent == "inout":
         raise ValueError("intent='inout' is not supported for foreign variables")
 
-    description = attr.fields_dict(other_process_cls)[var_name].metadata["description"]
+    ref_var = attr.fields_dict(other_process_cls)[var_name]
 
     metadata = {
         "var_type": VarType.FOREIGN,
         "other_process_cls": other_process_cls,
         "var_name": var_name,
         "intent": VarIntent(intent),
-        "description": description,
+        "description": ref_var.metadata["description"],
+        "attrs": ref_var.metadata.get("attrs", {}),
     }
 
     if VarIntent(intent) == VarIntent.OUT:

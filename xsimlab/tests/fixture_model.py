@@ -79,7 +79,7 @@ class Add:
 @xs.process
 class AddOnDemand:
     offset = xs.variable(dims=[(), "x"], description="offset added to profile u")
-    u_diff = xs.on_demand(groups="diff")
+    u_diff = xs.on_demand(dims=[(), "x"], groups="diff")
 
     @u_diff.compute
     def _compute_u_diff(self):

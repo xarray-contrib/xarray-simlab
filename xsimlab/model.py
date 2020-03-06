@@ -489,6 +489,7 @@ class Model(AttrMapping, ContextMixin):
         """
         return self._get_vars_dict_from_cache("_all_vars")
 
+    @property
     def index_vars(self):
         """Returns all index variables in the model as a list of
         ``(process_name, var_name)`` tuples (or an empty list).

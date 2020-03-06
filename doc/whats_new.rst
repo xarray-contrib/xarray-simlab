@@ -13,7 +13,9 @@ Breaking changes
 - The keys of the dictionary returned by
   :attr:`xarray.Dataset.xsimlab.output_vars` now correspond to variable names,
   and the values are clock dimension labels or ``None`` (previously the
-  dictionary was formatted the other way around) (:issue:`85`).
+  dictionary was formatted the other way around).
+  :attr:`xarray.Dataset.xsimlab.output_vars_by_clock` has been added for
+  convenience (:issue:`85`, :issue:`103`).
 
 Depreciations
 ~~~~~~~~~~~~~
@@ -49,8 +51,8 @@ Enhancements
   extension (:issue:`85`).
 - %-formatting and str.format() code has been converted into formatted string
   literals (f-strings) (:issue:`90`).
-- :func:`~xsimlab.foreign` has been updated to get the original description
-  of a foreign variable (:issue:`91`)
+- :func:`~xsimlab.foreign` has been updated so that it sets its description and
+  its metadata from the variable it refers to (:issue:`91`, :issue:`107`).
 - The ``autodoc`` parameter of the :func:`xsimlab.process` decorator now allows
   to automatically add an attributes section to the docstring of the class to
   which the decorator is applied, using the metadata of each variable declared
@@ -68,6 +70,7 @@ Enhancements
   :class:`~xsimlab.RuntimeHook` class.
 - Added some useful properties and methods to the ``xarray.Dataset.xsimlab``
   extension (:issue:`103`).
+- Save model inputs/outputs using zarr (:issue:`102`).
 
 Bug fixes
 ~~~~~~~~~

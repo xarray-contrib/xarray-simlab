@@ -213,6 +213,7 @@ intersphinx_mapping = {
     "attr": ("http://www.attrs.org/en/stable/", None),
     "pandas": ("https://pandas.pydata.org/pandas-docs/stable/", None),
     "xarray": ("https://xarray.pydata.org/en/stable/", None),
+    "zarr": ("https://zarr.readthedocs.io/en/stable/", None),
 }
 
 
