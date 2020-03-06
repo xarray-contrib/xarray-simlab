@@ -11,6 +11,7 @@ from xarray import as_variable, Dataset, register_dataset_accessor
 
 from .drivers import XarraySimulationDriver
 from .model import Model
+from .utils import Frozen, variables_dict
 
 
 @register_dataset_accessor("filter")
