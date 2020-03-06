@@ -7,14 +7,32 @@ from tqdm.auto import tqdm as auto
 class ProgressBar(RuntimeHook):
     """
     Progress bar implementation using the tqdm package.
-    
-    Parameters:
-    -----------
-    frontend : {"auto", "console",, "gui", "notebook"}, optional
+
+    Parameters
+    ----------
+    frontend : {"auto", "console", "gui", "notebook"}, optional
         Allows control over Python environment.
     **kwargs : dict, optional
         Arbitrary keyword arguments for progress bar customization.
-    
+
+    Examples
+    --------
+    :class:`ProgressBar` takes full advantage of :class:`RuntimeHook`.
+
+    Call it as part of :func:`run`:
+    >>> out_ds = in_ds.xsimlab.run(model=model, hooks=[xs.progress.ProgressBar()])
+
+    In a context manager using the `with` statement`:
+    >>> with xs.progress.ProgressBar():
+    ...    out_ds = in_ds.xsimlab.run(model=model)
+
+    Globally with `register` method:
+
+    >>> pbar = xs.progress.ProgressBar()
+    >>> pbar.register()
+    >>> out_ds = in_ds.xsimlab.run(model=model)
+    >>> pbar.unregister()
+
     For additional customization, see: https://tqdm.github.io/docs/tqdm/
     """
 
