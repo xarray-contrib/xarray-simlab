@@ -11,12 +11,6 @@ from xarray import as_variable, Dataset, register_dataset_accessor
 
 from .drivers import XarraySimulationDriver
 from .model import Model
-<<<<<<< HEAD
-from .progress import ProgressBar
-from .stores import InMemoryOutputStore
-=======
->>>>>>> 3138f353215ac8deec4c3bdf5072c59cf5871993
-from .utils import Frozen, variables_dict
 
 
 @register_dataset_accessor("filter")

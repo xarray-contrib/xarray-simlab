@@ -266,13 +266,8 @@ class XarraySimulationDriver(BaseSimulationDriver):
         return input_vars
 
     def _get_runtime_datasets(self):
-<<<<<<< HEAD
         mclock_dim = self.master_clock_dim
         mclock_coord = self.dataset.xsimlab.master_clock_coord
-=======
-        mclock_dim = self.dataset.xsimlab.master_clock_dim
-        mclock_coord = self.dataset[mclock_dim]
->>>>>>> 3138f353215ac8deec4c3bdf5072c59cf5871993
 
         init_data_vars = {
             "_sim_start": mclock_coord[0],
