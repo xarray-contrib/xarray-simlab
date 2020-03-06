@@ -1,7 +1,7 @@
-from xsimlab.hook import RuntimeHook, runtime_hook
-
 import tqdm
 from tqdm.auto import tqdm as auto
+
+from xsimlab.hook import RuntimeHook, runtime_hook
 
 
 class ProgressBar(RuntimeHook):
@@ -35,22 +35,29 @@ class ProgressBar(RuntimeHook):
     For additional customization, see: https://tqdm.github.io/docs/tqdm/
     """
 
+    env_list = ["auto", "console", "gui", "notebook"]
+
     def __init__(self, frontend="auto", **kwargs):
         self.frontend = frontend
-        self.pbar_dict = {"bar_format": "{desc}{bar}{percentage:3.1f}%"}
+        self.pbar_dict = {"bar_format": "{desc} {bar} {percentage:3.1f}%"}
         self.pbar_dict.update(kwargs)
 
     @runtime_hook("initialize", trigger="pre")
     def init_bar(self, model, context, state):
         self.pbar_dict.update(total=context["nsteps"] + 2, desc="initialize")
-        if self.frontend == "notebook":
-            self.pbar_model = tqdm.tqdm_notebook(**self.pbar_dict)
-        elif self.frontend == "console":
-            self.pbar_model = tqdm.tqdm(**self.pbar_dict)
-        elif self.frontend == "auto":
+
+        if self.frontend not in self.env_list:
+            raise ValueError(
+                f"Frontend argument {self.frontend!r} not supported. Please select one of the following: {', '.join(self.env_list)}"
+            )
+        elif self.frontend == self.env_list[0]:
             self.pbar_model = auto(**self.pbar_dict)
-        elif self.frontend == "gui":
+        elif self.frontend == self.env_list[1]:
+            self.pbar_model = tqdm.tqdm(**self.pbar_dict)
+        elif self.frontend == self.env_list[2]:
             self.pbar_model = tqdm.tqdm_gui(**self.pbar_dict)
+        elif self.frontend == self.env_list[3]:
+            self.pbar_model = tqdm.tqdm_notebook(**self.pbar_dict)
 
     @runtime_hook("initialize", trigger="post")
     def update_init(self, mode, context, state):
