@@ -1,29 +1,53 @@
 from xsimlab.hook import RuntimeHook, runtime_hook
 
-from tqdm.auto import tqdm
+import tqdm
+from tqdm.auto import tqdm as auto
 
 
 class ProgressBar(RuntimeHook):
     """
     Progress bar implementation using the tqdm package.
+    
+    Parameters:
+    -----------
+    frontend : {"auto", "console",, "gui", "notebook"}, optional
+        Allows control over Python environment.
+    **kwargs : dict, optional
+        Arbitrary keyword arguments for progress bar customization.
+    
     For additional customization, see: https://tqdm.github.io/docs/tqdm/
     """
 
-    def __init__(self, **kwargs):
-        self.pbar_dict = {}
-        if kwargs:
-            self.pbar_dict.update(kwargs)
+    def __init__(self, frontend="auto", **kwargs):
+        self.frontend = frontend
+        self.pbar_dict = {"bar_format": "{desc}{bar}{percentage:3.1f}%"}
+        self.pbar_dict.update(kwargs)
 
     @runtime_hook("initialize", trigger="pre")
     def init_bar(self, model, context, state):
-        self.pbar_dict.update(total=context["step_total"].values)
-        self.pbar_model = tqdm(**self.pbar_dict)
+        self.pbar_dict.update(total=context["nsteps"] + 2, desc="initialize")
+        if self.frontend == "notebook":
+            self.pbar_model = tqdm.tqdm_notebook(**self.pbar_dict)
+        elif self.frontend == "console":
+            self.pbar_model = tqdm.tqdm(**self.pbar_dict)
+        elif self.frontend == "auto":
+            self.pbar_model = auto(**self.pbar_dict)
+        elif self.frontend == "gui":
+            self.pbar_model = tqdm.tqdm_gui(**self.pbar_dict)
+
+    @runtime_hook("initialize", trigger="post")
+    def update_init(self, mode, context, state):
+        self.pbar_model.update(1)
 
     @runtime_hook("run_step", trigger="post")
     def update_bar(self, mode, context, state):
+        self.pbar_model.set_description(
+            f"run step {context['step']}/{context['nsteps']}"
+        )
         self.pbar_model.update(1)
 
     @runtime_hook("finalize", trigger="post")
     def close_bar(self, model, context, state):
+        self.pbar_model.set_description("finalize")
         self.pbar_model.update(1)
         self.pbar_model.close()

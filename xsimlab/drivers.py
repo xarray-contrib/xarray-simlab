@@ -27,7 +27,7 @@ class RuntimeContext(Mapping[str, Any]):
         "sim_start",
         "sim_end",
         "step",
-        "step_total",
+        "nsteps",
         "step_start",
         "step_end",
         "step_delta",
@@ -398,11 +398,11 @@ class XarraySimulationDriver(BaseSimulationDriver):
 
     def _get_runtime_datasets(self):
         mclock_dim = self.master_clock_dim
-        mclock_coord = self.dataset[mclock_dim]
+        mclock_coord = self.dataset.xsimlab.master_clock_coord
 
         init_data_vars = {
             "_sim_start": mclock_coord[0],
-            "_step_total": len(mclock_coord),
+            "_nsteps": self.dataset.xsimlab.nsteps,
             "_sim_end": mclock_coord[-1],
         }
 
@@ -446,7 +446,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
 
         runtime_context = RuntimeContext(
             sim_start=ds_init["_sim_start"].values,
-            step_total=ds_init["_step_total"],
+            nsteps=ds_init["_nsteps"].values,
             sim_end=ds_init["_sim_end"].values,
         )
 
