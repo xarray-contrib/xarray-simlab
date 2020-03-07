@@ -179,3 +179,12 @@ Runtime hooks
 
    runtime_hook
    RuntimeHook
+
+Progress bar
+=============
+
+.. currentmodule:: xsimlab
+.. autosummary::
+   :toctree: _api_generated/
+
+   ProgressBar
