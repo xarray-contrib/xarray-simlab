@@ -8,7 +8,7 @@ dependencies:
   - pip
   - python=3.7.6
   - python-graphviz=0.13.2
-  - tqdm=4.40.2
+  - tqdm
   - zarr=2.3.2
   - pip:
       - attrs==19.2.0
@@ -18,5 +18,6 @@ dependencies:
       - nbconvert==5.6.0
       - sphinx==1.8.5
       - toolz
+      - tqdm==4.40.2
       - xarray==0.13.0
       - zarr==2.4.0
