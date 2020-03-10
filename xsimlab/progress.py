@@ -45,7 +45,7 @@ class ProgressBar(RuntimeHook):
             from tqdm.notebook import tqdm
         else:
             raise ValueError(
-                f"Frontend argument {self.frontend!r} not supported. Please select one of the following: {', '.join(self.env_list)}"
+                f"Frontend argument {frontend!r} not supported. Please select one of the following: {', '.join(self.env_list)}"
             )
 
         self.tqdm = tqdm
