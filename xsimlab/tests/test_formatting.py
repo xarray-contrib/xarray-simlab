@@ -77,6 +77,7 @@ def test_add_attribute_section():
         - type : variable
         - intent : in
         - dims : (('x',),)
+        - concat_dim : None
         - groups : ()
         - static : False
         - attrs : {}
@@ -87,6 +88,7 @@ def test_add_attribute_section():
         - type : variable
         - intent : in
         - dims : ((),)
+        - concat_dim : None
         - groups : ()
         - static : False
         - attrs : {}

@@ -102,6 +102,7 @@ def variable(
     validator=None,
     converter=None,
     static=False,
+    concat_dim=None,
     description="",
     attrs=None,
 ):
@@ -165,6 +166,12 @@ def variable(
         the value internally, i.e., from within the process class in which
         the variable is declared if ``intent`` is set to 'out' or 'inout',
         or from another process class (foreign variable).
+    concat_dim : str, optional
+        If not None, time-dependent snapshots taken for this variable will
+        be concatenated along this dimension instead of along a clock dimension.
+        This is useful when the number of array elements along one dimension
+        is not fixed during a simulation.
+        Note: ``concat_dim`` must be one of the dimensions defined in ``dims``.
     description : str, optional
         Short description of the variable.
     attrs : dict, optional
@@ -177,9 +184,17 @@ def variable(
     :mod:`attr.validators`
 
     """
+    dims_t = _as_dim_tuple(dims)
+    dims_set = {d for dms in dims_t for d in dms}
+
+    if concat_dim is not None and concat_dim not in dims_set:
+        raise ValueError(f"Concat dimension {concat_dim} not found in "
+                         f"the dimension labels set for this variable: {dims}")
+
     metadata = {
         "var_type": VarType.VARIABLE,
-        "dims": _as_dim_tuple(dims),
+        "dims": dims_t,
+        "concat_dim": concat_dim,
         "intent": VarIntent(intent),
         "groups": _as_group_tuple(groups, group),
         "static": static,
