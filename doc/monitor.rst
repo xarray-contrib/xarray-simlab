@@ -6,6 +6,9 @@ Monitor Model Runs
 Models may be complex, built from many processes and may take a while to
 run. xarray-simlab provides functionality to help in monitoring model runs.
 
+This section demonstrates how to use the built-in progress bar. Moreover, 
+it exemplifies how customize your own custom monitoring.
+
 .. ipython:: python
    :suppress:
 
@@ -33,6 +36,51 @@ The following imports are necessary for the examples below.
             'advect__v': 1.
         },
     )
+
+
+Progress bar
+------------
+
+:class:`~xsimlab.ProgressBar` is based on the `Tqdm`_ package and allows to track
+the progress of simulation runs in ``xarray-simlab``.
+It can be used as a context manager around simulation calls:
+
+.. _Tqdm: https://github.com/tqdm/tqdm/
+
+.. ipython::
+
+   In [2]: with xs.ProgressBar():
+      ...:     out_ds = in_ds.xsimlab.run(model=model2)
+
+Alternatively, you can pass the progress bar via the ``hooks`` argument or use the
+``register`` method (for more information, refer to the :ref:`custom_runtime_hooks` subsection)
+
+``ProgressBar`` and the underlying Tqdm is built to work with different Python
+interfaces. Use the optional argument ``frontend`` according to your
+development environment.
+
+- ``auto``: (default) Automatically detects environment.
+- ``console``: When Python is run from the command line.
+- ``gui``: Tqdm provides a gui version. According to the developers, this is
+  still an experimental feature.
+- ``notebook``: For use in a IPython/Jupyter notebook.
+
+Additionally, you can customize the built-in progress bar, by supplying a
+keyworded argument list to ``ProgressBar``, e.g.:
+
+.. ipython::
+
+   In [4]: with xs.ProgressBar(bar_format="{r_bar}"):
+      ...:     out_ds = in_ds.xsimlab.run(model=model2)
+
+For a full list of customization options, refer to the `Tqdm documentation`_
+
+Note: The ``total`` argument cannot be changed to ensure best performance and
+functionality.
+
+.. _Tqdm documentation: https://tqdm.github.io
+
+.. _custom_runtime_hooks:
 
 Custom runtime hooks
 --------------------
