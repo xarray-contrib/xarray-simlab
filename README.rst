@@ -10,11 +10,11 @@ xarray's ``Dataset`` structure. It is designed for fast, interactive
 and exploratory modeling.
 
 .. _xarray: http://xarray.pydata.org
-.. |Build Status| image:: https://travis-ci.org/benbovy/xarray-simlab.svg?branch=master
-   :target: https://travis-ci.org/benbovy/xarray-simlab
+.. |Build Status| image:: https://github.com/benbovy/xarray-simlab/workflows/test/badge.svg?branch=master
+   :target: https://github.com/benbovy/xarray-simlab/actions?workflow=test
    :alt: Build Status
-.. |Coverage| image:: https://coveralls.io/repos/github/benbovy/xarray-simlab/badge.svg?branch=master
-   :target: https://coveralls.io/github/benbovy/xarray-simlab?branch=master
+.. |Coverage| image:: https://codecov.io/gh/benbovy/xarray-simlab/branch/master/graphs/badge.svg?branch=master
+   :target: https://codecov.io/github/benbovy/xarray-simlab?branch=master
    :alt: Coverage Status
 .. |Doc Status| image:: http://readthedocs.org/projects/xarray-simlab/badge/?version=latest
    :target: http://xarray-simlab.readthedocs.io/en/latest/?badge=latest
