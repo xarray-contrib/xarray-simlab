@@ -46,11 +46,8 @@ jobs:
           python -OO -c "import xsimlab"
       - name: Run tests
         shell: bash -l {0}
-        run: pytest xsimlab --cov=xsimlab --cov-report term-missing --verbose --color=yes
+        run: pytest xsimlab --cov=xsimlab --cov-report term-missing --cov-report xml --verbose --color=yes
         continue-on-error: ${{ matrix.cfg.allow-failure }}
       - name: Codecov
         if: matrix.cfg.codecov
-        shell: bash -l {0}
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_REPO_TOKEN }}
-        run: codecov
+        uses: codecov/codecov-action@v1
