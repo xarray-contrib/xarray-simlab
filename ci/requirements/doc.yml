@@ -8,7 +8,6 @@ dependencies:
   - pip
   - python=3.7.6
   - python-graphviz=0.13.2
-  - tqdm
   - zarr=2.3.2
   - pip:
       - attrs==19.2.0

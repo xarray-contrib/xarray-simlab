@@ -32,8 +32,6 @@ class ProgressBar(RuntimeHook):
     For additional customization, see: https://tqdm.github.io/docs/tqdm/
     """
 
-    env_list = ["auto", "console", "gui", "notebook"]
-
     def __init__(self, frontend="auto", **kwargs):
         if frontend == "auto":
             from tqdm.auto import tqdm
@@ -45,7 +43,7 @@ class ProgressBar(RuntimeHook):
             from tqdm.notebook import tqdm
         else:
             raise ValueError(
-                f"Frontend argument {frontend!r} not supported. Please select one of the following: {', '.join(self.env_list)}"
+                f"Frontend argument {frontend!r} not supported. Please select one of the following: {', '.join(['auto', 'console', 'gui', 'notebook'])}"
             )
 
         self.tqdm = tqdm
