@@ -15,7 +15,11 @@ class TestModelBuilder:
         [
             (
                 "init_profile",
-                {"n_points": ("init_profile", "n_points"), "u": ("profile", "u")},
+                {
+                    "n_points": ("init_profile", "n_points"),
+                    "x": ("init_profile", "x"),
+                    "u": ("profile", "u"),
+                },
                 {},
             ),
             (
@@ -163,6 +167,13 @@ class TestModel:
             [isinstance(p_vars, list) for p_vars in model.all_vars_dict.values()]
         )
         assert "u" in model.all_vars_dict["profile"]
+
+    def test_index_vars_dict(self, model):
+        assert all([p_name in model for p_name in model.index_vars_dict])
+        assert all(
+            [isinstance(p_vars, list) for p_vars in model.index_vars_dict.values()]
+        )
+        assert "x" in model.index_vars_dict["init_profile"]
 
     def test_input_vars_dict(self, model):
         assert all([p_name in model for p_name in model.input_vars_dict])

@@ -4,11 +4,16 @@ Internal utilties; not for external use.
 """
 import threading
 from collections import OrderedDict
-from collections.abc import Mapping, KeysView, ItemsView, ValuesView
+from collections.abc import KeysView, ItemsView, ValuesView
 from contextlib import suppress
 from importlib import import_module
+from typing import Iterator, Mapping, TypeVar
 
 from attr import fields_dict
+
+
+K = TypeVar("K")
+V = TypeVar("V")
 
 
 def variables_dict(process_cls):
@@ -118,14 +123,14 @@ class AttrMapping:
             with suppress(KeyError):
                 return self._mapping[name]
         raise AttributeError(
-            "%r object has no attribute %r" % (type(self).__name__, name)
+            f"{type(self).__name__!r} object has no attribute {name!r}"
         )
 
     def __setattr__(self, name, value):
         if self._initialized and name in self._mapping:
             raise AttributeError(
-                "cannot override attribute %r of this %r object"
-                % (name, type(self).__name__)
+                f"cannot override attribute {name!r} of "
+                f"this {type(self).__name__!r} object"
             )
         object.__setattr__(self, name, value)
 
@@ -135,6 +140,33 @@ class AttrMapping:
         """
         extra_attrs = list(self._mapping)
         return sorted(set(dir(type(self)) + extra_attrs))
+
+
+class Frozen(Mapping[K, V]):
+    """Wrapper around an object implementing the mapping interface to make it
+    immutable. If you really want to modify the mapping, the mutable version is
+    saved under the `mapping` attribute.
+    """
+
+    __slots__ = ("mapping",)
+
+    def __init__(self, mapping: Mapping[K, V]):
+        self.mapping = mapping
+
+    def __getitem__(self, key: K) -> V:
+        return self.mapping[key]
+
+    def __iter__(self) -> Iterator[K]:
+        return iter(self.mapping)
+
+    def __len__(self) -> int:
+        return len(self.mapping)
+
+    def __contains__(self, key: object) -> bool:
+        return key in self.mapping
+
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}({self.mapping!r})"
 
 
 class ContextMixin:

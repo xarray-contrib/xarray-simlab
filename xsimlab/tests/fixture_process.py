@@ -23,7 +23,7 @@ class SomeProcess:
 class AnotherProcess:
     """Just used for foreign variables in ExampleProcess."""
 
-    another_var = xs.variable()
+    another_var = xs.variable(description="original description", attrs={"unit": "m"})
     some_var = xs.foreign(SomeProcess, "some_var")
 
 
@@ -33,7 +33,7 @@ class ExampleProcess:
 
     in_var = xs.variable(dims=["x", ("x", "y")], description="input variable")
     out_var = xs.variable(groups="example_group", intent="out")
-    inout_var = xs.variable(intent="inout")
+    inout_var = xs.variable(intent="inout", converter=int)
     od_var = xs.on_demand()
 
     in_foreign_var = xs.foreign(SomeProcess, "some_var")

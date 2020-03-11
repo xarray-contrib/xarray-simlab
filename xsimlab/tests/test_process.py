@@ -197,6 +197,14 @@ def test_process_properties_values(processes_with_store):
     assert set(example_process.group_var) == {1, 4}
 
 
+def test_process_properties_converter(processes_with_store):
+    _, _, example_process = processes_with_store
+
+    example_process.inout_var = 1.1
+    assert example_process.inout_var == 1
+    assert type(example_process.inout_var) is int
+
+
 def test_runtime_decorator_noargs():
     @xs.runtime
     def meth(self):
@@ -251,11 +259,16 @@ def test_process_executor_raise():
 
 
 def test_process_decorator():
-    with pytest.raises(NotImplementedError):
+    @xs.process(autodoc=True)
+    class Dummy_t:
+        pass
 
-        @xs.process(autodoc=True)
-        class Dummy:
-            pass
+    @xs.process(autodoc=False)
+    class Dummy_f:
+        pass
+
+    assert "Attributes" in Dummy_t.__doc__
+    assert Dummy_f.__doc__ is None
 
 
 def test_process_no_model():

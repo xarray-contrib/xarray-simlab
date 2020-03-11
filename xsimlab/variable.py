@@ -8,6 +8,7 @@ from attr._make import _CountingAttr
 
 class VarType(Enum):
     VARIABLE = "variable"
+    INDEX = "index"
     ON_DEMAND = "on_demand"
     FOREIGN = "foreign"
     GROUP = "group"
@@ -66,7 +67,7 @@ def _as_dim_tuple(dims):
         )
         raise ValueError(
             "the following combinations of dimension labels "
-            "are ambiguous for a variable: {}".format(invalid_msg)
+            f"are ambiguous for a variable: {invalid_msg}"
         )
 
     return tuple(dims)
@@ -99,6 +100,7 @@ def variable(
     groups=None,
     default=attr.NOTHING,
     validator=None,
+    converter=None,
     static=False,
     description="",
     attrs=None,
@@ -123,7 +125,6 @@ def variable(
         tuple corresponds to a 1-d variable and a n-length tuple corresponds to
         a n-d variable. A list of str or tuple items may also be provided if
         the variable accepts different numbers of dimensions.
-        This should not include a time dimension, which may always be added.
     intent : {'in', 'out', 'inout'}, optional
         Defines whether the variable is an input (i.e., the process needs the
         variable's value for its computation), an output (i.e., the process
@@ -152,6 +153,11 @@ def variable(
         is given.
         If a ``list`` is passed, its items are all are treated as validators.
         The validator can also be set using decorator notation.
+    converter : callable, optional
+        Callable that is called when setting a value for this variable, and that
+        converts the value to the desired format. The callable must accept
+        one argument and return one value. The value is converted before being
+        passed to the validator, if any.
     static : bool, optional
         If True, the value of the (input) variable must be set once
         before the simulation starts and cannot be further updated
@@ -192,10 +198,60 @@ def variable(
         metadata=metadata,
         default=default,
         validator=validator,
+        converter=converter,
         init=_init,
         repr=_repr,
         kw_only=True,
     )
+
+
+def index(dims, groups=None, description="", attrs=None):
+    """Create a variable aimed at indexing data.
+
+    The process class in which this variable is declared should set its value
+    (i.e., intent='out') with an index object or an index-compatible object. For
+    example, xarray may accept 1-d arrays, :class:`pandas.Index`,
+    :class:`pandas.MultiIndex`, etc.
+
+    As a simple example, index variable(s) should be used for setting coordinate
+    labels along the dimension(s) of a cartesian grid.
+
+    Parameters
+    ----------
+    dims : str or tuple or list, optional
+        Dimension label(s) of the variable. A string or a 1-length
+        tuple corresponds to a 1-d variable and a n-length tuple corresponds to
+        a n-d variable. A list of str or tuple items may also be provided if
+        the variable accepts different numbers of dimensions. Note that an index
+        variable does not accept scalar values.
+    groups : str or list, optional
+        Variable group(s).
+    description : str, optional
+        Short description of the variable.
+    attrs : dict, optional
+        Dictionnary of additional metadata (e.g., standard_name,
+        units, math_symbol...).
+
+    See Also
+    --------
+    :func:`variable`
+
+    """
+    dims = _as_dim_tuple(dims)
+
+    if tuple() in dims:
+        raise ValueError("An index variable does not accept scalar values")
+
+    metadata = {
+        "var_type": VarType.INDEX,
+        "dims": dims,
+        "intent": VarIntent.OUT,
+        "groups": _as_group_tuple(groups, None),
+        "attrs": attrs or {},
+        "description": description,
+    }
+
+    return attr.attrib(metadata=metadata, init=False, repr=False)
 
 
 def on_demand(dims=(), group=None, groups=None, description="", attrs=None):
@@ -226,7 +282,6 @@ def on_demand(dims=(), group=None, groups=None, description="", attrs=None):
         tuple corresponds to a 1-d variable and a n-length tuple corresponds to
         a n-d variable. A list of str or tuple items may also be provided if
         the variable accepts different numbers of dimensions.
-        This should not include a time dimension, which may always be added.
     group : str, optional
         Variable group (depreciated, use ``groups`` instead).
     groups : str or list, optional
@@ -283,18 +338,17 @@ def foreign(other_process_cls, var_name, intent="in"):
 
     """
     if intent == "inout":
-        raise ValueError("intent='inout' is not supported for " "foreign variables")
+        raise ValueError("intent='inout' is not supported for foreign variables")
 
-    description = "Reference to variable {!r} " "defined in class {!r}".format(
-        var_name, other_process_cls.__name__
-    )
+    ref_var = attr.fields_dict(other_process_cls)[var_name]
 
     metadata = {
         "var_type": VarType.FOREIGN,
         "other_process_cls": other_process_cls,
         "var_name": var_name,
         "intent": VarIntent(intent),
-        "description": description,
+        "description": ref_var.metadata["description"],
+        "attrs": ref_var.metadata.get("attrs", {}),
     }
 
     if VarIntent(intent) == VarIntent.OUT:
@@ -327,7 +381,7 @@ def group(name):
     :func:`variable`
 
     """
-    description = "Iterable of all variables that " "belong to group {!r}".format(name)
+    description = f"Iterable of all variables that belong to group {name!r}"
 
     metadata = {
         "var_type": VarType.GROUP,

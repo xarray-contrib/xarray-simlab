@@ -39,8 +39,12 @@ properties listed below. Proper use of this accessor should be like:
    :template: autosummary/accessor_attribute.rst
 
    Dataset.xsimlab.clock_coords
+   Dataset.xsimlab.clock_sizes
    Dataset.xsimlab.master_clock_dim
+   Dataset.xsimlab.master_clock_coord
+   Dataset.xsimlab.nsteps
    Dataset.xsimlab.output_vars
+   Dataset.xsimlab.output_vars_by_clock
 
 **Methods**
 
@@ -53,6 +57,7 @@ properties listed below. Proper use of this accessor should be like:
    Dataset.xsimlab.reset_vars
    Dataset.xsimlab.filter_vars
    Dataset.xsimlab.run
+   Dataset.xsimlab.get_output_save_steps
 
 Model
 =====
@@ -88,6 +93,8 @@ process names and values are objects of ``Process`` subclasses
 
    Model.all_vars
    Model.all_vars_dict
+   Model.index_vars
+   Model.index_vars_dict
    Model.input_vars
    Model.input_vars_dict
    Model.dependent_processes
@@ -143,6 +150,32 @@ Variable
    :toctree: _api_generated/
 
    variable
+   index
    foreign
    group
    on_demand
+
+Validators
+==========
+
+See also `attrs' validators`_. Some additional validators for common usage are
+listed below. These are defined in ``xsimlab.validators``.
+
+.. currentmodule:: xsimlab.validators
+.. autosummary::
+   :toctree: _api_generated/
+
+   in_bounds
+   is_subdtype
+
+.. _`attrs' validators`: https://www.attrs.org/en/stable/examples.html#validators
+
+Runtime hooks
+=============
+
+.. currentmodule:: xsimlab
+.. autosummary::
+   :toctree: _api_generated/
+
+   runtime_hook
+   RuntimeHook

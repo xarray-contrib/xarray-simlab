@@ -13,7 +13,9 @@ Breaking changes
 - The keys of the dictionary returned by
   :attr:`xarray.Dataset.xsimlab.output_vars` now correspond to variable names,
   and the values are clock dimension labels or ``None`` (previously the
-  dictionary was formatted the other way around) (:issue:`85`).
+  dictionary was formatted the other way around).
+  :attr:`xarray.Dataset.xsimlab.output_vars_by_clock` has been added for
+  convenience (:issue:`85`, :issue:`103`).
 
 Depreciations
 ~~~~~~~~~~~~~
@@ -47,12 +49,36 @@ Enhancements
   to :func:`xarray.Dataset.xsimlab.run`.
 - More consistent dictionary format for output variables in the xarray
   extension (:issue:`85`).
+- %-formatting and str.format() code has been converted into formatted string
+  literals (f-strings) (:issue:`90`).
+- :func:`~xsimlab.foreign` has been updated so that it sets its description and
+  its metadata from the variable it refers to (:issue:`91`, :issue:`107`).
+- The ``autodoc`` parameter of the :func:`xsimlab.process` decorator now allows
+  to automatically add an attributes section to the docstring of the class to
+  which the decorator is applied, using the metadata of each variable declared
+  in the class (:issue:`67`).
+- Added :func:`~xsimlab.validators.in_bounds` and
+  :func:`~xsimlab.validators.is_subdtype` validators (:issue:`87`).
+- :func:`xsimlab.variable` has now a ``converter`` parameter that can be used to
+  convert any input value before (maybe) validating it and setting the variable
+  (:issue:`92`).
+- Added :func:`xsimlab.index` for setting index variables (e.g., coordinate
+  labels). Using the xarray extension, those variables are automatically added
+  in the output Dataset as coordinates (:issue:`94`).
+- Added simulation runtime hooks (:issue:`95`). Hooks can be created by using
+  either the :func:`~xsimlab.runtime_hook` decorator or the
+  :class:`~xsimlab.RuntimeHook` class.
+- Added some useful properties and methods to the ``xarray.Dataset.xsimlab``
+  extension (:issue:`103`).
+- Save model inputs/outputs using zarr (:issue:`102`).
 
 Bug fixes
 ~~~~~~~~~
 
 - Remove ``attrs`` 19.2.0 depreciation warning (:issue:`68`).
 - Fix compatibility with xarray 0.14.1 (:issue:`69`).
+- Avoid update in-place attributes in original/input xarray Datasets
+  (:issue:`101`).
 
 v0.3.0 (30 September 2019)
 --------------------------

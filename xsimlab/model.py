@@ -9,7 +9,7 @@ from .process import (
     get_target_variable,
     SimulationStage,
 )
-from .utils import AttrMapping, ContextMixin, variables_dict
+from .utils import AttrMapping, ContextMixin, Frozen
 from .formatting import repr_model
 
 
@@ -98,7 +98,7 @@ class _ModelBuilder:
 
         var_type = var.metadata["var_type"]
 
-        if var_type == VarType.VARIABLE:
+        if var_type in (VarType.VARIABLE, VarType.INDEX):
             store_key = (p_name, var.name)
 
         elif var_type == VarType.ON_DEMAND:
@@ -110,10 +110,10 @@ class _ModelBuilder:
 
             if target_p_name is None:
                 raise KeyError(
-                    "Process class '{}' missing in Model but required "
-                    "by foreign variable '{}' declared in process '{}'".format(
-                        target_p_cls.__name__, var.name, p_name
-                    )
+                    f"Process class '{target_p_cls.__name__}' "
+                    "missing in Model but required "
+                    f"by foreign variable '{var.name}' "
+                    f"declared in process '{p_name}'"
                 )
 
             elif isinstance(target_p_name, list):
@@ -205,20 +205,24 @@ class _ModelBuilder:
                 for k, v in conflicts.items()
             }
             msg = "\n".join(
-                ["'{}.{}' set by: {}".format(*k, v) for k, v in conflicts_str.items()]
+                [f"'{'.'.join(k)}' set by: {v}" for k, v in conflicts_str.items()]
             )
 
-            raise ValueError("Conflict(s) found in given variable intents:\n" + msg)
+            raise ValueError(f"Conflict(s) found in given variable intents:\n{msg}")
 
-    def get_all_variables(self):
-        """Get all variables in the model as a list of
+    def get_variables(self, **kwargs):
+        """Get variables in the model as a list of
         ``(process_name, var_name)`` tuples.
+
+        **kwargs may be used to return only a subset of the variables.
 
         """
         all_keys = []
 
         for p_name, p_cls in self._processes_cls.items():
-            all_keys += [(p_name, var_name) for var_name in variables_dict(p_cls)]
+            all_keys += [
+                (p_name, var_name) for var_name in filter_variables(p_cls, **kwargs)
+            ]
 
         return all_keys
 
@@ -376,7 +380,7 @@ class _ModelBuilder:
                             cycle.reverse()
                             cycle = "->".join(cycle)
                             raise RuntimeError(
-                                "Cycle detected in process graph: %s" % cycle
+                                f"Cycle detected in process graph: {cycle}"
                             )
                         next_nodes.append(nxt)
 
@@ -434,8 +438,11 @@ class Model(AttrMapping, ContextMixin):
         builder.bind_processes(self)
         builder.set_process_keys()
 
-        self._all_vars = builder.get_all_variables()
+        self._all_vars = builder.get_variables()
         self._all_vars_dict = None
+
+        self._index_vars = builder.get_variables(var_type=VarType.INDEX)
+        self._index_vars_dict = None
 
         builder.ensure_no_intent_conflict()
 
@@ -447,8 +454,24 @@ class Model(AttrMapping, ContextMixin):
         self._dep_processes = builder.get_process_dependencies()
         self._processes = builder.get_sorted_processes()
 
+        # overwritten by simulation drivers
+        self.store = {}
+
         super(Model, self).__init__(self._processes)
         self._initialized = True
+
+    def _get_vars_dict_from_cache(self, attr_name):
+        dict_attr_name = attr_name + "_dict"
+
+        if getattr(self, dict_attr_name) is None:
+            vars_d = defaultdict(list)
+
+            for p_name, var_name in getattr(self, attr_name):
+                vars_d[p_name].append(var_name)
+
+            setattr(self, dict_attr_name, dict(vars_d))
+
+        return getattr(self, dict_attr_name)
 
     @property
     def all_vars(self):
@@ -464,15 +487,23 @@ class Model(AttrMapping, ContextMixin):
         variable names grouped by process.
 
         """
-        if self._all_vars_dict is None:
-            all_vars = defaultdict(list)
+        return self._get_vars_dict_from_cache("_all_vars")
 
-            for p_name, var_name in self._all_vars:
-                all_vars[p_name].append(var_name)
+    @property
+    def index_vars(self):
+        """Returns all index variables in the model as a list of
+        ``(process_name, var_name)`` tuples (or an empty list).
 
-            self._all_vars_dict = dict(all_vars)
+        """
+        return self._index_vars
 
-        return self._all_vars_dict
+    @property
+    def index_vars_dict(self):
+        """Returns all index variables in the model as a dictionary of lists of
+        variable names grouped by process.
+
+        """
+        return self._get_vars_dict_from_cache("_index_vars")
 
     @property
     def input_vars(self):
@@ -494,15 +525,7 @@ class Model(AttrMapping, ContextMixin):
         variable names grouped by process is returned.
 
         """
-        if self._input_vars_dict is None:
-            inputs = defaultdict(list)
-
-            for p_name, var_name in self._input_vars:
-                inputs[p_name].append(var_name)
-
-            self._input_vars_dict = dict(inputs)
-
-        return self._input_vars_dict
+        return self._get_vars_dict_from_cache("_input_vars")
 
     @property
     def dependent_processes(self):
@@ -544,7 +567,16 @@ class Model(AttrMapping, ContextMixin):
             show_variables=show_variables,
         )
 
-    def execute(self, stage, runtime_context, validate=False):
+    def _call_hooks(self, hooks, runtime_context, stage, level, trigger):
+        try:
+            event_hooks = hooks[stage][level][trigger]
+        except KeyError:
+            return
+
+        for h in event_hooks:
+            h(self, Frozen(runtime_context), Frozen(self.store))
+
+    def execute(self, stage, runtime_context, hooks=None, validate=False):
         """Run one stage of a simulation.
 
         This shouldn't be called directly, except for debugging purpose.
@@ -556,6 +588,9 @@ class Model(AttrMapping, ContextMixin):
         runtime_context : dict
             Dictionary containing runtime variables (e.g., time step
             duration, current step).
+        hooks : dict, optional
+            Runtime hook callables, grouped by simulation stage, level and
+            trigger pre/post.
         validate : bool, optional
             If True, run the variable validators in the corresponding
             processes after a process (maybe) sets values through its foreign
@@ -563,13 +598,25 @@ class Model(AttrMapping, ContextMixin):
             it may significantly impact performance.
 
         """
+        if hooks is None:
+            hooks = {}
+
+        stage = SimulationStage(stage)
+
+        self._call_hooks(hooks, runtime_context, stage, "model", "pre")
+
         for p_name, p_obj in self._processes.items():
             executor = p_obj.__xsimlab_executor__
-            executor.execute(p_obj, SimulationStage(stage), runtime_context)
+
+            self._call_hooks(hooks, runtime_context, stage, "process", "pre")
+            executor.execute(p_obj, stage, runtime_context)
+            self._call_hooks(hooks, runtime_context, stage, "process", "post")
 
             if validate:
                 for pn in self._processes_to_validate[p_name]:
                     attr.validate(self._processes[pn])
+
+        self._call_hooks(hooks, runtime_context, stage, "model", "post")
 
     def clone(self):
         """Clone the Model, i.e., create a new Model instance with the same

@@ -107,6 +107,17 @@ class TestSimlabAccessor:
         )
         assert set(ds.xsimlab.clock_coords) == {"mclock", "sclock"}
 
+    def test_clock_sizes(self):
+        ds = xr.Dataset(
+            coords={
+                "clock1": ("clock1", [0, 1, 2], {self._clock_key: 1}),
+                "clock2": ("clock2", [0, 2], {self._clock_key: 1}),
+                "no_clock": ("no_clock", [3, 4]),
+            }
+        )
+
+        assert ds.xsimlab.clock_sizes == {"clock1": 3, "clock2": 2}
+
     def test_master_clock_dim(self):
         attrs = {self._clock_key: 1, self._master_clock_key: 1}
         ds = xr.Dataset(coords={"clock": ("clock", [1, 2], attrs)})
@@ -118,18 +129,34 @@ class TestSimlabAccessor:
         ds = xr.Dataset()
         assert ds.xsimlab.master_clock_dim is None
 
-    # def test_set_master_clock_dim(self):
-    #     ds = xr.Dataset(coords={'clock': [1, 2], 'clock2': [3, 4]})
+    def test_nsteps(self):
+        attrs = {self._clock_key: 1, self._master_clock_key: 1}
+        ds = xr.Dataset(coords={"clock": ("clock", [1, 2, 3], attrs)})
 
-    #     ds.xsimlab._set_master_clock_dim('clock')
-    #     assert self._master_clock_key in ds.clock.attrs
+        assert ds.xsimlab.nsteps == 2
 
-    #     ds.xsimlab._set_master_clock_dim('clock2')
-    #     assert self._master_clock_key not in ds.clock.attrs
-    #     assert self._master_clock_key in ds.clock2.attrs
+        ds = xr.Dataset()
+        assert ds.xsimlab.nsteps == 0
 
-    #     with pytest.raises(KeyError):
-    #         ds.xsimlab._set_master_clock_dim('invalid_clock')
+    def test_get_output_save_steps(self):
+        attrs = {self._clock_key: 1, self._master_clock_key: 1}
+        ds = xr.Dataset(
+            coords={
+                "clock": ("clock", [0, 1, 2, 3, 4], attrs),
+                "clock1": ("clock1", [0, 2, 4], {self._clock_key: 1}),
+                "clock2": ("clock2", [0, 4], {self._clock_key: 1}),
+            }
+        )
+
+        expected = xr.Dataset(
+            coords={"clock": ("clock", [0, 1, 2, 3, 4], attrs)},
+            data_vars={
+                "clock1": ("clock", [True, False, True, False, True]),
+                "clock2": ("clock", [True, False, False, False, True]),
+            },
+        )
+
+        xr.testing.assert_identical(ds.xsimlab.get_output_save_steps(), expected)
 
     def test_set_input_vars(self, model, in_dataset):
         in_vars = {
@@ -248,6 +275,10 @@ class TestSimlabAccessor:
         assert sorted(filtered_ds.xsimlab.clock_coords) == ["clock", "out"]
         assert filtered_ds.out.attrs[self._output_vars_key] == "roll__u_diff"
 
+        # test unchanged attributes in original dataset
+        assert in_dataset.out.attrs[self._output_vars_key] == "roll__u_diff,add__u_diff"
+        assert in_dataset.attrs[self._output_vars_key] == "profile__u_opp"
+
     def test_set_output_vars(self, model):
         ds = xr.Dataset()
         ds["clock"] = (
@@ -300,6 +331,17 @@ class TestSimlabAccessor:
         )
 
         assert ds.xsimlab.output_vars == o_vars
+
+    def test_output_vars_by_clock(self, model):
+        o_vars = {("roll", "u_diff"): "clock", ("add", "u_diff"): None}
+
+        ds = xs.create_setup(
+            model=model, clocks={"clock": [0, 2, 4, 6, 8]}, output_vars=o_vars,
+        )
+
+        expected = {"clock": [("roll", "u_diff")], None: [("add", "u_diff")]}
+
+        assert ds.xsimlab.output_vars_by_clock == expected
 
     def test_run_safe_mode(self, model, in_dataset):
         # safe mode True: ensure model is cloned
@@ -380,12 +422,6 @@ class TestSimlabAccessor:
         # internal validation -> raises within attr.validate()
         with pytest.raises(TypeError, match=r".*'int'.*"):
             in_dataset.xsimlab.run(model=m, validate="all")
-
-    def test_run_multi(self):
-        ds = xr.Dataset()
-
-        with pytest.raises(NotImplementedError):
-            ds.xsimlab.run_multi()
 
 
 def test_create_setup(model, in_dataset):

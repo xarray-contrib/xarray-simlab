@@ -4,8 +4,8 @@ xarray-simlab.
 """
 # flake8: noqa
 
-from .xr_accessor import SimlabAccessor, create_setup
-from .variable import variable, on_demand, foreign, group
+from .hook import RuntimeHook, runtime_hook
+from .model import Model
 from .process import (
     filter_variables,
     process,
@@ -13,7 +13,8 @@ from .process import (
     runtime,
     variable_info,
 )
-from .model import Model
+from .variable import variable, index, on_demand, foreign, group
+from .xr_accessor import SimlabAccessor, create_setup
 
 from ._version import get_versions
 

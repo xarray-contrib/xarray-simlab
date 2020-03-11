@@ -7,6 +7,8 @@ dependencies:
   - pytest-cov
   - numpy
   - xarray
+  - dask
+  - zarr
   - pip
   - pip:
     - git+https://github.com/python-attrs/attrs.git

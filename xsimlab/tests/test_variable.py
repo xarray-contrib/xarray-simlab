@@ -1,7 +1,8 @@
 import pytest
+import attr
 
-from xsimlab.tests.fixture_process import ExampleProcess
-from xsimlab.variable import _as_dim_tuple, _as_group_tuple, foreign
+from xsimlab.tests.fixture_process import AnotherProcess, ExampleProcess
+from xsimlab.variable import _as_dim_tuple, _as_group_tuple, foreign, index
 
 
 @pytest.mark.parametrize(
@@ -51,8 +52,18 @@ def test_as_group_tuple(groups, group, expected):
     assert actual == expected
 
 
+def test_index():
+    with pytest.raises(ValueError, match=r".*not accept scalar values.*"):
+        index(())
+
+
 def test_foreign():
     with pytest.raises(ValueError) as excinfo:
         foreign(ExampleProcess, "some_var", intent="inout")
-
     assert "intent='inout' is not supported" in str(excinfo.value)
+
+    var = attr.fields(ExampleProcess).out_foreign_var
+    ref_var = attr.fields(AnotherProcess).another_var
+
+    for k in ("description", "attrs"):
+        assert var.metadata[k] == ref_var.metadata[k]

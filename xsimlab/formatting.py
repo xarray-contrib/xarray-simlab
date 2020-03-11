@@ -50,7 +50,7 @@ def _summarize_var(var, process, col_width):
         var_intent_str = "[inout]"
 
     if var_type == VarType.GROUP:
-        var_info = "{} group {!r}".format(link_symbol, var.metadata["group"])
+        var_info = f"{link_symbol} group {var.metadata['group']!r}"
 
     elif var_type == VarType.FOREIGN:
         key = process.__xsimlab_store_keys__.get(var_name)
@@ -62,7 +62,7 @@ def _summarize_var(var, process, col_width):
                 var.metadata["var_name"],
             )
 
-        var_info = "{} {}.{}".format(link_symbol, *key)
+        var_info = f"{link_symbol} {'.'.join(key)}"
 
     else:
         var_dims = " or ".join([str(d) for d in var.metadata["dims"]])
@@ -72,7 +72,7 @@ def _summarize_var(var, process, col_width):
         else:
             var_info = var.metadata["description"]
 
-    left_col = pretty_print("    {}".format(var.name), col_width)
+    left_col = pretty_print(f"    {var.name}", col_width)
 
     right_col = var_intent_str
     if var_info:
@@ -81,14 +81,14 @@ def _summarize_var(var, process, col_width):
     return left_col + right_col
 
 
-def var_details(var):
-    max_line_length = 70
-
+def var_details(var, max_line_length=70):
     var_metadata = var.metadata.copy()
 
     description = textwrap.fill(
         var_metadata.pop("description").capitalize(), width=max_line_length
     )
+    if not description:
+        description = "(no description given)"
 
     detail_items = [
         ("type", var_metadata.pop("var_type").value),
@@ -96,20 +96,45 @@ def var_details(var):
     ]
     detail_items += list(var_metadata.items())
 
-    details = "\n".join(["- {} : {}".format(k, v) for k, v in detail_items])
+    details = "\n".join([f"- {k} : {v}" for k, v in detail_items])
 
     return description + "\n\n" + details + "\n"
+
+
+def add_attribute_section(process, placeholder="{{attributes}}"):
+    data_type = "object"  # placeholder until issue #34 is solved
+
+    fmt_vars = []
+
+    for vname, var in variables_dict(process).items():
+        var_header = f"{vname} : {data_type}"
+        var_content = textwrap.indent(var_details(var, max_line_length=62), " " * 4)
+
+        fmt_vars.append(f"{var_header}\n{var_content}")
+
+    fmt_section = textwrap.indent(
+        "Attributes\n" "----------\n" + "\n".join(fmt_vars), " " * 4
+    )
+
+    current_doc = process.__doc__ or ""
+
+    if placeholder in current_doc:
+        new_doc = current_doc.replace(placeholder, fmt_section[4:])
+    else:
+        new_doc = f"{current_doc}\n{fmt_section}\n"
+
+    return new_doc
 
 
 def repr_process(process):
     process_cls = type(process)
 
     if process.__xsimlab_name__ is not None:
-        process_name = "{!r}".format(process.__xsimlab_name__)
+        process_name = f"{process.__xsimlab_name__!r}"
     else:
         process_name = ""
 
-    header = "<{} {} (xsimlab process)>".format(process_cls.__name__, process_name)
+    header = f"<{process_cls.__name__} {process_name} (xsimlab process)>"
 
     variables = variables_dict(process_cls)
 
@@ -148,8 +173,8 @@ def repr_process(process):
 def repr_model(model):
     n_processes = len(model)
 
-    header = "<xsimlab.Model ({} processes, {} inputs)>".format(
-        n_processes, len(model.input_vars)
+    header = (
+        f"<xsimlab.Model ({n_processes} processes, {len(model.input_vars)} inputs)>"
     )
 
     if not n_processes:

@@ -8,5 +8,7 @@ dependencies:
   - pytest-cov
   - numpy
   - xarray
+  - dask
   - graphviz
   - python-graphviz
+  - zarr
