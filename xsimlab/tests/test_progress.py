@@ -12,7 +12,7 @@ from .fixture_model import in_dataset, model
 )
 @pytest.mark.parametrize("test_input", ["auto", "console", "gui", "notebook"])
 def test_progress_bar_init(test_input):
-    pbar = xs.progress.ProgressBar()
+    pbar = xs.ProgressBar()
     assert test_input in pbar.env_list
 
 
@@ -22,5 +22,5 @@ def test_progress_bar_init(test_input):
 )
 def test_progress_bar_init_error(in_dataset, model):
     with pytest.raises(ValueError, match=r".*not supported.*"):
-        pbar = xs.progress.ProgressBar(frontend="invalid_frontend")
+        pbar = xs.ProgressBar(frontend="invalid_frontend")
         out_ds = in_dataset.xsimlab.run(model=model, hooks=[pbar])
