@@ -1,4 +1,5 @@
 from xsimlab.hook import RuntimeHook, runtime_hook
+from xsimlab.utils import format_time
 
 
 class ProgressBar(RuntimeHook):
@@ -17,14 +18,14 @@ class ProgressBar(RuntimeHook):
     :class:`ProgressBar` takes full advantage of :class:`RuntimeHook`.
 
     Call it as part of :func:`run`:
-    >>> out_ds = in_ds.xsimlab.run(model=model, hooks=[xs.progress.ProgressBar()])
+    >>> out_ds = in_ds.xsimlab.run(model=model, hooks=[xs.ProgressBar()])
 
     In a context manager using the `with` statement`:
-    >>> with xs.progress.ProgressBar():
+    >>> with xs.ProgressBar():
     ...    out_ds = in_ds.xsimlab.run(model=model)
 
     Globally with `register` method:
-    >>> pbar = xs.progress.ProgressBar()
+    >>> pbar = xs.ProgressBar()
     >>> pbar.register()
     >>> out_ds = in_ds.xsimlab.run(model=model)
     >>> pbar.unregister()
@@ -46,13 +47,20 @@ class ProgressBar(RuntimeHook):
                 f"Frontend argument {frontend!r} not supported. Please select one of the following: {', '.join(['auto', 'console', 'gui', 'notebook'])}"
             )
 
+        self.custom_description = True
+        if not "desc" in kwargs.keys():
+            self.custom_description = False
+
         self.tqdm = tqdm
-        self.pbar_dict = {"bar_format": "{bar} {desc} {percentage:3.0f}%"}
+        self.pbar_dict = {"bar_format": "{bar} {percentage:3.0f}% | {desc} "}
         self.pbar_dict.update(kwargs)
 
     @runtime_hook("initialize", trigger="pre")
     def init_bar(self, model, context, state):
-        self.pbar_dict.update(total=context["nsteps"] + 2, desc="initialize")
+        if not self.custom_description:
+            self.pbar_dict.update(total=context["nsteps"] + 2, desc="initialize")
+        else:
+            self.pbar_dict.update(total=context["nsteps"] + 2)
         self.pbar_model = self.tqdm(**self.pbar_dict)
 
     @runtime_hook("initialize", trigger="post")
@@ -61,16 +69,20 @@ class ProgressBar(RuntimeHook):
 
     @runtime_hook("run_step", trigger="post")
     def update_runstep(self, mode, context, state):
-        self.pbar_model.set_description_str(
-            f"run step {context['step']}/{context['nsteps']}"
-        )
+        if not self.custom_description:
+            self.pbar_model.set_description_str(
+                f"run step {context['step']}/{context['nsteps']}"
+            )
         self.pbar_model.update(1)
 
     @runtime_hook("finalize", trigger="pre")
     def update_finalize(self, model, context, state):
-        self.pbar_model.set_description_str("finalize")
+        if not self.custom_description:
+            self.pbar_model.set_description_str("finalize")
 
     @runtime_hook("finalize", trigger="post")
     def close_bar(self, model, context, state):
         self.pbar_model.update(1)
+        elapsed_time = format_time(self.pbar_model.format_dict["elapsed"])
+        self.pbar_model.set_description_str(f"Simulation finished in {elapsed_time}")
         self.pbar_model.close()
