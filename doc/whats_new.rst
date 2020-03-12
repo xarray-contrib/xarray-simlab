@@ -71,8 +71,8 @@ Enhancements
 - Added some useful properties and methods to the ``xarray.Dataset.xsimlab``
   extension (:issue:`103`).
 - Save model inputs/outputs using zarr (:issue:`102`).
-- Added :class:`~xsimlab.progress.ProgressBar` to track simulation progress
-  (:issue:`104`).
+- Added :class:`~xsimlab.monitoring.ProgressBar` to track simulation progress
+  (:issue:`104`, :issue:`110`).
 
 Bug fixes
 ~~~~~~~~~

@@ -13,9 +13,9 @@ from .process import (
     runtime,
     variable_info,
 )
-from .progress import ProgressBar
 from .variable import variable, index, on_demand, foreign, group
 from .xr_accessor import SimlabAccessor, create_setup
+from . import monitoring
 
 from ._version import get_versions
 

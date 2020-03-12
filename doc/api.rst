@@ -170,13 +170,13 @@ listed below. These are defined in ``xsimlab.validators``.
 
 .. _`attrs' validators`: https://www.attrs.org/en/stable/examples.html#validators
 
-Runtime monitoring
-==================
+Model runtime monitoring
+========================
 
 .. currentmodule:: xsimlab
 .. autosummary::
    :toctree: _api_generated/
 
+   monitoring.ProgressBar
    runtime_hook
    RuntimeHook
-   ProgressBar

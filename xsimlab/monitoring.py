@@ -1,42 +1,51 @@
 from xsimlab.hook import RuntimeHook, runtime_hook
 
 
+__all__ = ("ProgressBar",)
+
+
 class ProgressBar(RuntimeHook):
     """
     Progress bar implementation using the tqdm package.
 
-    Parameters
-    ----------
-    frontend : {"auto", "console", "gui", "notebook"}, optional
-        Selects a frontend for displaying the progress bar. By default ("auto"),
-        the frontend is chosen by guessing in which environment the simulation
-        is run. The "console" frontend displays an ascii progress bar, while the
-        "gui" frontend is based on matplotlib and the "notebook" frontend is based
-        on ipywidgets.
-    **kwargs : dict, optional
-        Arbitrary keyword arguments for progress bar customization.
-
     Examples
     --------
-    :class:`ProgressBar` takes full advantage of :class:`RuntimeHook`.
+    ProgressBar takes full advantage of :class:`RuntimeHook`.
 
-    Call it as part of :func:`run`:
-    >>> out_ds = in_ds.xsimlab.run(model=model, hooks=[xs.ProgressBar()])
+    Call it as part of :meth:`xarray.Dataset.xsimlab.run`:
 
-    In a context manager using the `with` statement`:
-    >>> with xs.ProgressBar():
+    >>> from xsimlab.monitoring import ProgressBar
+    >>> out_ds = in_ds.xsimlab.run(model=model, hooks=[ProgressBar()])
+
+    In a context manager using the ``with`` statement:
+
+    >>> with ProgressBar():
     ...    out_ds = in_ds.xsimlab.run(model=model)
 
-    Globally with `register` method:
-    >>> pbar = xs.ProgressBar()
+    Globally with ``register`` method:
+
+    >>> pbar = ProgressBar()
     >>> pbar.register()
     >>> out_ds = in_ds.xsimlab.run(model=model)
     >>> pbar.unregister()
 
-    For additional customization, see: https://tqdm.github.io/docs/tqdm/
     """
 
     def __init__(self, frontend="auto", **kwargs):
+        """
+        Parameters
+        ----------
+        frontend : {"auto", "console", "gui", "notebook"}, optional
+            Selects a frontend for displaying the progress bar. By default ("auto"),
+            the frontend is chosen by guessing in which environment the simulation
+            is run. The "console" frontend displays an ascii progress bar, while the
+            "gui" frontend is based on matplotlib and the "notebook" frontend is based
+            on ipywidgets.
+        **kwargs : dict, optional
+            Arbitrary keyword arguments for progress bar customization.
+            See https://tqdm.github.io/docs/tqdm/.
+
+        """
         if frontend == "auto":
             from tqdm.auto import tqdm
         elif frontend == "console":
@@ -47,7 +56,9 @@ class ProgressBar(RuntimeHook):
             from tqdm.notebook import tqdm
         else:
             raise ValueError(
-                f"Frontend argument {frontend!r} not supported. Please select one of the following: {', '.join(['auto', 'console', 'gui', 'notebook'])}"
+                f"Frontend argument {frontend!r} not supported. "
+                "Please select one of the following: "
+                ", ".join(["auto", "console", "gui", "notebook"])
             )
 
         self.custom_description = False
@@ -71,7 +82,7 @@ class ProgressBar(RuntimeHook):
         self.pbar_model.update(1)
 
     @runtime_hook("run_step", trigger="post")
-    def update_runstep(self, mode, context, state):
+    def update_run_step(self, model, context, state):
         if not self.custom_description:
             self.pbar_model.set_description_str(
                 f"run step {context['step']}/{context['nsteps']}"
