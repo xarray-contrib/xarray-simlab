@@ -170,8 +170,8 @@ listed below. These are defined in ``xsimlab.validators``.
 
 .. _`attrs' validators`: https://www.attrs.org/en/stable/examples.html#validators
 
-Runtime hooks
-=============
+Runtime monitoring
+==================
 
 .. currentmodule:: xsimlab
 .. autosummary::
@@ -179,3 +179,4 @@ Runtime hooks
 
    runtime_hook
    RuntimeHook
+   ProgressBar

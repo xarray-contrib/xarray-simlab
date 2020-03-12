@@ -26,6 +26,7 @@ class RuntimeContext(Mapping[str, Any]):
         "sim_start",
         "sim_end",
         "step",
+        "nsteps",
         "step_start",
         "step_end",
         "step_delta",
@@ -270,6 +271,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
 
         init_data_vars = {
             "_sim_start": mclock_coord[0],
+            "_nsteps": self.dataset.xsimlab.nsteps,
             "_sim_end": mclock_coord[-1],
         }
 
@@ -339,7 +341,9 @@ class XarraySimulationDriver(BaseSimulationDriver):
         validate_all = self._validate_option is ValidateOption.ALL
 
         runtime_context = RuntimeContext(
-            sim_start=ds_init["_sim_start"].values, sim_end=ds_init["_sim_end"].values,
+            sim_start=ds_init["_sim_start"].values,
+            nsteps=ds_init["_nsteps"].values,
+            sim_end=ds_init["_sim_end"].values,
         )
 
         in_vars = self._get_input_vars(ds_init)
