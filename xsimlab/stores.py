@@ -35,6 +35,7 @@ def _get_var_info(dataset: xr.Dataset, model: Model) -> Dict[Tuple[str, str], Di
             "name": f"{p_name}__{v_name}",
             "obj": v_obj,
             "value_getter": _variable_value_getter(p_obj, v_name),
+            "value": None,
         }
 
     return var_info
@@ -93,16 +94,21 @@ class ZarrOutputStore:
         ds.xsimlab._reset_output_vars(self.model, {})
         ds.to_zarr(self.zgroup.store, group=self.zgroup.path, mode="a")
 
+    def _cache_value_as_array(self, var_key):
+        value = self.var_info[var_key]["value_getter"]()
+
+        if np.isscalar(value):
+            value = np.asarray(value)
+
+        self.var_info[var_key]["value"] = value
+
     def _create_zarr_dataset(self, var_key: Tuple[str, str], name=None):
         var = self.var_info[var_key]["obj"]
 
         if name is None:
             name = self.var_info[var_key]["name"]
 
-        array = self.var_info[var_key]["value_getter"]()
-        if np.isscalar(array):
-            array = np.asarray(array)
-
+        array = self.var_info[var_key]["value"]
         clock = self.var_info[var_key]["clock"]
 
         if clock is None:
@@ -163,13 +169,16 @@ class ZarrOutputStore:
 
             clock_inc = self.clock_incs[clock]
 
+            for vk in var_keys:
+                self._cache_value_as_array(vk)
+
             if clock_inc == 0:
                 for vk in var_keys:
                     self._create_zarr_dataset(vk)
 
             for vk in var_keys:
                 zkey = self.var_info[vk]["name"]
-                array = self.var_info[vk]["value_getter"]()
+                array = self.var_info[vk]["value"]
 
                 if clock is None:
                     self.zgroup[zkey][:] = array
@@ -181,6 +190,7 @@ class ZarrOutputStore:
     def write_index_vars(self):
         for var_key in self.model.index_vars:
             _, vname = var_key
+            self._cache_value_as_array(var_key)
             self._create_zarr_dataset(var_key, name=vname)
 
             array = self.var_info[var_key]["value_getter"]()
