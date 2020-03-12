@@ -34,6 +34,9 @@ pip-log.txt
 nosetests.xml
 .cache
 
+# mypy
+.mypy_cache/
+
 # Translations
 *.mo
 

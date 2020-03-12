@@ -82,6 +82,12 @@ Bug fixes
 - Avoid update in-place attributes in original/input xarray Datasets
   (:issue:`101`).
 
+Maintenance
+~~~~~~~~~~~
+
+- Switched to GitHub Actions for continuous integration and Codecov for
+  coverage (:issue:`86`).
+
 v0.3.0 (30 September 2019)
 --------------------------
 

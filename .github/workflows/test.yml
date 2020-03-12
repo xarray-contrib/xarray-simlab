@@ -1,0 +1,53 @@
+name: test
+
+on:
+  push:
+    branches:
+    - 'master'
+  pull_request:
+    branches:
+    - 'master'
+
+jobs:
+  test:
+    name: pytest (${{ matrix.cfg.env-name }}, ${{ matrix.cfg.os }})
+    runs-on: ${{ matrix.cfg.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        cfg:
+          - {os: ubuntu-latest,  env-name: py36}
+          - {os: ubuntu-latest,  env-name: py37, codecov: true}
+          - {os: ubuntu-latest,  env-name: py38}
+          - {os: macos-latest,   env-name: py37}
+          - {os: windows-latest, env-name: py37}
+          - {os: ubuntu-latest,  env-name: py37-xarray-dev, allow-failure: true}
+          - {os: ubuntu-latest,  env-name: py37-attrs-dev,  allow-failure: true}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Install miniconda
+        uses: goanpeca/setup-miniconda@v1
+        with:
+          auto-update-conda: true
+          activate-environment: test_env_${{ matrix.cfg.env-name }}
+          environment-file: ci/requirements/${{ matrix.cfg.env-name }}.yml
+          auto-activate-base: false
+      - name: Conda info
+        shell: bash -l {0}
+        run: conda info
+      - name: Conda list
+        shell: bash -l {0}
+        run: conda list
+      - name: Install xarray-simlab
+        shell: bash -l {0}
+        run: |
+          pip install --no-deps -e .
+          python -OO -c "import xsimlab"
+      - name: Run tests
+        shell: bash -l {0}
+        run: pytest xsimlab --cov=xsimlab --cov-report term-missing --cov-report xml --verbose --color=yes
+        continue-on-error: ${{ matrix.cfg.allow-failure }}
+      - name: Codecov
+        if: matrix.cfg.codecov
+        uses: codecov/codecov-action@v1
