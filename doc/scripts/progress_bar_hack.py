@@ -13,11 +13,12 @@ class ProgressBarHack(_ProgressBar):
     the simulation.
 
     """
+
     def __init__(self, **kwargs):
         super(ProgressBarHack, self).__init__(**kwargs)
 
         self.pbar_output = io.StringIO()
-        self.tqdm_kwargs.update({'file': self.pbar_output})
+        self.tqdm_kwargs.update({"file": self.pbar_output})
 
     @runtime_hook("finalize", trigger="post")
     def close_bar(self, model, context, state):
