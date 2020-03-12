@@ -45,38 +45,45 @@ Progress bar
 the progress of simulation runs in ``xarray-simlab``.
 It can be used as a context manager around simulation calls:
 
-.. _Tqdm: https://github.com/tqdm/tqdm/
+.. _Tqdm: https://tqdm.github.io
+
+.. ipython:: python
+   :suppress:
+
+   import progress_bar_hack
 
 .. ipython::
 
    In [2]: with xs.ProgressBar():
       ...:     out_ds = in_ds.xsimlab.run(model=model2)
 
-Alternatively, you can pass the progress bar via the ``hooks`` argument or use the
-``register`` method (for more information, refer to the :ref:`custom_runtime_hooks` subsection)
+Alternatively, you can pass the progress bar via the ``hooks`` argument of
+``Dataset.xsimlab.run()`` or you can use the ``register`` method (for more
+information, refer to the :ref:`custom_runtime_hooks` subsection).
 
-``ProgressBar`` and the underlying Tqdm is built to work with different Python
-interfaces. Use the optional argument ``frontend`` according to your
-development environment.
+``ProgressBar`` and the underlying Tqdm tool are built to work with different
+Python front-ends. Use the optional argument ``frontend`` depending on your
+environment:
 
-- ``auto``: (default) Automatically detects environment.
-- ``console``: When Python is run from the command line.
-- ``gui``: Tqdm provides a gui version. According to the developers, this is
-  still an experimental feature.
-- ``notebook``: For use in a IPython/Jupyter notebook.
+- ``auto``: automatically selects the front-end (default)
+- ``console``: renders the progress bar as text
+- ``gui``: progress rich rendering (experimental), which needs matplotlib_ to be
+  installed
+- ``notebook``: for use within IPython/Jupyter notebooks, which needs
+  ipywidgets_ to be installed
 
-Additionally, you can customize the built-in progress bar, by supplying a
-keyworded argument list to ``ProgressBar``, e.g.:
+.. _matplotlib: https://matplotlib.org/
+.. _ipywidgets: https://ipywidgets.readthedocs.io/en/stable/
+
+Additionally, you can customize the built-in progress bar by supplying
+keyword arguments list to ``ProgressBar``, e.g.:
 
 .. ipython::
 
-   In [4]: with xs.ProgressBar(bar_format="{r_bar}"):
+   In [4]: with xs.ProgressBar(bar_format="{desc}|{bar}{r_bar}"):
       ...:     out_ds = in_ds.xsimlab.run(model=model2)
 
-For a full list of customization options, refer to the `Tqdm documentation`_
-
-Note: The ``total`` argument cannot be changed to ensure best performance and
-functionality.
+For a full list of customization options, refer to the `Tqdm documentation`_.
 
 .. _Tqdm documentation: https://tqdm.github.io
 
