@@ -104,14 +104,14 @@ class TestZarrOutputStore:
         _bind_store(model)
         out_store = ZarrOutputStore(in_ds, model, None)
 
-        for step in range(3):
-            model.store[("p", "arr")] = np.ones(step + 1)
+        for step, size in zip([0, 1, 2], [1, 3, 2]):
+            model.store[("p", "arr")] = np.ones(size)
             out_store.write_output_vars(step)
 
         ztest = zarr.open_group(out_store.zgroup.store, mode="r")
 
         expected = np.array(
-            [[1.0, np.nan, np.nan], [1.0, 1.0, np.nan], [1.0, 1.0, 1.0]]
+            [[1.0, np.nan, np.nan], [1.0, 1.0, 1.0], [1.0, 1.0, np.nan]]
         )
         assert_array_equal(ztest.p__arr, expected)
 
