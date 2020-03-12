@@ -82,7 +82,7 @@ class ProgressBar(RuntimeHook):
         self.pbar_model.update(1)
 
     @runtime_hook("run_step", trigger="post")
-    def update_runstep(self, mode, context, state):
+    def update_run_step(self, model, context, state):
         if not self.custom_description:
             self.pbar_model.set_description_str(
                 f"run step {context['step']}/{context['nsteps']}"
