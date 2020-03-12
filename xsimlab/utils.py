@@ -205,14 +205,3 @@ class ContextMixin:
             return cls.get_contexts()[-1]
         except IndexError:
             raise TypeError("No context on context stack")
-
-
-def format_time(secs):
-    mins, secs = divmod(secs, 60)
-    hours, mins = divmod(mins, 60)
-    if hours:
-        return f"{hours:2.0f}hrs {mins:2.0f}min {secs:.1f}s"
-    elif mins:
-        return f"{mins:2.0f}min {secs:.1f}s"
-    else:
-        return f"{secs:.1f}s"

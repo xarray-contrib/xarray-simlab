@@ -1,5 +1,4 @@
 from xsimlab.hook import RuntimeHook, runtime_hook
-from xsimlab.utils import format_time
 
 
 class ProgressBar(RuntimeHook):
@@ -9,7 +8,11 @@ class ProgressBar(RuntimeHook):
     Parameters
     ----------
     frontend : {"auto", "console", "gui", "notebook"}, optional
-        Allows control over Python environment.
+        Selects a frontend for displaying the progress bar. By default ("auto"),
+        the frontend is chosen by guessing in which environment the simulation
+        is run. The "console" frontend displays an ascii progress bar, while the
+        "gui" frontend is based on matplotlib and the "notebook" frontend is based
+        on ipywidgets.
     **kwargs : dict, optional
         Arbitrary keyword arguments for progress bar customization.
 
@@ -47,21 +50,21 @@ class ProgressBar(RuntimeHook):
                 f"Frontend argument {frontend!r} not supported. Please select one of the following: {', '.join(['auto', 'console', 'gui', 'notebook'])}"
             )
 
-        self.custom_description = True
-        if not "desc" in kwargs.keys():
-            self.custom_description = False
+        self.custom_description = False
+        if "desc" in kwargs.keys():
+            self.custom_description = True
 
         self.tqdm = tqdm
-        self.pbar_dict = {"bar_format": "{bar} {percentage:3.0f}% | {desc} "}
-        self.pbar_dict.update(kwargs)
+        self.tqdm_kwargs = {"bar_format": "{bar} {percentage:3.0f}% | {desc} "}
+        self.tqdm_kwargs.update(kwargs)
 
     @runtime_hook("initialize", trigger="pre")
     def init_bar(self, model, context, state):
-        if not self.custom_description:
-            self.pbar_dict.update(total=context["nsteps"] + 2, desc="initialize")
+        if self.custom_description:
+            self.tqdm_kwargs.update(total=context["nsteps"] + 2)
         else:
-            self.pbar_dict.update(total=context["nsteps"] + 2)
-        self.pbar_model = self.tqdm(**self.pbar_dict)
+            self.tqdm_kwargs.update(total=context["nsteps"] + 2, desc="initialize")
+        self.pbar_model = self.tqdm(**self.tqdm_kwargs)
 
     @runtime_hook("initialize", trigger="post")
     def update_init(self, mode, context, state):
@@ -83,6 +86,6 @@ class ProgressBar(RuntimeHook):
     @runtime_hook("finalize", trigger="post")
     def close_bar(self, model, context, state):
         self.pbar_model.update(1)
-        elapsed_time = format_time(self.pbar_model.format_dict["elapsed"])
+        elapsed_time = self.tqdm.format_interval(self.pbar_model.format_dict["elapsed"])
         self.pbar_model.set_description_str(f"Simulation finished in {elapsed_time}")
         self.pbar_model.close()

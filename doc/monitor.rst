@@ -7,7 +7,7 @@ Models may be complex, built from many processes and may take a while to
 run. xarray-simlab provides functionality to help in monitoring model runs.
 
 This section demonstrates how to use the built-in progress bar. Moreover, 
-it exemplifies how customize your own custom monitoring.
+it exemplifies how to create your own custom monitoring.
 
 .. ipython:: python
    :suppress:
