@@ -41,21 +41,25 @@ The following imports are necessary for the examples below.
 Progress bar
 ------------
 
-:class:`~xsimlab.ProgressBar` is based on the `Tqdm`_ package and allows to track
-the progress of simulation runs in ``xarray-simlab``.
-It can be used as a context manager around simulation calls:
+:class:`~xsimlab.monitoring.ProgressBar` is based on the `Tqdm`_ package and
+allows to track the progress of simulation runs in ``xarray-simlab``. It can be
+used as a context manager around simulation calls:
 
 .. _Tqdm: https://tqdm.github.io
 
 .. ipython:: python
+
+   from xsimlab.monitoring import ProgressBar
+
+.. ipython:: python
    :suppress:
 
-   import progress_bar_hack
+   from progress_bar_hack import ProgressBarHack as ProgressBar
 
-.. ipython::
+.. ipython:: python
 
-   In [2]: with xs.ProgressBar():
-      ...:     out_ds = in_ds.xsimlab.run(model=model2)
+   with ProgressBar():
+       out_ds = in_ds.xsimlab.run(model=model2)
 
 Alternatively, you can pass the progress bar via the ``hooks`` argument of
 ``Dataset.xsimlab.run()`` or you can use the ``register`` method (for more
@@ -78,10 +82,10 @@ environment:
 Additionally, you can customize the built-in progress bar by supplying
 keyword arguments list to ``ProgressBar``, e.g.:
 
-.. ipython::
+.. ipython:: python
 
-   In [4]: with xs.ProgressBar(bar_format="{desc}|{bar}{r_bar}"):
-      ...:     out_ds = in_ds.xsimlab.run(model=model2)
+   with ProgressBar(bar_format="{desc}|{bar}{r_bar}"):
+       out_ds = in_ds.xsimlab.run(model=model2)
 
 For a full list of customization options, refer to the `Tqdm documentation`_.
 

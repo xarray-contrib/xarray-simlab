@@ -1,8 +1,9 @@
 import importlib
+
 import pytest
 
+from ..monitoring import ProgressBar
 from . import has_tqdm
-import xsimlab as xs
 
 
 @pytest.mark.skipif(not has_tqdm, reason="requires tqdm")
@@ -16,7 +17,7 @@ import xsimlab as xs
     ],
 )
 def test_progress_bar_init(frontend, tqdm_module):
-    pbar = xs.ProgressBar(frontend=frontend)
+    pbar = ProgressBar(frontend=frontend)
     tqdm = importlib.import_module(tqdm_module)
 
     assert pbar.tqdm is tqdm.tqdm
@@ -25,7 +26,7 @@ def test_progress_bar_init(frontend, tqdm_module):
 @pytest.mark.skipif(not has_tqdm, reason="requires tqdm")
 @pytest.mark.parametrize("kw", [{}, {"bar_format": "{bar}"}])
 def test_progress_bar_init_kwargs(kw):
-    pbar = xs.ProgressBar(**kw)
+    pbar = ProgressBar(**kw)
 
     assert "bar_format" in pbar.tqdm_kwargs
 
@@ -36,4 +37,4 @@ def test_progress_bar_init_kwargs(kw):
 @pytest.mark.skipif(not has_tqdm, reason="requires tqdm")
 def test_progress_bar_init_error(in_dataset, model):
     with pytest.raises(ValueError, match=r".*not supported.*"):
-        pbar = xs.ProgressBar(frontend="invalid_frontend")
+        ProgressBar(frontend="invalid_frontend")

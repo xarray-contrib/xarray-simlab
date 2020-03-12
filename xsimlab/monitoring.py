@@ -1,6 +1,9 @@
 from xsimlab.hook import RuntimeHook, runtime_hook
 
 
+__all__ = ("ProgressBar",)
+
+
 class ProgressBar(RuntimeHook):
     """
     Progress bar implementation using the tqdm package.
@@ -11,16 +14,17 @@ class ProgressBar(RuntimeHook):
 
     Call it as part of :meth:`xarray.Dataset.xsimlab.run`:
 
-    >>> out_ds = in_ds.xsimlab.run(model=model, hooks=[xs.ProgressBar()])
+    >>> from xsimlab.monitoring import ProgressBar
+    >>> out_ds = in_ds.xsimlab.run(model=model, hooks=[ProgressBar()])
 
     In a context manager using the ``with`` statement:
 
-    >>> with xs.ProgressBar():
+    >>> with ProgressBar():
     ...    out_ds = in_ds.xsimlab.run(model=model)
 
     Globally with ``register`` method:
 
-    >>> pbar = xs.ProgressBar()
+    >>> pbar = ProgressBar()
     >>> pbar.register()
     >>> out_ds = in_ds.xsimlab.run(model=model)
     >>> pbar.unregister()
