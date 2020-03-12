@@ -188,8 +188,10 @@ def variable(
     dims_set = {d for dms in dims_t for d in dms}
 
     if concat_dim is not None and concat_dim not in dims_set:
-        raise ValueError(f"Concat dimension {concat_dim} not found in "
-                         f"the dimension labels set for this variable: {dims}")
+        raise ValueError(
+            f"Concat dimension {concat_dim} not found in "
+            f"the dimension labels set for this variable: {dims}"
+        )
 
     metadata = {
         "var_type": VarType.VARIABLE,
