@@ -12,6 +12,7 @@ dependencies:
   - python-graphviz
   - ipython
   - zarr
+  - tqdm
   - pip:
     - coveralls
     - pytest-cov
