@@ -177,8 +177,8 @@ def test_process_properties_docstrings(in_var_details):
     assert to_lines(_ExampleProcess.in_var.__doc__) == to_lines(in_var_details)
 
 
-def test_process_properties_values(processes_with_store):
-    some_process, another_process, example_process = processes_with_store
+def test_process_properties_values(processes_with_state):
+    some_process, another_process, example_process = processes_with_state
 
     assert example_process.od_var == 0
     assert example_process.in_foreign_od_var == 1
@@ -197,8 +197,8 @@ def test_process_properties_values(processes_with_store):
     assert set(example_process.group_var) == {1, 4}
 
 
-def test_process_properties_converter(processes_with_store):
-    _, _, example_process = processes_with_store
+def test_process_properties_converter(processes_with_state):
+    _, _, example_process = processes_with_state
 
     example_process.inout_var = 1.1
     assert example_process.inout_var == 1

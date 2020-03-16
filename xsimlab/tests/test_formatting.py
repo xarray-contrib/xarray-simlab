@@ -99,13 +99,13 @@ def test_add_attribute_section():
 
 def test_process_repr(
     example_process_obj,
-    processes_with_store,
+    processes_with_state,
     example_process_repr,
     example_process_in_model_repr,
 ):
     assert repr_process(example_process_obj) == example_process_repr
 
-    _, _, process_in_model = processes_with_store
+    _, _, process_in_model = processes_with_state
     assert repr_process(process_in_model) == example_process_in_model_repr
 
     @xs.process

@@ -12,7 +12,7 @@ from xsimlab.stores import ZarrOutputStore
 
 def _bind_state(model):
     state = {}
-    model.store = state
+    model.state = state
 
     for p_obj in model.values():
         p_obj.__xsimlab_state__ = state
@@ -42,9 +42,9 @@ class TestZarrOutputStore:
         _bind_state(model)
         out_store = ZarrOutputStore(in_dataset, model, None)
 
-        model.store[("profile", "u")] = np.array([1.0, 2.0, 3.0])
-        model.store[("roll", "u_diff")] = np.array([-1.0, 1.0, 0.0])
-        model.store[("add", "offset")] = 2.0
+        model.state[("profile", "u")] = np.array([1.0, 2.0, 3.0])
+        model.state[("roll", "u_diff")] = np.array([-1.0, 1.0, 0.0])
+        model.state[("add", "offset")] = 2.0
 
         out_store.write_output_vars(0)
 
@@ -72,9 +72,9 @@ class TestZarrOutputStore:
         _bind_state(model)
         out_store = ZarrOutputStore(in_dataset, model, None)
 
-        model.store[("profile", "u")] = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
-        model.store[("roll", "u_diff")] = np.array([-1.0, 1.0, 0.0])
-        model.store[("add", "offset")] = 2.0
+        model.state[("profile", "u")] = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+        model.state[("roll", "u_diff")] = np.array([-1.0, 1.0, 0.0])
+        model.state[("add", "offset")] = 2.0
 
         with pytest.raises(ValueError, match=r".*accepted dimension.*"):
             out_store.write_output_vars(0)
@@ -83,7 +83,7 @@ class TestZarrOutputStore:
         _bind_state(model)
         out_store = ZarrOutputStore(in_dataset, model, None)
 
-        model.store[("init_profile", "x")] = np.array([1.0, 2.0, 3.0])
+        model.state[("init_profile", "x")] = np.array([1.0, 2.0, 3.0])
 
         out_store.write_index_vars()
         ztest = zarr.open_group(out_store.zgroup.store, mode="r")
@@ -105,7 +105,7 @@ class TestZarrOutputStore:
         out_store = ZarrOutputStore(in_ds, model, None)
 
         for step, size in zip([0, 1, 2], [1, 3, 2]):
-            model.store[("p", "arr")] = np.ones(size)
+            model.state[("p", "arr")] = np.ones(size)
             out_store.write_output_vars(step)
 
         ztest = zarr.open_group(out_store.zgroup.store, mode="r")
@@ -119,9 +119,9 @@ class TestZarrOutputStore:
         _bind_state(model)
         out_store = ZarrOutputStore(in_dataset, model, None)
 
-        model.store[("profile", "u")] = np.array([1.0, 2.0, 3.0])
-        model.store[("roll", "u_diff")] = np.array([-1.0, 1.0, 0.0])
-        model.store[("add", "offset")] = 2.0
+        model.state[("profile", "u")] = np.array([1.0, 2.0, 3.0])
+        model.state[("roll", "u_diff")] = np.array([-1.0, 1.0, 0.0])
+        model.state[("add", "offset")] = 2.0
 
         out_store.write_output_vars(0)
 
@@ -132,9 +132,9 @@ class TestZarrOutputStore:
         _bind_state(model)
         out_store = ZarrOutputStore(in_dataset, model, mkdtemp())
 
-        model.store[("profile", "u")] = np.array([1.0, 2.0, 3.0])
-        model.store[("roll", "u_diff")] = np.array([-1.0, 1.0, 0.0])
-        model.store[("add", "offset")] = 2.0
+        model.state[("profile", "u")] = np.array([1.0, 2.0, 3.0])
+        model.state[("roll", "u_diff")] = np.array([-1.0, 1.0, 0.0])
+        model.state[("add", "offset")] = 2.0
 
         out_store.write_output_vars(0)
 

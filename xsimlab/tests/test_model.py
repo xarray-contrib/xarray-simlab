@@ -11,7 +11,7 @@ class TestModelBuilder:
         assert model._processes["profile"].__xsimlab_name__ == "profile"
 
     @pytest.mark.parametrize(
-        "p_name,expected_store_keys,expected_od_keys",
+        "p_name,expected_state_keys,expected_od_keys",
         [
             (
                 "init_profile",
@@ -40,21 +40,21 @@ class TestModelBuilder:
         ],
     )
     def test_set_process_keys(
-        self, model, p_name, expected_store_keys, expected_od_keys
+        self, model, p_name, expected_state_keys, expected_od_keys
     ):
         p_obj = model._processes[p_name]
-        actual_store_keys = p_obj.__xsimlab_state_keys__
+        actual_state_keys = p_obj.__xsimlab_state_keys__
         actual_od_keys = p_obj.__xsimlab_od_keys__
 
         # key order is not ensured for group variables
-        if isinstance(expected_store_keys, list):
-            actual_store_keys = set(actual_store_keys)
-            expected_store_keys = set(expected_store_keys)
+        if isinstance(expected_state_keys, list):
+            actual_state_keys = set(actual_state_keys)
+            expected_state_keys = set(expected_state_keys)
         if isinstance(expected_od_keys, list):
             actual_od_keys = set(actual_od_keys)
             expected_od_keys = set(expected_od_keys)
 
-        assert actual_store_keys == expected_store_keys
+        assert actual_state_keys == expected_state_keys
         assert actual_od_keys == expected_od_keys
 
     def test_multiple_groups(self):

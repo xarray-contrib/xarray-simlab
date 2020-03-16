@@ -103,7 +103,7 @@ class BaseSimulationDriver:
 
             if check_static and var.metadata.get("static", False):
                 raise RuntimeError(
-                    "Cannot set value in store for "
+                    "Cannot set value in simulation active store for "
                     f"static variable {var_name!r} defined "
                     f"in process {p_name!r}"
                 )

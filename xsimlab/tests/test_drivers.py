@@ -13,14 +13,14 @@ from xsimlab.drivers import (
 
 @pytest.fixture
 def base_driver(model):
-    store = {}
-    return BaseSimulationDriver(model, store)
+    state = {}
+    return BaseSimulationDriver(model, state)
 
 
 @pytest.fixture
 def xarray_driver(in_dataset, model):
-    store = {}
-    return XarraySimulationDriver(in_dataset, model, store, None)
+    state = {}
+    return XarraySimulationDriver(in_dataset, model, state, None)
 
 
 def test_runtime_context():
@@ -88,16 +88,16 @@ class TestBaseDriver:
 
 class TestXarraySimulationDriver:
     def test_constructor(self, in_dataset, model):
-        store = {}
+        state = {}
 
         invalid_ds = in_dataset.drop("clock")
         with pytest.raises(ValueError) as excinfo:
-            XarraySimulationDriver(invalid_ds, model, store, None)
+            XarraySimulationDriver(invalid_ds, model, state, None)
         assert "Missing master clock" in str(excinfo.value)
 
         invalid_ds = in_dataset.drop("init_profile__n_points")
         with pytest.raises(KeyError) as excinfo:
-            XarraySimulationDriver(invalid_ds, model, store, None)
+            XarraySimulationDriver(invalid_ds, model, state, None)
         assert "Missing variables" in str(excinfo.value)
 
     @pytest.mark.parametrize(

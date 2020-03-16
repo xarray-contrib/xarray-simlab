@@ -104,26 +104,26 @@ def _init_process(p_cls, p_name, model, state, state_keys=None, od_keys=None):
 
 
 @pytest.fixture
-def processes_with_store():
+def processes_with_state():
     class FakeModel:
         def __init__(self):
             self._processes = {}
 
     model = FakeModel()
-    store = {}
+    state = {}
 
     some_process = _init_process(
         SomeProcess,
         "some_process",
         model,
-        store,
+        state,
         state_keys={"some_var": ("some_process", "some_var")},
     )
     another_process = _init_process(
         AnotherProcess,
         "another_process",
         model,
-        store,
+        state,
         state_keys={
             "another_var": ("another_process", "another_var"),
             "some_var": ("some_process", "some_var"),
@@ -133,7 +133,7 @@ def processes_with_store():
         ExampleProcess,
         "example_process",
         model,
-        store,
+        state,
         state_keys={
             "in_var": ("example_process", "in_var"),
             "out_var": ("example_process", "out_var"),
