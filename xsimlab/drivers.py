@@ -86,7 +86,7 @@ class BaseSimulationDriver:
         """Bind the simulation active data store to each process in the
         model.
         """
-        self.model.store = self.state
+        self.model.state = self.state
 
         for p_obj in self.model.values():
             p_obj.__xsimlab_store__ = self.state
