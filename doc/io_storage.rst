@@ -3,8 +3,8 @@
 Store Model Inputs and Outputs
 ==============================
 
-Model inputs and/or outputs can be kept in memory or saved on disk using either
-`xarray`_'s or `zarr`_'s I/O capabilities.
+Simulation inputs and/or outputs can be kept in memory or saved on disk using
+either `xarray`_'s or `zarr`_'s I/O capabilities.
 
 .. _xarray: http://xarray.pydata.org
 .. _zarr: https://zarr.readthedocs.io/en/stable
@@ -85,7 +85,8 @@ Using zarr
 
 When :meth:`xarray.Dataset.xsimlab.run` is called, xarray-simlab uses the zarr_
 library to efficiently store (i.e., with compression) both simulation input and
-output data. The output data is stored progressively as the simulation proceeds.
+output data. Input data is stored before the simulation starts and output data
+is stored progressively as the simulation proceeds.
 
 By default all this data is saved into memory. For large amounts of model I/O
 data, however, it is recommended to save the data on disk. For example, you can
