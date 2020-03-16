@@ -94,14 +94,14 @@ specify a directory where to store it:
 
 .. ipython:: python
 
-   out_ds = in_ds.xsimlab.run(model=model2, output_store="model2_run.zarr")
+   out_ds = in_ds.xsimlab.run(model=model2, store="model2_run.zarr")
 
 You can also store the data in a temporary directory:
 
 .. ipython:: python
 
    import zarr
-   out_ds = in_ds.xsimlab.run(model=model2, output_store=zarr.TempStore())
+   out_ds = in_ds.xsimlab.run(model=model2, store=zarr.TempStore())
 
 Or you can directly use :func:`zarr.group` for more options, e.g., if you want
 to overwrite a directory that has been used for old model runs:
@@ -109,7 +109,7 @@ to overwrite a directory that has been used for old model runs:
 .. ipython:: python
 
    zg = zarr.group("model2_run.zarr", overwrite=True)
-   out_ds = in_ds.xsimlab.run(model=model2, output_store=zg)
+   out_ds = in_ds.xsimlab.run(model=model2, store=zg)
 
 .. note::
 

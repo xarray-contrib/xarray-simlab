@@ -644,7 +644,7 @@ class SimlabAccessor:
         model=None,
         check_dims="strict",
         validate="inputs",
-        output_store=None,
+        store=None,
         hooks=None,
         safe_mode=True,
     ):
@@ -678,13 +678,13 @@ class SimlabAccessor:
             The latter may significantly impact performance, but it may be
             useful for debugging.
             If None is given, no validation is performed.
-        output_store : str or :class:`zarr.Group` object, optional
-            If a string (path) is given, output simulation data
+        store : str or :class:`collections.abc.MutableMapping` or :class:`zarr.Group` object, optional
+            If a string (path) is given, simulation I/O data
             will be saved in that specified directory in the file
-            system. If None is given (default), all output data
-            will be saved in memory. This parameter also directly
-            accepts a zarr group object or (most of) zarr store
-            objects for more storage options (see notes below).
+            system. If None is given (default), all data will be saved in
+            memory. This parameter also directly accepts a zarr group object
+            or (most of) zarr store objects for more storage options
+            (see notes below).
         hooks : list, optional
             One or more runtime hooks, i.e., functions decorated with
             :func:`~xsimlab.runtime_hook` or instances of
@@ -723,7 +723,7 @@ class SimlabAccessor:
             self._ds,
             model,
             state,
-            output_store,
+            store,
             check_dims=check_dims,
             validate=validate,
             hooks=hooks,

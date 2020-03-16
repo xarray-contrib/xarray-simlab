@@ -174,7 +174,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
         dataset,
         model,
         state,
-        zobject,
+        store,
         check_dims=CheckDimsOption.STRICT,
         validate=ValidateOption.INPUTS,
         hooks=None,
@@ -204,7 +204,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
         hooks = set(hooks) | RuntimeHook.active
         self._hooks = group_hooks(flatten_hooks(hooks))
 
-        self.output_store = ZarrOutputStore(dataset, model, zobject)
+        self.store = ZarrOutputStore(dataset, model, store)
 
     def _check_missing_model_inputs(self):
         """Check if all model inputs have their corresponding variables
@@ -301,9 +301,9 @@ class XarraySimulationDriver(BaseSimulationDriver):
             self.validate(p_names)
 
     def _get_output_dataset(self):
-        self.output_store.consolidate()
+        self.store.consolidate()
 
-        out_ds = self.output_store.open_as_xr_dataset()
+        out_ds = self.store.open_as_xr_dataset()
 
         # replace index variables data with simulation data
         # (could be advanced Index objects that don't support serialization)
@@ -336,7 +336,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
           'finalize_step' stages or at the end of the simulation.
 
         """
-        self.output_store.write_input_xr_dataset()
+        self.store.write_input_xr_dataset()
         ds_init, ds_gby_steps = self._get_runtime_datasets()
 
         validate_all = self._validate_option is ValidateOption.ALL
@@ -372,7 +372,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
                 "run_step", runtime_context, hooks=self._hooks, validate=validate_all,
             )
 
-            self.output_store.write_output_vars(step)
+            self.store.write_output_vars(step)
 
             self.model.execute(
                 "finalize_step",
@@ -381,8 +381,8 @@ class XarraySimulationDriver(BaseSimulationDriver):
                 validate=validate_all,
             )
 
-        self.output_store.write_output_vars(-1)
-        self.output_store.write_index_vars()
+        self.store.write_output_vars(-1)
+        self.store.write_index_vars()
 
         self.model.execute("finalize", runtime_context, hooks=self._hooks)
 
