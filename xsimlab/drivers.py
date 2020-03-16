@@ -175,6 +175,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
         model,
         state,
         store,
+        encoding,
         check_dims=CheckDimsOption.STRICT,
         validate=ValidateOption.INPUTS,
         hooks=None,
@@ -204,7 +205,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
         hooks = set(hooks) | RuntimeHook.active
         self._hooks = group_hooks(flatten_hooks(hooks))
 
-        self.store = ZarrSimulationStore(dataset, model, store)
+        self.store = ZarrSimulationStore(dataset, model, store, encoding)
 
     def _check_missing_model_inputs(self):
         """Check if all model inputs have their corresponding variables

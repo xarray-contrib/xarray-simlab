@@ -20,7 +20,7 @@ def base_driver(model):
 @pytest.fixture
 def xarray_driver(in_dataset, model):
     state = {}
-    return XarraySimulationDriver(in_dataset, model, state, None)
+    return XarraySimulationDriver(in_dataset, model, state, None, None)
 
 
 def test_runtime_context():
@@ -92,12 +92,12 @@ class TestXarraySimulationDriver:
 
         invalid_ds = in_dataset.drop("clock")
         with pytest.raises(ValueError) as excinfo:
-            XarraySimulationDriver(invalid_ds, model, state, None)
+            XarraySimulationDriver(invalid_ds, model, state, None, None)
         assert "Missing master clock" in str(excinfo.value)
 
         invalid_ds = in_dataset.drop("init_profile__n_points")
         with pytest.raises(KeyError) as excinfo:
-            XarraySimulationDriver(invalid_ds, model, state, None)
+            XarraySimulationDriver(invalid_ds, model, state, None, None)
         assert "Missing variables" in str(excinfo.value)
 
     @pytest.mark.parametrize(
@@ -142,7 +142,7 @@ class TestXarraySimulationDriver:
 
         m = model.update_processes({"p": P})
 
-        driver = XarraySimulationDriver(in_dataset, m, {}, None)
+        driver = XarraySimulationDriver(in_dataset, m, {}, None, None)
 
         with pytest.raises(KeyError, match="'not_a_runtime_arg'"):
             driver.run_model()

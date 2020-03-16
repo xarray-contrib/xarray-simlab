@@ -5,6 +5,8 @@ import warnings
 import attr
 from attr._make import _CountingAttr
 
+from .utils import normalize_encoding
+
 
 class VarType(Enum):
     VARIABLE = "variable"
@@ -91,23 +93,6 @@ def _as_group_tuple(groups, group):
             groups.append(group)
 
     return tuple(groups)
-
-
-def _normalize_encoding(encoding):
-    used_keys = [
-        "chunks",
-        "dtype",
-        "compressor",
-        "fill_value",
-        "order",
-        "filters",
-        "object_codec",
-    ]
-
-    if encoding is None:
-        return {}
-    else:
-        return {k: v for k, v in encoding if k in used_keys}
 
 
 def variable(
@@ -209,7 +194,7 @@ def variable(
         "static": static,
         "attrs": attrs or {},
         "description": description,
-        "encoding": _normalize_encoding(encoding),
+        "encoding": normalize_encoding(encoding),
     }
 
     if VarIntent(intent) == VarIntent.OUT:
@@ -280,7 +265,7 @@ def index(dims, groups=None, description="", attrs=None, encoding=None):
         "groups": _as_group_tuple(groups, None),
         "attrs": attrs or {},
         "description": description,
-        "encoding": _normalize_encoding(encoding),
+        "encoding": normalize_encoding(encoding),
     }
 
     return attr.attrib(metadata=metadata, init=False, repr=False)
@@ -344,7 +329,7 @@ def on_demand(
         "groups": _as_group_tuple(groups, group),
         "attrs": attrs or {},
         "description": description,
-        "encoding": _normalize_encoding(encoding),
+        "encoding": normalize_encoding(encoding),
     }
 
     return attr.attrib(metadata=metadata, init=False, repr=False)
