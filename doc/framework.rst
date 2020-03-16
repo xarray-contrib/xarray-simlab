@@ -194,23 +194,18 @@ elsewhere.
 Get / set variable values inside a process
 ------------------------------------------
 
-Once you have declared a variable as a class attribute in a process, you
-can further get and/or set its value like it was defined as a property
-of that class. For example, if you declare a variable ``foo`` you can
-just use ``self.foo`` to get/set its value inside one method of that
-class.
+Once you have declared a variable as a class attribute in a process, you can
+further get and/or set its value like a regular instance attribute. For example,
+if you declare a variable ``foo`` you can just use ``self.foo`` to get/set its
+value inside one method of that class.
 
-This is exactly what does the :func:`~xsimlab.process` decorator: it
-takes all variables declared as class attributes and turns them into
-properties, which may be read-only depending on the ``intent`` set for
-the variables.
-
-Basically, the getter (setter) methods of these properties read
-(write) values from (into) a simple key-value store (except for
-on-demand variables). Currently the store is fully in-memory but it
-could be easily replaced by an on-disk or a distributed store. The
-xarray-simlab's modeling framework can thus be viewed as a thin
-object-oriented layer built on top of an abstract key-value store.
+Additionally, the :func:`~xsimlab.process` decorator takes all variables
+declared as class attributes and turns them into properties, which may be
+read-only depending on the ``intent`` set for the variables. For all variables
+except on-demand variables, the getter/setter methods of those properties
+read/write values via a simple dictionary that is common to a simulation. Note
+that those properties are created only for the case where a ``process``
+decorated class is used within a ``Model`` object.
 
 Process dependencies and ordering
 ---------------------------------

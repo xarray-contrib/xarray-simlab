@@ -53,7 +53,7 @@ def _hash_variable(var):
 
 def _get_target_keys(p_obj, var_name):
     return maybe_to_list(
-        p_obj.__xsimlab_store_keys__.get(var_name, [])
+        p_obj.__xsimlab_state_keys__.get(var_name, [])
     ) + maybe_to_list(p_obj.__xsimlab_od_keys__.get(var_name, []))
 
 

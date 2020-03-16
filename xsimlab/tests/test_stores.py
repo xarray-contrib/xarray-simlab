@@ -7,28 +7,28 @@ import xarray as xr
 import zarr
 
 import xsimlab as xs
-from xsimlab.stores import ZarrOutputStore
+from xsimlab.stores import ZarrSimulationStore
 
 
-def _bind_store(model):
-    store = {}
-    model.store = store
+def _bind_state(model):
+    state = {}
+    model.state = state
 
     for p_obj in model.values():
-        p_obj.__xsimlab_store__ = store
+        p_obj.__xsimlab_state__ = state
 
 
-class TestZarrOutputStore:
+class TestZarrSimulationStore:
     @pytest.mark.parametrize(
         "zobject", [None, mkdtemp(), zarr.MemoryStore(), zarr.group()]
     )
     def test_constructor(self, in_dataset, model, zobject):
-        out_store = ZarrOutputStore(in_dataset, model, zobject)
+        out_store = ZarrSimulationStore(in_dataset, model, zobject)
 
         assert out_store.zgroup.store is not None
 
     def test_write_input_xr_dataset(self, in_dataset, model):
-        out_store = ZarrOutputStore(in_dataset, model, None)
+        out_store = ZarrSimulationStore(in_dataset, model, None)
 
         out_store.write_input_xr_dataset()
         ds = xr.open_zarr(out_store.zgroup.store, chunks=None)
@@ -39,12 +39,12 @@ class TestZarrOutputStore:
         assert not ds.xsimlab.output_vars
 
     def test_write_output_vars(self, in_dataset, model):
-        _bind_store(model)
-        out_store = ZarrOutputStore(in_dataset, model, None)
+        _bind_state(model)
+        out_store = ZarrSimulationStore(in_dataset, model, None)
 
-        model.store[("profile", "u")] = np.array([1.0, 2.0, 3.0])
-        model.store[("roll", "u_diff")] = np.array([-1.0, 1.0, 0.0])
-        model.store[("add", "offset")] = 2.0
+        model.state[("profile", "u")] = np.array([1.0, 2.0, 3.0])
+        model.state[("roll", "u_diff")] = np.array([-1.0, 1.0, 0.0])
+        model.state[("add", "offset")] = 2.0
 
         out_store.write_output_vars(0)
 
@@ -69,21 +69,21 @@ class TestZarrOutputStore:
         assert_array_equal(ztest.profile__u_opp, np.array([-1.0, -2.0, -3.0]))
 
     def test_write_output_vars_error(self, in_dataset, model):
-        _bind_store(model)
-        out_store = ZarrOutputStore(in_dataset, model, None)
+        _bind_state(model)
+        out_store = ZarrSimulationStore(in_dataset, model, None)
 
-        model.store[("profile", "u")] = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
-        model.store[("roll", "u_diff")] = np.array([-1.0, 1.0, 0.0])
-        model.store[("add", "offset")] = 2.0
+        model.state[("profile", "u")] = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+        model.state[("roll", "u_diff")] = np.array([-1.0, 1.0, 0.0])
+        model.state[("add", "offset")] = 2.0
 
         with pytest.raises(ValueError, match=r".*accepted dimension.*"):
             out_store.write_output_vars(0)
 
     def test_write_index_vars(self, in_dataset, model):
-        _bind_store(model)
-        out_store = ZarrOutputStore(in_dataset, model, None)
+        _bind_state(model)
+        out_store = ZarrSimulationStore(in_dataset, model, None)
 
-        model.store[("init_profile", "x")] = np.array([1.0, 2.0, 3.0])
+        model.state[("init_profile", "x")] = np.array([1.0, 2.0, 3.0])
 
         out_store.write_index_vars()
         ztest = zarr.open_group(out_store.zgroup.store, mode="r")
@@ -101,11 +101,11 @@ class TestZarrOutputStore:
             model=model, clocks={"clock": [0, 1, 2]}, output_vars={"p__arr": "clock"},
         )
 
-        _bind_store(model)
-        out_store = ZarrOutputStore(in_ds, model, None)
+        _bind_state(model)
+        out_store = ZarrSimulationStore(in_ds, model, None)
 
         for step, size in zip([0, 1, 2], [1, 3, 2]):
-            model.store[("p", "arr")] = np.ones(size)
+            model.state[("p", "arr")] = np.ones(size)
             out_store.write_output_vars(step)
 
         ztest = zarr.open_group(out_store.zgroup.store, mode="r")
@@ -116,12 +116,12 @@ class TestZarrOutputStore:
         assert_array_equal(ztest.p__arr, expected)
 
     def test_open_as_xr_dataset(self, in_dataset, model):
-        _bind_store(model)
-        out_store = ZarrOutputStore(in_dataset, model, None)
+        _bind_state(model)
+        out_store = ZarrSimulationStore(in_dataset, model, None)
 
-        model.store[("profile", "u")] = np.array([1.0, 2.0, 3.0])
-        model.store[("roll", "u_diff")] = np.array([-1.0, 1.0, 0.0])
-        model.store[("add", "offset")] = 2.0
+        model.state[("profile", "u")] = np.array([1.0, 2.0, 3.0])
+        model.state[("roll", "u_diff")] = np.array([-1.0, 1.0, 0.0])
+        model.state[("add", "offset")] = 2.0
 
         out_store.write_output_vars(0)
 
@@ -129,12 +129,12 @@ class TestZarrOutputStore:
         assert ds.profile__u.chunks is None
 
     def test_open_as_xr_dataset_chunks(self, in_dataset, model):
-        _bind_store(model)
-        out_store = ZarrOutputStore(in_dataset, model, mkdtemp())
+        _bind_state(model)
+        out_store = ZarrSimulationStore(in_dataset, model, mkdtemp())
 
-        model.store[("profile", "u")] = np.array([1.0, 2.0, 3.0])
-        model.store[("roll", "u_diff")] = np.array([-1.0, 1.0, 0.0])
-        model.store[("add", "offset")] = 2.0
+        model.state[("profile", "u")] = np.array([1.0, 2.0, 3.0])
+        model.state[("roll", "u_diff")] = np.array([-1.0, 1.0, 0.0])
+        model.state[("add", "offset")] = 2.0
 
         out_store.write_output_vars(0)
 

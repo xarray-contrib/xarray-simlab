@@ -5,7 +5,7 @@ from typing import Any, Iterator, Mapping
 import attr
 
 from .hook import flatten_hooks, group_hooks, RuntimeHook
-from .stores import ZarrOutputStore
+from .stores import ZarrSimulationStore
 from .utils import variables_dict
 
 
@@ -69,28 +69,29 @@ class BaseSimulationDriver:
     """Base class that provides a minimal interface for creating
     simulation drivers (should be inherited).
 
-    It also implements methods for binding a simulation data store to
-    a model and for updating both this active data store and the
-    simulation output store.
+    It implements methods for binding an active simulation
+    data store (i.e., state) to a model and for feeding/updating this
+    this active data from outside of the process classes (e.g., from
+    inputs).
 
     """
 
-    def __init__(self, model, store):
+    def __init__(self, model, state):
         self.model = model
-        self.store = store
+        self.state = state
 
-        self._bind_store_to_model()
+        self._bind_state_to_model()
 
-    def _bind_store_to_model(self):
+    def _bind_state_to_model(self):
         """Bind the simulation active data store to each process in the
         model.
         """
-        self.model.store = self.store
+        self.model.state = self.state
 
         for p_obj in self.model.values():
-            p_obj.__xsimlab_store__ = self.store
+            p_obj.__xsimlab_state__ = self.state
 
-    def _set_in_store(self, input_vars, check_static=True):
+    def _set_state(self, input_vars, check_static=True):
         for key in self.model.input_vars:
             value = input_vars.get(key)
 
@@ -102,25 +103,25 @@ class BaseSimulationDriver:
 
             if check_static and var.metadata.get("static", False):
                 raise RuntimeError(
-                    "Cannot set value in store for "
+                    "Cannot set value in simulation active store for "
                     f"static variable {var_name!r} defined "
                     f"in process {p_name!r}"
                 )
 
             if var.converter is not None:
-                self.store[key] = var.converter(value)
+                self.state[key] = var.converter(value)
             else:
-                self.store[key] = copy.copy(value)
+                self.state[key] = copy.copy(value)
 
-    def initialize_store(self, input_vars):
-        """Pre-populate the simulation active data store with input
-        variable values.
+    def initialize_state(self, input_vars):
+        """Pre-populate the simulation active data store (state)
+        with input variable values.
 
         This should be called before the simulation starts.
 
-        ``input_vars`` is a dictionary where keys are store keys, i.e.,
+        ``input_vars`` is a dictionary where keys are state keys, i.e.,
         ``(process_name, var_name)`` tuples, and values are the input
-        values to set in the store.
+        values to set in the active store.
 
         Values are first copied from ``input_vars`` before being put in
         the store to prevent weird behavior (as model processes might
@@ -130,17 +131,17 @@ class BaseSimulationDriver:
         inputs are silently ignored.
 
         """
-        self._set_in_store(input_vars, check_static=False)
+        self._set_state(input_vars, check_static=False)
 
-    def update_store(self, input_vars):
+    def update_state(self, input_vars):
         """Update the simulation active data store with input variable
         values.
 
-        Like ``initialize_store``, but here meant to be called during
+        Like ``initialize_state``, but here meant to be called during
         simulation runtime.
 
         """
-        self._set_in_store(input_vars, check_static=True)
+        self._set_state(input_vars, check_static=True)
 
     def validate(self, p_names):
         """Run validators for all processes given in `p_names`."""
@@ -172,8 +173,8 @@ class XarraySimulationDriver(BaseSimulationDriver):
         self,
         dataset,
         model,
+        state,
         store,
-        zobject,
         check_dims=CheckDimsOption.STRICT,
         validate=ValidateOption.INPUTS,
         hooks=None,
@@ -181,7 +182,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
         self.dataset = dataset
         self.model = model
 
-        super(XarraySimulationDriver, self).__init__(model, store)
+        super(XarraySimulationDriver, self).__init__(model, state)
 
         if self.dataset.xsimlab.master_clock_dim is None:
             raise ValueError("Missing master clock dimension / coordinate")
@@ -203,7 +204,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
         hooks = set(hooks) | RuntimeHook.active
         self._hooks = group_hooks(flatten_hooks(hooks))
 
-        self.output_store = ZarrOutputStore(dataset, model, zobject)
+        self.store = ZarrSimulationStore(dataset, model, store)
 
     def _check_missing_model_inputs(self):
         """Check if all model inputs have their corresponding variables
@@ -300,15 +301,15 @@ class XarraySimulationDriver(BaseSimulationDriver):
             self.validate(p_names)
 
     def _get_output_dataset(self):
-        self.output_store.consolidate()
+        self.store.consolidate()
 
-        out_ds = self.output_store.open_as_xr_dataset()
+        out_ds = self.store.open_as_xr_dataset()
 
         # replace index variables data with simulation data
         # (could be advanced Index objects that don't support serialization)
         for key in self.model.index_vars:
             _, var_name = key
-            out_ds[var_name].data = self.store[key]
+            out_ds[var_name].data = self.state[key]
 
         # transpose back
         for xr_var_name, dims in self._original_dims.items():
@@ -335,7 +336,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
           'finalize_step' stages or at the end of the simulation.
 
         """
-        self.output_store.write_input_xr_dataset()
+        self.store.write_input_xr_dataset()
         ds_init, ds_gby_steps = self._get_runtime_datasets()
 
         validate_all = self._validate_option is ValidateOption.ALL
@@ -347,7 +348,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
         )
 
         in_vars = self._get_input_vars(ds_init)
-        self.initialize_store(in_vars)
+        self.initialize_state(in_vars)
         self._maybe_validate_inputs(in_vars)
 
         self.model.execute(
@@ -364,14 +365,14 @@ class XarraySimulationDriver(BaseSimulationDriver):
             )
 
             in_vars = self._get_input_vars(ds_step)
-            self.update_store(in_vars)
+            self.update_state(in_vars)
             self._maybe_validate_inputs(in_vars)
 
             self.model.execute(
                 "run_step", runtime_context, hooks=self._hooks, validate=validate_all,
             )
 
-            self.output_store.write_output_vars(step)
+            self.store.write_output_vars(step)
 
             self.model.execute(
                 "finalize_step",
@@ -380,8 +381,8 @@ class XarraySimulationDriver(BaseSimulationDriver):
                 validate=validate_all,
             )
 
-        self.output_store.write_output_vars(-1)
-        self.output_store.write_index_vars()
+        self.store.write_output_vars(-1)
+        self.store.write_index_vars()
 
         self.model.execute("finalize", runtime_context, hooks=self._hooks)
 

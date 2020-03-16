@@ -37,7 +37,7 @@ class _ModelBuilder:
     - Attach the model instance to each process and assign their given
       name in model.
     - Define for each variable of the model its corresponding key
-      (in store or on-demand)
+      (in state or on-demand)
     - Find variables that are model inputs
     - Find process dependencies and sort processes (DAG)
     - Find the processes that implement the method relative to each
@@ -82,7 +82,7 @@ class _ModelBuilder:
             p_obj.__xsimlab_name__ = p_name
 
     def _get_var_key(self, p_name, var):
-        """Get store and/or on-demand keys for variable `var` declared in
+        """Get state and/or on-demand keys for variable `var` declared in
         process `p_name`.
 
         Returned key(s) are either None (if no key), a tuple or a list
@@ -93,13 +93,13 @@ class _ModelBuilder:
         variable declared in that process.
 
         """
-        store_key = None
+        state_key = None
         od_key = None
 
         var_type = var.metadata["var_type"]
 
         if var_type in (VarType.VARIABLE, VarType.INDEX):
-            store_key = (p_name, var.name)
+            state_key = (p_name, var.name)
 
         elif var_type == VarType.ON_DEMAND:
             od_key = (p_name, var.name)
@@ -128,53 +128,53 @@ class _ModelBuilder:
                     )
                 )
 
-            store_key, od_key = self._get_var_key(target_p_name, target_var)
+            state_key, od_key = self._get_var_key(target_p_name, target_var)
 
         elif var_type == VarType.GROUP:
             var_group = var.metadata["group"]
-            store_key, od_key = self._get_group_var_keys(var_group)
+            state_key, od_key = self._get_group_var_keys(var_group)
 
-        return store_key, od_key
+        return state_key, od_key
 
     def _get_group_var_keys(self, group):
-        """Get from cache or find model-wise store and on-demand keys
+        """Get from cache or find model-wise state and on-demand keys
         for all variables related to a group (except group variables).
 
         """
         if group in self._group_keys:
             return self._group_keys[group]
 
-        store_keys = []
+        state_keys = []
         od_keys = []
 
         for p_name, p_obj in self._processes_obj.items():
             for var in filter_variables(p_obj, group=group).values():
-                store_key, od_key = self._get_var_key(p_name, var)
+                state_key, od_key = self._get_var_key(p_name, var)
 
-                if store_key is not None:
-                    store_keys.append(store_key)
+                if state_key is not None:
+                    state_keys.append(state_key)
                 if od_key is not None:
                     od_keys.append(od_key)
 
-        self._group_keys[group] = store_keys, od_keys
+        self._group_keys[group] = state_keys, od_keys
 
-        return store_keys, od_keys
+        return state_keys, od_keys
 
     def set_process_keys(self):
-        """Find store and/or on-demand keys for all variables in a model and
+        """Find state and/or on-demand keys for all variables in a model and
         store them in their respective process, i.e., the following
         attributes:
 
-        __xsimlab_store_keys__  (store keys)
+        __xsimlab_state_keys__  (state keys)
         __xsimlab_od_keys__     (on-demand keys)
 
         """
         for p_name, p_obj in self._processes_obj.items():
             for var in filter_variables(p_obj).values():
-                store_key, od_key = self._get_var_key(p_name, var)
+                state_key, od_key = self._get_var_key(p_name, var)
 
-                if store_key is not None:
-                    p_obj.__xsimlab_store_keys__[var.name] = store_key
+                if state_key is not None:
+                    p_obj.__xsimlab_state_keys__[var.name] = state_key
                 if od_key is not None:
                     p_obj.__xsimlab_od_keys__[var.name] = od_key
 
@@ -194,7 +194,7 @@ class _ModelBuilder:
 
         for p_name, p_obj in self._processes_obj.items():
             for var in filter_variables(p_obj, func=filter_out).values():
-                target_key = p_obj.__xsimlab_store_keys__.get(var.name)
+                target_key = p_obj.__xsimlab_state_keys__.get(var.name)
                 targets[target_key].append((p_name, var.name))
 
         conflicts = {k: v for k, v in targets.items() if len(v) > 1}
@@ -233,7 +233,7 @@ class _ModelBuilder:
         Model input variables meet the following conditions:
 
         - model-wise (i.e., in all processes), there is no variable with
-          intent='out' targeting those variables (in store keys).
+          intent='out' targeting those variables (in state keys).
         - although group variables always have intent='in', they are not
           model inputs.
 
@@ -253,11 +253,11 @@ class _ModelBuilder:
 
         for p_name, p_obj in self._processes_obj.items():
             in_keys += [
-                p_obj.__xsimlab_store_keys__.get(var.name)
+                p_obj.__xsimlab_state_keys__.get(var.name)
                 for var in filter_variables(p_obj, func=filter_in).values()
             ]
             out_keys += [
-                p_obj.__xsimlab_store_keys__.get(var.name)
+                p_obj.__xsimlab_state_keys__.get(var.name)
                 for var in filter_variables(p_obj, func=filter_out).values()
             ]
 
@@ -282,7 +282,7 @@ class _ModelBuilder:
             )
 
             for var in out_foreign_vars.values():
-                pn, _ = p_obj.__xsimlab_store_keys__[var.name]
+                pn, _ = p_obj.__xsimlab_state_keys__[var.name]
                 processes_to_validate[p_name].add(pn)
 
         return {k: list(v) for k, v in processes_to_validate.items()}
@@ -299,12 +299,12 @@ class _ModelBuilder:
         """
         self._dep_processes = {k: set() for k in self._processes_obj}
 
-        d_keys = {}  # all store/on-demand keys for each process
+        d_keys = {}  # all state/on-demand keys for each process
 
         for p_name, p_obj in self._processes_obj.items():
             d_keys[p_name] = _flatten_keys(
                 [
-                    p_obj.__xsimlab_store_keys__.values(),
+                    p_obj.__xsimlab_state_keys__.values(),
                     p_obj.__xsimlab_od_keys__.values(),
                 ]
             )
@@ -314,7 +314,7 @@ class _ModelBuilder:
                 if var.metadata["var_type"] == VarType.ON_DEMAND:
                     key = p_obj.__xsimlab_od_keys__[var.name]
                 else:
-                    key = p_obj.__xsimlab_store_keys__[var.name]
+                    key = p_obj.__xsimlab_state_keys__[var.name]
 
                 for pn in self._processes_obj:
                     if pn != p_name and key in d_keys[pn]:
@@ -455,7 +455,7 @@ class Model(AttrMapping, ContextMixin):
         self._processes = builder.get_sorted_processes()
 
         # overwritten by simulation drivers
-        self.store = {}
+        self.state = {}
 
         super(Model, self).__init__(self._processes)
         self._initialized = True
@@ -574,7 +574,7 @@ class Model(AttrMapping, ContextMixin):
             return
 
         for h in event_hooks:
-            h(self, Frozen(runtime_context), Frozen(self.store))
+            h(self, Frozen(runtime_context), Frozen(self.state))
 
     def execute(self, stage, runtime_context, hooks=None, validate=False):
         """Run one stage of a simulation.

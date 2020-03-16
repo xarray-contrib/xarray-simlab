@@ -93,38 +93,38 @@ def in_var_details():
     )
 
 
-def _init_process(p_cls, p_name, model, store, store_keys=None, od_keys=None):
+def _init_process(p_cls, p_name, model, state, state_keys=None, od_keys=None):
     p_obj = get_process_obj(p_cls)
     p_obj.__xsimlab_name__ = p_name
     p_obj.__xsimlab_model__ = model
-    p_obj.__xsimlab_store__ = store
-    p_obj.__xsimlab_store_keys__ = store_keys or {}
+    p_obj.__xsimlab_state__ = state
+    p_obj.__xsimlab_state_keys__ = state_keys or {}
     p_obj.__xsimlab_od_keys__ = od_keys or {}
     return p_obj
 
 
 @pytest.fixture
-def processes_with_store():
+def processes_with_state():
     class FakeModel:
         def __init__(self):
             self._processes = {}
 
     model = FakeModel()
-    store = {}
+    state = {}
 
     some_process = _init_process(
         SomeProcess,
         "some_process",
         model,
-        store,
-        store_keys={"some_var": ("some_process", "some_var")},
+        state,
+        state_keys={"some_var": ("some_process", "some_var")},
     )
     another_process = _init_process(
         AnotherProcess,
         "another_process",
         model,
-        store,
-        store_keys={
+        state,
+        state_keys={
             "another_var": ("another_process", "another_var"),
             "some_var": ("some_process", "some_var"),
         },
@@ -133,8 +133,8 @@ def processes_with_store():
         ExampleProcess,
         "example_process",
         model,
-        store,
-        store_keys={
+        state,
+        state_keys={
             "in_var": ("example_process", "in_var"),
             "out_var": ("example_process", "out_var"),
             "inout_var": ("example_process", "inout_var"),

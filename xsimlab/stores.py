@@ -54,7 +54,7 @@ def default_fill_value_from_dtype(dtype):
         return 0
 
 
-class ZarrOutputStore:
+class ZarrSimulationStore:
     def __init__(
         self,
         dataset: xr.Dataset,
