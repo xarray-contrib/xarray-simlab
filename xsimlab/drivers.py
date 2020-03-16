@@ -89,7 +89,7 @@ class BaseSimulationDriver:
         self.model.state = self.state
 
         for p_obj in self.model.values():
-            p_obj.__xsimlab_store__ = self.state
+            p_obj.__xsimlab_state__ = self.state
 
     def _set_state(self, input_vars, check_static=True):
         for key in self.model.input_vars:

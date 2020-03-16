@@ -153,8 +153,8 @@ def _make_property_variable(var):
     """Create a property for a variable or a foreign variable (after
     some sanity checks).
 
-    The property get/set functions either read/write values from/to
-    the simulation data store or get (and trigger computation of) the
+    The property get/set functions either read/write values from/to the active
+    simulation data store (i.e. state) or get (and trigger computation of) the
     value of an on-demand variable.
 
     The property is read-only if `var` is declared as input.
@@ -163,18 +163,18 @@ def _make_property_variable(var):
     var_name = var.name
     var_converter = var.converter or _dummy_converter
 
-    def get_from_store(self):
+    def get_from_state(self):
         key = self.__xsimlab_state_keys__[var_name]
-        return self.__xsimlab_store__[key]
+        return self.__xsimlab_state__[key]
 
     def get_on_demand(self):
         p_name, v_name = self.__xsimlab_od_keys__[var_name]
         p_obj = self.__xsimlab_model__._processes[p_name]
         return getattr(p_obj, v_name)
 
-    def put_in_store(self, value):
+    def put_in_state(self, value):
         key = self.__xsimlab_state_keys__[var_name]
-        self.__xsimlab_store__[key] = var_converter(value)
+        self.__xsimlab_state__[key] = var_converter(value)
 
     target_process_cls, target_var = get_target_variable(var)
 
@@ -211,10 +211,10 @@ def _make_property_variable(var):
         return property(fget=get_on_demand, doc=var_doc)
 
     elif var_intent == VarIntent.IN:
-        return property(fget=get_from_store, doc=var_doc)
+        return property(fget=get_from_state, doc=var_doc)
 
     else:
-        return property(fget=get_from_store, fset=put_in_store, doc=var_doc)
+        return property(fget=get_from_state, fset=put_in_state, doc=var_doc)
 
 
 def _make_property_on_demand(var):
@@ -246,7 +246,7 @@ def _make_property_group(var):
         od_keys = self.__xsimlab_od_keys__.get(var_name, [])
 
         for key in store_keys:
-            yield self.__xsimlab_store__[key]
+            yield self.__xsimlab_state__[key]
 
         for key in od_keys:
             p_name, v_name = key
@@ -393,7 +393,7 @@ def _process_cls_init(obj):
         :class:`Model` instance to which the process instance is attached.
     __xsimlab_name__ : str
         Name given for this process in the model.
-    __xsimlab_store__ : dict or object
+    __xsimlab_state__ : dict or object
         Simulation data store.
     __xsimlab_state_keys__ : dict
         Dictionary that maps variable names to their corresponding key
@@ -409,7 +409,7 @@ def _process_cls_init(obj):
     """
     obj.__xsimlab_model__ = None
     obj.__xsimlab_name__ = None
-    obj.__xsimlab_store__ = None
+    obj.__xsimlab_state__ = None
     obj.__xsimlab_state_keys__ = {}
     obj.__xsimlab_od_keys__ = {}
 

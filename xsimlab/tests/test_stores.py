@@ -10,12 +10,12 @@ import xsimlab as xs
 from xsimlab.stores import ZarrOutputStore
 
 
-def _bind_store(model):
-    store = {}
-    model.store = store
+def _bind_state(model):
+    state = {}
+    model.store = state
 
     for p_obj in model.values():
-        p_obj.__xsimlab_store__ = store
+        p_obj.__xsimlab_state__ = state
 
 
 class TestZarrOutputStore:
@@ -39,7 +39,7 @@ class TestZarrOutputStore:
         assert not ds.xsimlab.output_vars
 
     def test_write_output_vars(self, in_dataset, model):
-        _bind_store(model)
+        _bind_state(model)
         out_store = ZarrOutputStore(in_dataset, model, None)
 
         model.store[("profile", "u")] = np.array([1.0, 2.0, 3.0])
@@ -69,7 +69,7 @@ class TestZarrOutputStore:
         assert_array_equal(ztest.profile__u_opp, np.array([-1.0, -2.0, -3.0]))
 
     def test_write_output_vars_error(self, in_dataset, model):
-        _bind_store(model)
+        _bind_state(model)
         out_store = ZarrOutputStore(in_dataset, model, None)
 
         model.store[("profile", "u")] = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
@@ -80,7 +80,7 @@ class TestZarrOutputStore:
             out_store.write_output_vars(0)
 
     def test_write_index_vars(self, in_dataset, model):
-        _bind_store(model)
+        _bind_state(model)
         out_store = ZarrOutputStore(in_dataset, model, None)
 
         model.store[("init_profile", "x")] = np.array([1.0, 2.0, 3.0])
@@ -101,7 +101,7 @@ class TestZarrOutputStore:
             model=model, clocks={"clock": [0, 1, 2]}, output_vars={"p__arr": "clock"},
         )
 
-        _bind_store(model)
+        _bind_state(model)
         out_store = ZarrOutputStore(in_ds, model, None)
 
         for step, size in zip([0, 1, 2], [1, 3, 2]):
@@ -116,7 +116,7 @@ class TestZarrOutputStore:
         assert_array_equal(ztest.p__arr, expected)
 
     def test_open_as_xr_dataset(self, in_dataset, model):
-        _bind_store(model)
+        _bind_state(model)
         out_store = ZarrOutputStore(in_dataset, model, None)
 
         model.store[("profile", "u")] = np.array([1.0, 2.0, 3.0])
@@ -129,7 +129,7 @@ class TestZarrOutputStore:
         assert ds.profile__u.chunks is None
 
     def test_open_as_xr_dataset_chunks(self, in_dataset, model):
-        _bind_store(model)
+        _bind_state(model)
         out_store = ZarrOutputStore(in_dataset, model, mkdtemp())
 
         model.store[("profile", "u")] = np.array([1.0, 2.0, 3.0])

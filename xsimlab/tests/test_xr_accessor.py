@@ -346,7 +346,7 @@ class TestSimlabAccessor:
     def test_run_safe_mode(self, model, in_dataset):
         # safe mode True: ensure model is cloned
         _ = in_dataset.xsimlab.run(model=model, safe_mode=True)
-        assert model.profile.__xsimlab_store__ is None
+        assert model.profile.__xsimlab_state__ is None
 
         # safe mode False: model not cloned -> original model is used
         _ = in_dataset.xsimlab.run(model=model, safe_mode=False)
