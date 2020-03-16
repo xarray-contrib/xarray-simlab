@@ -80,6 +80,7 @@ def test_add_attribute_section():
         - groups : ()
         - static : False
         - attrs : {}
+        - encoding : {}
 
     var2 : object
         (no description given)
@@ -90,6 +91,7 @@ def test_add_attribute_section():
         - groups : ()
         - static : False
         - attrs : {}
+        - encoding : {}
 
 """
 
