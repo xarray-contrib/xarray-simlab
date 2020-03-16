@@ -35,6 +35,8 @@ def _get_var_info(dataset: xr.Dataset, model: Model) -> Dict[Tuple[str, str], Di
             "name": f"{p_name}__{v_name}",
             "obj": v_obj,
             "value_getter": _variable_value_getter(p_obj, v_name),
+            "value": None,
+            "shape": None,
         }
 
     return var_info
@@ -93,22 +95,30 @@ class ZarrOutputStore:
         ds.xsimlab._reset_output_vars(self.model, {})
         ds.to_zarr(self.zgroup.store, group=self.zgroup.path, mode="a")
 
+    def _cache_value_as_array(self, var_key):
+        value = self.var_info[var_key]["value_getter"]()
+
+        if np.isscalar(value):
+            value = np.asarray(value)
+
+        self.var_info[var_key]["value"] = value
+
     def _create_zarr_dataset(self, var_key: Tuple[str, str], name=None):
         var = self.var_info[var_key]["obj"]
 
         if name is None:
             name = self.var_info[var_key]["name"]
 
-        array = self.var_info[var_key]["value_getter"]()
-        if np.isscalar(array):
-            array = np.asarray(array)
-
+        array = self.var_info[var_key]["value"]
         clock = self.var_info[var_key]["clock"]
 
         if clock is None:
             shape = array.shape
         else:
             shape = (self.clock_sizes[clock],) + tuple(array.shape)
+
+        # init shape for dynamically sized arrays
+        self.var_info[var_key]["shape"] = np.asarray(shape)
 
         chunks = True
         compressor = "default"
@@ -152,6 +162,23 @@ class ZarrOutputStore:
         # reset consolidated since metadata has just been updated
         self.consolidated = False
 
+    def _maybe_resize_zarr_dataset(self, var_key: Tuple[str, str]):
+        # Maybe increases the length of one or more dimensions of
+        # the zarr array (only increases, never shrinks dimensions).
+
+        zkey = self.var_info[var_key]["name"]
+        zshape = self.var_info[var_key]["shape"]
+        array = self.var_info[var_key]["value"]
+
+        # prepend clock dim
+        array_shape = np.concatenate(([0], array.shape))
+
+        new_shape = np.maximum(zshape, array_shape)
+
+        if np.any(new_shape > zshape):
+            self.var_info[var_key]["shape"] = new_shape
+            self.zgroup[zkey].resize(new_shape)
+
     def write_output_vars(self, istep: int):
         save_istep = self.output_save_steps.isel(**{self.mclock_dim: istep})
 
@@ -163,24 +190,30 @@ class ZarrOutputStore:
 
             clock_inc = self.clock_incs[clock]
 
+            for vk in var_keys:
+                self._cache_value_as_array(vk)
+
             if clock_inc == 0:
                 for vk in var_keys:
                     self._create_zarr_dataset(vk)
 
             for vk in var_keys:
                 zkey = self.var_info[vk]["name"]
-                array = self.var_info[vk]["value_getter"]()
+                array = self.var_info[vk]["value"]
 
                 if clock is None:
                     self.zgroup[zkey][:] = array
                 else:
-                    self.zgroup[zkey][clock_inc] = array
+                    self._maybe_resize_zarr_dataset(vk)
+                    idx = tuple([clock_inc] + [slice(0, n) for n in array.shape])
+                    self.zgroup[zkey][idx] = array
 
             self.clock_incs[clock] += 1
 
     def write_index_vars(self):
         for var_key in self.model.index_vars:
             _, vname = var_key
+            self._cache_value_as_array(var_key)
             self._create_zarr_dataset(var_key, name=vname)
 
             array = self.var_info[var_key]["value_getter"]()

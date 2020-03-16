@@ -6,6 +6,7 @@ import pytest
 import xarray as xr
 import zarr
 
+import xsimlab as xs
 from xsimlab.stores import ZarrOutputStore
 
 
@@ -88,6 +89,31 @@ class TestZarrOutputStore:
         ztest = zarr.open_group(out_store.zgroup.store, mode="r")
 
         assert_array_equal(ztest.x, np.array([1.0, 2.0, 3.0]))
+
+    def test_resize_zarr_dataset(self):
+        @xs.process
+        class P:
+            arr = xs.variable(dims="x", intent="out")
+
+        model = xs.Model({"p": P})
+
+        in_ds = xs.create_setup(
+            model=model, clocks={"clock": [0, 1, 2]}, output_vars={"p__arr": "clock"},
+        )
+
+        _bind_store(model)
+        out_store = ZarrOutputStore(in_ds, model, None)
+
+        for step, size in zip([0, 1, 2], [1, 3, 2]):
+            model.store[("p", "arr")] = np.ones(size)
+            out_store.write_output_vars(step)
+
+        ztest = zarr.open_group(out_store.zgroup.store, mode="r")
+
+        expected = np.array(
+            [[1.0, np.nan, np.nan], [1.0, 1.0, 1.0], [1.0, 1.0, np.nan]]
+        )
+        assert_array_equal(ztest.p__arr, expected)
 
     def test_open_as_xr_dataset(self, in_dataset, model):
         _bind_store(model)

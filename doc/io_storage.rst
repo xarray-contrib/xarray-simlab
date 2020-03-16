@@ -143,3 +143,60 @@ computing with Dask`_ in xarray's docs).
    os.remove("model2_setup.nc")
    os.remove("model2_run.nc")
    shutil.rmtree("model2_run.zarr")
+
+Advanced usage
+--------------
+
+Dynamically sized arrays
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+Model variables may have one or several of their dimension(s) dynamically
+resized during a simulation. When saving those variables as outputs, the
+corresponding zarr datasets may be resized so that, at the end of the
+simulation, all values are stored in large arrays of fixed shape and possibly
+containing missing values (note: depending on chunk size, zarr doesn't need to
+physically store all regions of contiguous missing values).
+
+The example below illustrates how such variables are returned as outputs:
+
+.. ipython::
+
+   In [2]: import numpy as np
+
+   In [3]: @xs.process
+      ...: class Particles:
+      ...:     """Generate at each step a random number of particles
+      ...:     at random positions along an axis.
+      ...:     """
+      ...:
+      ...:     position = xs.variable(dims='pt', intent='out')
+      ...:
+      ...:     def initialize(self):
+      ...:         self._rng = np.random.default_rng(123)
+      ...:
+      ...:     def run_step(self):
+      ...:         nparticles = self._rng.integers(1, 4)
+      ...:         self.position = self._rng.uniform(0, 10, size=nparticles)
+      ...:
+
+   In [4]: model = xs.Model({'pt': Particles})
+
+   In [5]: with model:
+      ...:     in_ds = xs.create_setup(clocks={'steps': range(4)},
+      ...:                             output_vars={'pt__position': 'steps'})
+      ...:     out_ds = in_ds.xsimlab.run()
+      ...:
+
+   In [6]: out_ds.pt__position
+
+N-dimensional arrays with missing values might not be the best format for
+dealing with this kind of output data. It could still be converted into a denser
+format, like for example a :class:`pandas.DataFrame` with a multi-index thanks
+to the xarray Dataset or DataArray :meth:`~xarray.Dataset.stack`,
+:meth:`~xarray.Dataset.dropna` and :meth:`~xarray.Dataset.to_dataframe` methods:
+
+.. ipython::
+
+   In [7]: (out_ds.stack(particles=('steps', 'pt'))
+      ...:        .dropna('particles')
+      ...:        .to_dataframe())
