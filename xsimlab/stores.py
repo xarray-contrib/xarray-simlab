@@ -163,8 +163,8 @@ class ZarrOutputStore:
         self.consolidated = False
 
     def _maybe_resize_zarr_dataset(self, var_key: Tuple[str, str]):
-        # Increases then length of one or more dimensions of the zarr array,
-        # if this is needed (never shrinks dimensions).
+        # Maybe increases the length of one or more dimensions of
+        # the zarr array (only increases, never shrinks dimensions).
 
         zkey = self.var_info[var_key]["name"]
         zshape = self.var_info[var_key]["shape"]
