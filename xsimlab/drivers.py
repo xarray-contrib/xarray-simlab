@@ -5,7 +5,7 @@ from typing import Any, Iterator, Mapping
 import attr
 
 from .hook import flatten_hooks, group_hooks, RuntimeHook
-from .stores import ZarrOutputStore
+from .stores import ZarrSimulationStore
 from .utils import variables_dict
 
 
@@ -204,7 +204,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
         hooks = set(hooks) | RuntimeHook.active
         self._hooks = group_hooks(flatten_hooks(hooks))
 
-        self.store = ZarrOutputStore(dataset, model, store)
+        self.store = ZarrSimulationStore(dataset, model, store)
 
     def _check_missing_model_inputs(self):
         """Check if all model inputs have their corresponding variables
