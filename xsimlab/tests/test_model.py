@@ -43,7 +43,7 @@ class TestModelBuilder:
         self, model, p_name, expected_store_keys, expected_od_keys
     ):
         p_obj = model._processes[p_name]
-        actual_store_keys = p_obj.__xsimlab_store_keys__
+        actual_store_keys = p_obj.__xsimlab_state_keys__
         actual_od_keys = p_obj.__xsimlab_od_keys__
 
         # key order is not ensured for group variables
@@ -69,8 +69,8 @@ class TestModelBuilder:
 
         m = xs.Model({"a": A, "b": B})
 
-        assert m.b.__xsimlab_store_keys__["g1"] == [("a", "v")]
-        assert m.b.__xsimlab_store_keys__["g2"] == [("a", "v")]
+        assert m.b.__xsimlab_state_keys__["g1"] == [("a", "v")]
+        assert m.b.__xsimlab_state_keys__["g2"] == [("a", "v")]
 
     def test_get_all_variables(self, model):
         assert all([len(t) == 2 for t in model.all_vars])

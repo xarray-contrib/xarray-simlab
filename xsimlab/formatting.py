@@ -53,7 +53,7 @@ def _summarize_var(var, process, col_width):
         var_info = f"{link_symbol} group {var.metadata['group']!r}"
 
     elif var_type == VarType.FOREIGN:
-        key = process.__xsimlab_store_keys__.get(var_name)
+        key = process.__xsimlab_state_keys__.get(var_name)
         if key is None:
             key = process.__xsimlab_od_keys__.get(var_name)
         if key is None:

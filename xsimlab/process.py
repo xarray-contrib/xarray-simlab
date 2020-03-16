@@ -164,7 +164,7 @@ def _make_property_variable(var):
     var_converter = var.converter or _dummy_converter
 
     def get_from_store(self):
-        key = self.__xsimlab_store_keys__[var_name]
+        key = self.__xsimlab_state_keys__[var_name]
         return self.__xsimlab_store__[key]
 
     def get_on_demand(self):
@@ -173,7 +173,7 @@ def _make_property_variable(var):
         return getattr(p_obj, v_name)
 
     def put_in_store(self, value):
-        key = self.__xsimlab_store_keys__[var_name]
+        key = self.__xsimlab_state_keys__[var_name]
         self.__xsimlab_store__[key] = var_converter(value)
 
     target_process_cls, target_var = get_target_variable(var)
@@ -242,7 +242,7 @@ def _make_property_group(var):
 
     def getter_store_or_on_demand(self):
         model = self.__xsimlab_model__
-        store_keys = self.__xsimlab_store_keys__.get(var_name, [])
+        store_keys = self.__xsimlab_state_keys__.get(var_name, [])
         od_keys = self.__xsimlab_od_keys__.get(var_name, [])
 
         for key in store_keys:
@@ -395,7 +395,7 @@ def _process_cls_init(obj):
         Name given for this process in the model.
     __xsimlab_store__ : dict or object
         Simulation data store.
-    __xsimlab_store_keys__ : dict
+    __xsimlab_state_keys__ : dict
         Dictionary that maps variable names to their corresponding key
         (or list of keys for group variables) in the store.
         Such keys consist of pairs like `('foo', 'bar')` where
@@ -410,7 +410,7 @@ def _process_cls_init(obj):
     obj.__xsimlab_model__ = None
     obj.__xsimlab_name__ = None
     obj.__xsimlab_store__ = None
-    obj.__xsimlab_store_keys__ = {}
+    obj.__xsimlab_state_keys__ = {}
     obj.__xsimlab_od_keys__ = {}
 
 

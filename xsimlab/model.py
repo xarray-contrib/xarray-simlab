@@ -165,7 +165,7 @@ class _ModelBuilder:
         store them in their respective process, i.e., the following
         attributes:
 
-        __xsimlab_store_keys__  (state keys)
+        __xsimlab_state_keys__  (state keys)
         __xsimlab_od_keys__     (on-demand keys)
 
         """
@@ -174,7 +174,7 @@ class _ModelBuilder:
                 state_key, od_key = self._get_var_key(p_name, var)
 
                 if state_key is not None:
-                    p_obj.__xsimlab_store_keys__[var.name] = state_key
+                    p_obj.__xsimlab_state_keys__[var.name] = state_key
                 if od_key is not None:
                     p_obj.__xsimlab_od_keys__[var.name] = od_key
 
@@ -194,7 +194,7 @@ class _ModelBuilder:
 
         for p_name, p_obj in self._processes_obj.items():
             for var in filter_variables(p_obj, func=filter_out).values():
-                target_key = p_obj.__xsimlab_store_keys__.get(var.name)
+                target_key = p_obj.__xsimlab_state_keys__.get(var.name)
                 targets[target_key].append((p_name, var.name))
 
         conflicts = {k: v for k, v in targets.items() if len(v) > 1}
@@ -253,11 +253,11 @@ class _ModelBuilder:
 
         for p_name, p_obj in self._processes_obj.items():
             in_keys += [
-                p_obj.__xsimlab_store_keys__.get(var.name)
+                p_obj.__xsimlab_state_keys__.get(var.name)
                 for var in filter_variables(p_obj, func=filter_in).values()
             ]
             out_keys += [
-                p_obj.__xsimlab_store_keys__.get(var.name)
+                p_obj.__xsimlab_state_keys__.get(var.name)
                 for var in filter_variables(p_obj, func=filter_out).values()
             ]
 
@@ -282,7 +282,7 @@ class _ModelBuilder:
             )
 
             for var in out_foreign_vars.values():
-                pn, _ = p_obj.__xsimlab_store_keys__[var.name]
+                pn, _ = p_obj.__xsimlab_state_keys__[var.name]
                 processes_to_validate[p_name].add(pn)
 
         return {k: list(v) for k, v in processes_to_validate.items()}
@@ -304,7 +304,7 @@ class _ModelBuilder:
         for p_name, p_obj in self._processes_obj.items():
             d_keys[p_name] = _flatten_keys(
                 [
-                    p_obj.__xsimlab_store_keys__.values(),
+                    p_obj.__xsimlab_state_keys__.values(),
                     p_obj.__xsimlab_od_keys__.values(),
                 ]
             )
@@ -314,7 +314,7 @@ class _ModelBuilder:
                 if var.metadata["var_type"] == VarType.ON_DEMAND:
                     key = p_obj.__xsimlab_od_keys__[var.name]
                 else:
-                    key = p_obj.__xsimlab_store_keys__[var.name]
+                    key = p_obj.__xsimlab_state_keys__[var.name]
 
                 for pn in self._processes_obj:
                     if pn != p_name and key in d_keys[pn]:
