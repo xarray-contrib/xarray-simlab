@@ -110,7 +110,7 @@ class ZarrSimulationStore:
     def _cache_value_as_array(self, var_key):
         value = self.var_info[var_key]["value_getter"]()
 
-        if np.isscalar(value):
+        if np.isscalar(value) or isinstance(value, (list, tuple)):
             value = np.asarray(value)
 
         self.var_info[var_key]["value"] = value
