@@ -36,6 +36,25 @@ def test_import_required():
     assert err_msg in str(excinfo.value)
 
 
+def test_normalize_encoding():
+    assert utils.normalize_encoding(None) == {}
+
+    encoding = {
+        "chunks": True,
+        "dtype": "int",
+        "compressor": None,
+        "fill_value": 0,
+        "order": "C",
+        "filters": None,
+        "object_codec": None,
+        "ignored_key": None,
+    }
+
+    actual = utils.normalize_encoding(encoding)
+    encoding.pop("ignored_key")
+    assert actual == encoding
+
+
 class TestAttrMapping:
     @pytest.fixture
     def attr_mapping(self):

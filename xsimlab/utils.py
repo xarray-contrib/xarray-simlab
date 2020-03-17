@@ -58,7 +58,7 @@ def normalize_encoding(encoding):
     if encoding is None:
         return {}
     else:
-        return {k: v for k, v in encoding if k in used_keys}
+        return {k: v for k, v in encoding.items() if k in used_keys}
 
 
 class AttrMapping:

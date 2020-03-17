@@ -115,6 +115,41 @@ class TestZarrSimulationStore:
         )
         assert_array_equal(ztest.p__arr, expected)
 
+    def test_encoding(self):
+        @xs.process
+        class P:
+            v1 = xs.variable(dims="x", intent="out", encoding={"chunks": (10,)})
+            v2 = xs.on_demand(dims="x", encoding={"fill_value": 0})
+            v3 = xs.index(dims="x", encoding={"compressor": None})
+
+            @v2.compute
+            def _get_v2(self):
+                return [0]
+
+        model = xs.Model({'p': P})
+
+        in_ds = xs.create_setup(
+            model=model,
+            clocks={"clock": [0]},
+            output_vars={"p__v1": None, "p__v2": None, "p__v3": None},
+        )
+
+        _bind_state(model)
+        out_store = ZarrSimulationStore(
+            in_ds, model, None, {"p__v2": {"fill_value": -1}}
+        )
+
+        model.state[("p", "v1")] = [0]
+        model.state[("p", "v3")] = [0]
+        out_store.write_output_vars(-1)
+
+        ztest = zarr.open_group(out_store.zgroup.store, mode="r")
+
+        assert ztest.p__v1.chunks == (10,)
+        # test encoding precedence ZarrSimulationStore > model variable
+        assert ztest.p__v2.fill_value == -1
+        assert ztest.p__v3.compressor is None
+
     def test_open_as_xr_dataset(self, in_dataset, model):
         _bind_state(model)
         out_store = ZarrSimulationStore(in_dataset, model, None, None)
