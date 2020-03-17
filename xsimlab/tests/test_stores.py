@@ -120,7 +120,7 @@ class TestZarrSimulationStore:
         class P:
             v1 = xs.variable(dims="x", intent="out", encoding={"chunks": (10,)})
             v2 = xs.on_demand(dims="x", encoding={"fill_value": 0})
-            v3 = xs.index(dims="x", encoding={"compressor": None})
+            v3 = xs.index(dims="x")
 
             @v2.compute
             def _get_v2(self):
@@ -136,7 +136,10 @@ class TestZarrSimulationStore:
 
         _bind_state(model)
         out_store = ZarrSimulationStore(
-            in_ds, model, None, {"p__v2": {"fill_value": -1}}
+            in_ds,
+            model,
+            None,
+            {"p__v2": {"fill_value": -1}, "p__v3": {"compressor": None}},
         )
 
         model.state[("p", "v1")] = [0]
