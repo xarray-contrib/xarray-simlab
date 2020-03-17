@@ -126,7 +126,7 @@ class TestZarrSimulationStore:
             def _get_v2(self):
                 return [0]
 
-        model = xs.Model({'p': P})
+        model = xs.Model({"p": P})
 
         in_ds = xs.create_setup(
             model=model,
