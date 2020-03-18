@@ -5,8 +5,9 @@ import numpy as np
 import xarray as xr
 import zarr
 
-from xsimlab import Model
-from xsimlab.process import variables_dict
+from . import Model
+from .process import variables_dict
+from .utils import normalize_encoding
 
 
 _DIMENSION_KEY = "_ARRAY_DIMENSIONS"
@@ -19,7 +20,9 @@ def _variable_value_getter(process_obj: Any, var_name: str) -> Callable:
     return value_getter
 
 
-def _get_var_info(dataset: xr.Dataset, model: Model) -> Dict[Tuple[str, str], Dict]:
+def _get_var_info(
+    dataset: xr.Dataset, model: Model, encoding: Dict[str, Dict[str, Any]]
+) -> Dict[Tuple[str, str], Dict]:
     var_info = {}
 
     var_clocks = {k: v for k, v in dataset.xsimlab.output_vars.items()}
@@ -27,16 +30,21 @@ def _get_var_info(dataset: xr.Dataset, model: Model) -> Dict[Tuple[str, str], Di
 
     for var_key, clock in var_clocks.items():
         p_name, v_name = var_key
+        v_name_str = f"{p_name}__{v_name}"
         p_obj = model[p_name]
         v_obj = variables_dict(type(p_obj))[v_name]
 
+        v_encoding = v_obj.metadata["encoding"]
+        v_encoding.update(normalize_encoding(encoding.get(v_name_str)))
+
         var_info[var_key] = {
             "clock": clock,
-            "name": f"{p_name}__{v_name}",
+            "name": v_name_str,
             "obj": v_obj,
             "value_getter": _variable_value_getter(p_obj, v_name),
             "value": None,
             "shape": None,
+            "encoding": v_encoding,
         }
 
     return var_info
@@ -60,6 +68,7 @@ class ZarrSimulationStore:
         dataset: xr.Dataset,
         model: Model,
         zobject: Union[zarr.Group, MutableMapping, str, None],
+        encoding: Union[Dict[str, Dict[str, Any]], None],
     ):
         self.dataset = dataset
         self.model = model
@@ -78,7 +87,10 @@ class ZarrSimulationStore:
         self.output_vars = dataset.xsimlab.output_vars_by_clock
         self.output_save_steps = dataset.xsimlab.get_output_save_steps()
 
-        self.var_info = _get_var_info(dataset, model)
+        if encoding is None:
+            encoding = {}
+
+        self.var_info = _get_var_info(dataset, model, encoding)
 
         self.mclock_dim = dataset.xsimlab.master_clock_dim
         self.clock_sizes = dataset.xsimlab.clock_sizes
@@ -98,7 +110,7 @@ class ZarrSimulationStore:
     def _cache_value_as_array(self, var_key):
         value = self.var_info[var_key]["value_getter"]()
 
-        if np.isscalar(value):
+        if np.isscalar(value) or isinstance(value, (list, tuple)):
             value = np.asarray(value)
 
         self.var_info[var_key]["value"] = value
@@ -120,22 +132,22 @@ class ZarrSimulationStore:
         # init shape for dynamically sized arrays
         self.var_info[var_key]["shape"] = np.asarray(shape)
 
-        chunks = True
-        compressor = "default"
+        zkwargs = {
+            "shape": shape,
+            "chunks": True,
+            "dtype": array.dtype,
+            "compressor": "default",
+            "fill_value": default_fill_value_from_dtype(array.dtype),
+        }
+
+        zkwargs.update(self.var_info[var_key]["encoding"])
 
         # TODO: more performance assessment
         # if self.in_memory:
         #     chunks = False
         #     compressor = None
 
-        zdataset = self.zgroup.create_dataset(
-            name,
-            shape=shape,
-            chunks=chunks,
-            dtype=array.dtype,
-            compressor=compressor,
-            fill_value=default_fill_value_from_dtype(array.dtype),
-        )
+        zdataset = self.zgroup.create_dataset(name, **zkwargs)
 
         # add dimension labels and variable attributes as metadata
         dim_labels = None

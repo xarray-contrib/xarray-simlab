@@ -645,6 +645,7 @@ class SimlabAccessor:
         check_dims="strict",
         validate="inputs",
         store=None,
+        encoding=None,
         hooks=None,
         safe_mode=True,
     ):
@@ -685,6 +686,13 @@ class SimlabAccessor:
             memory. This parameter also directly accepts a zarr group object
             or (most of) zarr store objects for more storage options
             (see notes below).
+        encoding : dict, optional
+            Nested dictionary with variable names as keys and dictionaries of
+            variable specific encodings as values, e.g.,
+            ``{'my_variable': {'dtype': 'int16', 'fill_value': -9999,}, ...}``.
+            See the ``encoding`` parameter of :func:`~xsimlab.variable`.
+            Encoding options provided here override encoding options defined in
+            model variables.
         hooks : list, optional
             One or more runtime hooks, i.e., functions decorated with
             :func:`~xsimlab.runtime_hook` or instances of
@@ -724,6 +732,7 @@ class SimlabAccessor:
             model,
             state,
             store,
+            encoding,
             check_dims=check_dims,
             validate=validate,
             hooks=hooks,

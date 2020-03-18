@@ -5,6 +5,8 @@ import warnings
 import attr
 from attr._make import _CountingAttr
 
+from .utils import normalize_encoding
+
 
 class VarType(Enum):
     VARIABLE = "variable"
@@ -104,6 +106,7 @@ def variable(
     static=False,
     description="",
     attrs=None,
+    encoding=None,
 ):
     """Create a variable.
 
@@ -170,6 +173,12 @@ def variable(
     attrs : dict, optional
         Dictionnary of additional metadata (e.g., standard_name,
         units, math_symbol...).
+    encoding : dict, optional
+        Dictionary specifying how to encode this variable's data into a
+        serialized format (i.e., as a zarr dataset). Currently used keys
+        include 'chunks', 'dtype', 'compressor', 'fill_value', 'order',
+        'filters' and 'object_codec'. See :func:`zarr.creation.create` for
+        details about these options. Other keys are ignored.
 
     See Also
     --------
@@ -185,6 +194,7 @@ def variable(
         "static": static,
         "attrs": attrs or {},
         "description": description,
+        "encoding": normalize_encoding(encoding),
     }
 
     if VarIntent(intent) == VarIntent.OUT:
@@ -205,7 +215,7 @@ def variable(
     )
 
 
-def index(dims, groups=None, description="", attrs=None):
+def index(dims, groups=None, description="", attrs=None, encoding=None):
     """Create a variable aimed at indexing data.
 
     The process class in which this variable is declared should set its value
@@ -231,6 +241,12 @@ def index(dims, groups=None, description="", attrs=None):
     attrs : dict, optional
         Dictionnary of additional metadata (e.g., standard_name,
         units, math_symbol...).
+    encoding : dict, optional
+        Dictionary specifying how to encode this variable's data into a
+        serialized format (i.e., as a zarr dataset). Currently used keys
+        include 'chunks', 'dtype', 'compressor', 'fill_value', 'order',
+        'filters' and 'object_codec'. See :func:`zarr.creation.create` for
+        details about these options. Other keys are ignored.
 
     See Also
     --------
@@ -249,12 +265,15 @@ def index(dims, groups=None, description="", attrs=None):
         "groups": _as_group_tuple(groups, None),
         "attrs": attrs or {},
         "description": description,
+        "encoding": normalize_encoding(encoding),
     }
 
     return attr.attrib(metadata=metadata, init=False, repr=False)
 
 
-def on_demand(dims=(), group=None, groups=None, description="", attrs=None):
+def on_demand(
+    dims=(), group=None, groups=None, description="", attrs=None, encoding=None
+):
     """Create a variable that is computed on demand.
 
     Instead of being computed systematically at every step of a simulation
@@ -291,6 +310,12 @@ def on_demand(dims=(), group=None, groups=None, description="", attrs=None):
     attrs : dict, optional
         Dictionnary of additional metadata (e.g., standard_name,
         units, math_symbol...).
+    encoding : dict, optional
+        Dictionary specifying how to encode this variable's data into a
+        serialized format (i.e., as a zarr dataset). Currently used keys
+        include 'chunks', 'dtype', 'compressor', 'fill_value', 'order',
+        'filters' and 'object_codec'. See :func:`zarr.creation.create` for
+        details about these options. Other keys are ignored.
 
     See Also
     --------
@@ -304,6 +329,7 @@ def on_demand(dims=(), group=None, groups=None, description="", attrs=None):
         "groups": _as_group_tuple(groups, group),
         "attrs": attrs or {},
         "description": description,
+        "encoding": normalize_encoding(encoding),
     }
 
     return attr.attrib(metadata=metadata, init=False, repr=False)
@@ -349,6 +375,7 @@ def foreign(other_process_cls, var_name, intent="in"):
         "intent": VarIntent(intent),
         "description": ref_var.metadata["description"],
         "attrs": ref_var.metadata.get("attrs", {}),
+        "encoding": ref_var.metadata.get("encoding", {}),
     }
 
     if VarIntent(intent) == VarIntent.OUT:

@@ -201,3 +201,52 @@ to the xarray Dataset or DataArray :meth:`~xarray.Dataset.stack`,
    In [7]: (out_ds.stack(particles=('steps', 'pt'))
       ...:        .dropna('particles')
       ...:        .to_dataframe())
+
+Encoding options
+~~~~~~~~~~~~~~~~
+
+It is possible to control via some encoding options how Zarr stores simulation
+data.
+
+Those options can be set for variables declared in process classes. See the
+``encoding`` parameter of :func:`~xsimlab.variable` for all available options.
+In the example below we specify a custom fill value for the ``position``
+variable, which will be used to replace missing values:
+
+.. ipython::
+
+   In [4]: @xs.process
+      ...: class Particles:
+      ...:     position = xs.variable(dims='pt', intent='out',
+      ...:                            encoding={'fill_value': -1.0})
+      ...:
+      ...:     def initialize(self):
+      ...:         self._rng = np.random.default_rng(123)
+      ...:
+      ...:     def run_step(self):
+      ...:         nparticles = self._rng.integers(1, 4)
+      ...:         self.position = self._rng.uniform(0, 10, size=nparticles)
+      ...:
+
+   In [5]: model = xs.Model({'pt': Particles})
+
+   In [6]: with model:
+      ...:     in_ds = xs.create_setup(clocks={'steps': range(4)},
+      ...:                             output_vars={'pt__position': 'steps'})
+      ...:     out_ds = in_ds.xsimlab.run()
+      ...:
+
+   In [7]: out_ds.pt__position
+
+Encoding options may also be set or overridden when calling
+:func:`~xarray.Dataset.xsimlab.run`, e.g.,
+
+.. ipython::
+
+   In [8]: out_ds = in_ds.xsimlab.run(
+      ...:     model=model,
+      ...:     encoding={'pt__position': {'fill_value': -10.0}}
+      ...: )
+      ...:
+
+   In [9]: out_ds.pt__position

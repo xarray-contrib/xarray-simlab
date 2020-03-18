@@ -89,6 +89,7 @@ def in_var_details():
     - groups : ()
     - static : False
     - attrs : {}
+    - encoding : {}
     """
     )
 

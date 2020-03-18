@@ -44,6 +44,23 @@ def import_required(mod_name, error_msg):
         raise RuntimeError(error_msg)
 
 
+def normalize_encoding(encoding):
+    used_keys = [
+        "chunks",
+        "dtype",
+        "compressor",
+        "fill_value",
+        "order",
+        "filters",
+        "object_codec",
+    ]
+
+    if encoding is None:
+        return {}
+    else:
+        return {k: v for k, v in encoding.items() if k in used_keys}
+
+
 class AttrMapping:
     """A class similar to `collections.abc.Mapping`,
     which also allows getting keys with attribute access.
