@@ -67,8 +67,8 @@ class ZarrSimulationStore:
         self,
         dataset: xr.Dataset,
         model: Model,
-        zobject: Union[zarr.Group, MutableMapping, str, None],
-        encoding: Union[Dict[str, Dict[str, Any]], None],
+        zobject: Union[zarr.Group, MutableMapping, str, None] = None,
+        encoding: Union[Dict[str, Dict[str, Any]], None] = None,
     ):
         self.dataset = dataset
         self.model = model
