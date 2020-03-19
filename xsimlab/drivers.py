@@ -23,6 +23,8 @@ class RuntimeContext(Mapping[str, Any]):
     """A mapping providing runtime information at the current time step."""
 
     _context_keys = (
+        "batch_size",
+        "ibatch",
         "sim_start",
         "sim_end",
         "step",
@@ -171,9 +173,15 @@ def _check_missing_master_clock(dataset):
         raise ValueError("Missing master clock dimension / coordinate")
 
 
-def _check_missing_batch_dim(dataset, batch_dim):
-    if batch_dim is not None and batch_dim not in dataset.dims:
-        raise KeyError(f"Batch dimension {batch_dim} missing in input dataset")
+def _get_batch_size(dataset, batch_dim):
+    if batch_dim is not None:
+        if batch_dim not in dataset.dims:
+            raise KeyError(f"Batch dimension {batch_dim} missing in input dataset")
+
+        return dataset.dims[batch_dim]
+
+    else:
+        return -1
 
 
 def _check_missing_inputs(dataset, model):
@@ -268,7 +276,6 @@ class XarraySimulationDriver(BaseSimulationDriver):
         hooks=None,
     ):
         _check_missing_master_clock(dataset)
-        _check_missing_batch_dim(dataset, batch_dim)
         _check_missing_inputs(dataset, model)
 
         self.dataset = dataset
@@ -277,6 +284,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
         super(XarraySimulationDriver, self).__init__(model, state=state)
 
         self.batch_dim = batch_dim
+        self.batch_size = _get_batch_size(dataset, batch_dim)
 
         if check_dims is not None:
             check_dims = CheckDimsOption(check_dims)
@@ -378,6 +386,8 @@ class XarraySimulationDriver(BaseSimulationDriver):
 
     def run_model(self):
         """Run one or multiple simulation(s)."""
+        self.store.write_input_xr_dataset()
+
         if self.batch_dim is None:
             self._run_one_model(self.dataset)
 
@@ -387,7 +397,9 @@ class XarraySimulationDriver(BaseSimulationDriver):
             for ibatch, (_, ds_batch) in enumerate(ds_gby_batch):
                 self._run_one_model(ds_batch, ibatch=ibatch)
 
-    def _run_one_model(self, dataset, ibatch=None):
+        self.store.write_index_vars()
+
+    def _run_one_model(self, dataset, ibatch=-1):
         """Run one simulation.
 
         - Set model inputs from the input Dataset (update
@@ -396,12 +408,13 @@ class XarraySimulationDriver(BaseSimulationDriver):
           'finalize_step' stages or at the end of the simulation.
 
         """
-        self.store.write_input_xr_dataset()
         ds_init, ds_gby_steps = _generate_runtime_datasets(self.dataset)
 
         validate_all = self._validate_option is ValidateOption.ALL
 
         runtime_context = RuntimeContext(
+            batch_size=self.batch_size,
+            ibatch=ibatch,
             sim_start=ds_init["_sim_start"].values,
             nsteps=ds_init["_nsteps"].values,
             sim_end=ds_init["_sim_end"].values,
@@ -432,7 +445,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
                 "run_step", runtime_context, hooks=self.hooks, validate=validate_all,
             )
 
-            self.store.write_output_vars(step)
+            self.store.write_output_vars(ibatch, step)
 
             self.model.execute(
                 "finalize_step",
@@ -441,7 +454,6 @@ class XarraySimulationDriver(BaseSimulationDriver):
                 validate=validate_all,
             )
 
-        self.store.write_output_vars(-1)
-        self.store.write_index_vars()
+        self.store.write_output_vars(ibatch, -1)
 
         self.model.execute("finalize", runtime_context, hooks=self.hooks)

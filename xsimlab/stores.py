@@ -1,5 +1,5 @@
 from collections.abc import MutableMapping
-from typing import Any, Callable, Dict, Tuple, Union
+from typing import Any, Callable, Dict, Optional, Tuple, Union
 
 import numpy as np
 import xarray as xr
@@ -67,8 +67,9 @@ class ZarrSimulationStore:
         self,
         dataset: xr.Dataset,
         model: Model,
-        zobject: Union[zarr.Group, MutableMapping, str, None] = None,
-        encoding: Union[Dict[str, Dict[str, Any]], None] = None,
+        zobject: Optional[Union[zarr.Group, MutableMapping, str]] = None,
+        encoding: Optional[Union[Dict[str, Dict[str, Any]]]] = None,
+        batch_dim: Optional[str] = None,
     ):
         self.dataset = dataset
         self.model = model
@@ -91,6 +92,12 @@ class ZarrSimulationStore:
             encoding = {}
 
         self.var_info = _get_var_info(dataset, model, encoding)
+
+        self.batch_dim = batch_dim
+        if batch_dim is not None:
+            self.batch_size = dataset.dims[batch_dim]
+        else:
+            self.batch_size = -1
 
         self.mclock_dim = dataset.xsimlab.master_clock_dim
         self.clock_sizes = dataset.xsimlab.clock_sizes
@@ -124,16 +131,18 @@ class ZarrSimulationStore:
         array = self.var_info[var_key]["value"]
         clock = self.var_info[var_key]["clock"]
 
-        if clock is None:
-            shape = array.shape
-        else:
-            shape = (self.clock_sizes[clock],) + tuple(array.shape)
+        shape = list(array.shape)
+
+        if clock is not None:
+            shape.insert(0, self.clock_sizes[clock])
+        if self.batch_dim is not None:
+            shape.insert(0, self.batch_size)
 
         # init shape for dynamically sized arrays
         self.var_info[var_key]["shape"] = np.asarray(shape)
 
         zkwargs = {
-            "shape": shape,
+            "shape": tuple(shape),
             "chunks": True,
             "dtype": array.dtype,
             "compressor": "default",
@@ -165,6 +174,8 @@ class ZarrSimulationStore:
 
         if clock is not None:
             dim_labels.insert(0, clock)
+        if self.batch_dim is not None:
+            dim_labels.insert(0, self.batch_dim)
 
         zdataset.attrs[_DIMENSION_KEY] = tuple(dim_labels)
         if var.metadata["description"]:
@@ -185,13 +196,17 @@ class ZarrSimulationStore:
         # prepend clock dim
         array_shape = np.concatenate(([0], array.shape))
 
+        # maybe preprend batch dim
+        if self.batch_dim is not None:
+            array_shape = np.concatenate(([0], array_shape))
+
         new_shape = np.maximum(zshape, array_shape)
 
         if np.any(new_shape > zshape):
             self.var_info[var_key]["shape"] = new_shape
             self.zgroup[zkey].resize(new_shape)
 
-    def write_output_vars(self, istep: int):
+    def write_output_vars(self, ibatch: int, istep: int):
         save_istep = self.output_save_steps.isel(**{self.mclock_dim: istep})
 
         for clock, var_keys in self.output_vars.items():
@@ -203,6 +218,7 @@ class ZarrSimulationStore:
             clock_inc = self.clock_incs[clock]
 
             for vk in var_keys:
+                # TODO: race conditions for simulation batches
                 self._cache_value_as_array(vk)
 
             if clock_inc == 0:
@@ -214,11 +230,19 @@ class ZarrSimulationStore:
                 array = self.var_info[vk]["value"]
 
                 if clock is None:
-                    self.zgroup[zkey][:] = array
+                    idx = slice(None) if ibatch == -1 else ibatch
+
                 else:
                     self._maybe_resize_zarr_dataset(vk)
-                    idx = tuple([clock_inc] + [slice(0, n) for n in array.shape])
-                    self.zgroup[zkey][idx] = array
+
+                    idx_dims = [clock_inc] + [slice(0, n) for n in array.shape]
+
+                    if ibatch != -1:
+                        idx_dims.insert(0, ibatch)
+
+                    idx = tuple(idx_dims)
+
+                self.zgroup[zkey][idx] = array
 
             self.clock_incs[clock] += 1
 

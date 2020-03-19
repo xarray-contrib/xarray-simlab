@@ -46,7 +46,7 @@ class TestZarrSimulationStore:
         model.state[("roll", "u_diff")] = np.array([-1.0, 1.0, 0.0])
         model.state[("add", "offset")] = 2.0
 
-        out_store.write_output_vars(0)
+        out_store.write_output_vars(-1, 0)
 
         ztest = zarr.open_group(out_store.zgroup.store, mode="r")
 
@@ -60,12 +60,12 @@ class TestZarrSimulationStore:
         assert_array_equal(ztest.add__u_diff, np.array([2.0, np.nan, np.nan]))
 
         # test save master clock but not out clock
-        out_store.write_output_vars(1)
+        out_store.write_output_vars(-1, 1)
         assert_array_equal(ztest.profile__u[1], np.array([1.0, 2.0, 3.0]))
         assert_array_equal(ztest.roll__u_diff[1], np.array([np.nan, np.nan, np.nan]))
 
         # test save no-clock outputs
-        out_store.write_output_vars(-1)
+        out_store.write_output_vars(-1, -1)
         assert_array_equal(ztest.profile__u_opp, np.array([-1.0, -2.0, -3.0]))
 
     def test_write_output_vars_error(self, in_dataset, model):
@@ -77,7 +77,7 @@ class TestZarrSimulationStore:
         model.state[("add", "offset")] = 2.0
 
         with pytest.raises(ValueError, match=r".*accepted dimension.*"):
-            out_store.write_output_vars(0)
+            out_store.write_output_vars(-1, 0)
 
     def test_write_index_vars(self, in_dataset, model):
         _bind_state(model)
@@ -106,7 +106,7 @@ class TestZarrSimulationStore:
 
         for step, size in zip([0, 1, 2], [1, 3, 2]):
             model.state[("p", "arr")] = np.ones(size)
-            out_store.write_output_vars(step)
+            out_store.write_output_vars(-1, step)
 
         ztest = zarr.open_group(out_store.zgroup.store, mode="r")
 
@@ -143,7 +143,7 @@ class TestZarrSimulationStore:
 
         model.state[("p", "v1")] = [0]
         model.state[("p", "v3")] = [0]
-        out_store.write_output_vars(-1)
+        out_store.write_output_vars(-1, -1)
 
         ztest = zarr.open_group(out_store.zgroup.store, mode="r")
 
@@ -160,7 +160,7 @@ class TestZarrSimulationStore:
         model.state[("roll", "u_diff")] = np.array([-1.0, 1.0, 0.0])
         model.state[("add", "offset")] = 2.0
 
-        out_store.write_output_vars(0)
+        out_store.write_output_vars(-1, 0)
 
         ds = out_store.open_as_xr_dataset()
         assert ds.profile__u.chunks is None
@@ -173,7 +173,7 @@ class TestZarrSimulationStore:
         model.state[("roll", "u_diff")] = np.array([-1.0, 1.0, 0.0])
         model.state[("add", "offset")] = 2.0
 
-        out_store.write_output_vars(0)
+        out_store.write_output_vars(-1, 0)
 
         ds = out_store.open_as_xr_dataset()
         assert ds.profile__u.chunks is not None
