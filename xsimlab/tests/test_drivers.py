@@ -13,8 +13,7 @@ from xsimlab.drivers import (
 
 @pytest.fixture
 def base_driver(model):
-    state = {}
-    return BaseSimulationDriver(model, state)
+    return BaseSimulationDriver(model)
 
 
 @pytest.fixture

@@ -76,9 +76,13 @@ class BaseSimulationDriver:
 
     """
 
-    def __init__(self, model, state):
+    def __init__(self, model, state=None):
         self.model = model
-        self.state = state
+
+        if state is None:
+            self.state = {}
+        else:
+            self.state = state
 
         self._bind_state_to_model()
 
@@ -257,10 +261,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
         self.dataset = dataset
         self.model = model
 
-        if state is None:
-            state = {}
-
-        super(XarraySimulationDriver, self).__init__(model, state)
+        super(XarraySimulationDriver, self).__init__(model, state=state)
 
         if check_dims is not None:
             check_dims = CheckDimsOption(check_dims)
