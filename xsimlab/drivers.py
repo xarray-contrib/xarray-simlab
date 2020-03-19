@@ -159,6 +159,12 @@ class BaseSimulationDriver:
         """
         raise NotImplementedError()
 
+    def get_results(self):
+        """Function of the driver used to return results of a simulation
+        (must be implemented in sub-classes).
+        """
+        raise NotImplementedError()
+
 
 def _check_missing_master_clock(dataset):
     if dataset.xsimlab.master_clock_dim is None:
@@ -341,7 +347,10 @@ class XarraySimulationDriver(BaseSimulationDriver):
         if self._validate_option is not None:
             self.validate(p_names)
 
-    def _get_output_dataset(self):
+    def get_results(self):
+        """Get simulation results as a xarray.Dataset loaded from
+        the zarr store.
+        """
         self.store.consolidate()
 
         out_ds = self.store.open_as_xr_dataset()
@@ -426,5 +435,3 @@ class XarraySimulationDriver(BaseSimulationDriver):
         self.store.write_index_vars()
 
         self.model.execute("finalize", runtime_context, hooks=self.hooks)
-
-        return self._get_output_dataset()

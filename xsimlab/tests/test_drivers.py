@@ -117,8 +117,9 @@ class TestXarraySimulationDriver:
         out_ds = xarray_driver.run_model()
         assert not in_dataset.identical(out_ds)
 
-    def test_run_model(self, in_dataset, out_dataset, xarray_driver):
-        out_ds_actual = xarray_driver.run_model()
+    def test_run_model_get_results(self, in_dataset, out_dataset, xarray_driver):
+        xarray_driver.run_model()
+        out_ds_actual = xarray_driver.get_results()
 
         # skip attributes added by xr.open_zarr from check
         for xr_var in out_ds_actual.variables.values():

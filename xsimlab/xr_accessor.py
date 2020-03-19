@@ -740,7 +740,9 @@ class SimlabAccessor:
             hooks=hooks,
         )
 
-        return driver.run_model()
+        driver.run_model()
+
+        return driver.get_results()
 
 
 def create_setup(
