@@ -276,7 +276,9 @@ class XarraySimulationDriver(BaseSimulationDriver):
             hooks = []
         self.hooks = _get_all_active_hooks(hooks)
 
-        self.store = ZarrSimulationStore(dataset, model, zobject=store, encoding=encoding)
+        self.store = ZarrSimulationStore(
+            dataset, model, zobject=store, encoding=encoding
+        )
 
     def _maybe_transpose(self, xr_var, p_name, var_name):
         var = variables_dict(self.model[p_name].__class__)[var_name]
