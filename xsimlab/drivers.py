@@ -377,8 +377,18 @@ class XarraySimulationDriver(BaseSimulationDriver):
         return out_ds
 
     def run_model(self):
-        """Run the model and return a new Dataset with all the simulation
-        inputs and outputs.
+        """Run one or multiple simulation(s)."""
+        if self.batch_dim is None:
+            self._run_one_model(self.dataset)
+
+        else:
+            ds_gby_batch = self.dataset.groupby(self.batch_dim)
+
+            for ibatch, (_, ds_batch) in enumerate(ds_gby_batch):
+                self._run_one_model(ds_batch, ibatch=ibatch)
+
+    def _run_one_model(self, dataset, ibatch=None):
+        """Run one simulation.
 
         - Set model inputs from the input Dataset (update
           time-dependent model inputs -- if any -- before each time step).
