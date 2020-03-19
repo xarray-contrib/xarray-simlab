@@ -725,14 +725,11 @@ class SimlabAccessor:
         if safe_mode:
             model = model.clone()
 
-        state = {}
-
         driver = XarraySimulationDriver(
             self._ds,
             model,
-            state,
-            store,
-            encoding,
+            store=store,
+            encoding=encoding,
             check_dims=check_dims,
             validate=validate,
             hooks=hooks,

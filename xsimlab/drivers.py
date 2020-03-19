@@ -156,6 +156,77 @@ class BaseSimulationDriver:
         raise NotImplementedError()
 
 
+def _check_missing_master_clock(dataset):
+    if dataset.xsimlab.master_clock_dim is None:
+        raise ValueError("Missing master clock dimension / coordinate")
+
+
+def _check_missing_inputs(dataset, model):
+    """Check if all model inputs have their corresponding variables
+    in the input Dataset.
+    """
+    missing_xr_vars = []
+
+    for p_name, var_name in model.input_vars:
+        xr_var_name = p_name + "__" + var_name
+
+        if xr_var_name not in dataset:
+            missing_xr_vars.append(xr_var_name)
+
+    if missing_xr_vars:
+        raise KeyError(f"Missing variables {missing_xr_vars} in Dataset")
+
+
+def _get_all_active_hooks(hooks):
+    """Get all active runtime hooks (i.e, provided as argument, activated from
+    context manager or glabally registered) and return them grouped by runtime
+    event.
+
+    """
+    active_hooks = set(hooks) | RuntimeHook.active
+
+    return group_hooks(flatten_hooks(active_hooks))
+
+
+def _generate_runtime_datasets(dataset):
+    """Create xarray Dataset objects that will be used during runtime of one
+    simulation.
+
+    Return a 2-length tuple where the 1st item is a Dataset used
+    at the initialize stage and the 2st item is a DatasetGroupBy for
+    iteration through run steps.
+
+    Runtime data is added to those datasets.
+
+    """
+    mclock_dim = dataset.xsimlab.master_clock_dim
+    mclock_coord = dataset[mclock_dim]
+
+    init_data_vars = {
+        "_sim_start": mclock_coord[0],
+        "_nsteps": dataset.xsimlab.nsteps,
+        "_sim_end": mclock_coord[-1],
+    }
+
+    ds_init = dataset.assign(init_data_vars).drop_dims(mclock_dim)
+
+    step_data_vars = {
+        "_clock_start": mclock_coord,
+        "_clock_end": mclock_coord.shift({mclock_dim: 1}),
+        "_clock_diff": mclock_coord.diff(mclock_dim, label="lower"),
+    }
+
+    ds_all_steps = (
+        dataset.drop(list(ds_init.data_vars.keys()), errors="ignore")
+        .isel({mclock_dim: slice(0, -1)})
+        .assign(step_data_vars)
+    )
+
+    ds_gby_steps = ds_all_steps.groupby(mclock_dim)
+
+    return ds_init, ds_gby_steps
+
+
 class XarraySimulationDriver(BaseSimulationDriver):
     """Simulation driver using xarray.Dataset objects as I/O.
 
@@ -173,22 +244,23 @@ class XarraySimulationDriver(BaseSimulationDriver):
         self,
         dataset,
         model,
-        state,
-        store,
-        encoding,
+        state=None,
+        store=None,
+        encoding=None,
         check_dims=CheckDimsOption.STRICT,
         validate=ValidateOption.INPUTS,
         hooks=None,
     ):
+        _check_missing_master_clock(dataset)
+        _check_missing_inputs(dataset, model)
+
         self.dataset = dataset
         self.model = model
 
+        if state is None:
+            state = {}
+
         super(XarraySimulationDriver, self).__init__(model, state)
-
-        if self.dataset.xsimlab.master_clock_dim is None:
-            raise ValueError("Missing master clock dimension / coordinate")
-
-        self._check_missing_model_inputs()
 
         if check_dims is not None:
             check_dims = CheckDimsOption(check_dims)
@@ -201,26 +273,10 @@ class XarraySimulationDriver(BaseSimulationDriver):
         self._validate_option = validate
 
         if hooks is None:
-            hooks = set()
-        hooks = set(hooks) | RuntimeHook.active
-        self._hooks = group_hooks(flatten_hooks(hooks))
+            hooks = []
+        self.hooks = _get_all_active_hooks(hooks)
 
-        self.store = ZarrSimulationStore(dataset, model, store, encoding)
-
-    def _check_missing_model_inputs(self):
-        """Check if all model inputs have their corresponding variables
-        in the input Dataset.
-        """
-        missing_xr_vars = []
-
-        for p_name, var_name in self.model.input_vars:
-            xr_var_name = p_name + "__" + var_name
-
-            if xr_var_name not in self.dataset:
-                missing_xr_vars.append(xr_var_name)
-
-        if missing_xr_vars:
-            raise KeyError(f"Missing variables {missing_xr_vars} in Dataset")
+        self.store = ZarrSimulationStore(dataset, model, zobject=store, encoding=encoding)
 
     def _maybe_transpose(self, xr_var, p_name, var_name):
         var = variables_dict(self.model[p_name].__class__)[var_name]
@@ -267,34 +323,6 @@ class XarraySimulationDriver(BaseSimulationDriver):
 
         return input_vars
 
-    def _get_runtime_datasets(self):
-        mclock_dim = self.dataset.xsimlab.master_clock_dim
-        mclock_coord = self.dataset[mclock_dim]
-
-        init_data_vars = {
-            "_sim_start": mclock_coord[0],
-            "_nsteps": self.dataset.xsimlab.nsteps,
-            "_sim_end": mclock_coord[-1],
-        }
-
-        ds_init = self.dataset.assign(init_data_vars).drop_dims(mclock_dim)
-
-        step_data_vars = {
-            "_clock_start": mclock_coord,
-            "_clock_end": mclock_coord.shift({mclock_dim: 1}),
-            "_clock_diff": mclock_coord.diff(mclock_dim, label="lower"),
-        }
-
-        ds_all_steps = (
-            self.dataset.drop(list(ds_init.data_vars.keys()), errors="ignore")
-            .isel({mclock_dim: slice(0, -1)})
-            .assign(step_data_vars)
-        )
-
-        ds_gby_steps = ds_all_steps.groupby(mclock_dim)
-
-        return ds_init, ds_gby_steps
-
     def _maybe_validate_inputs(self, input_vars):
         p_names = set([v[0] for v in input_vars])
 
@@ -338,7 +366,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
 
         """
         self.store.write_input_xr_dataset()
-        ds_init, ds_gby_steps = self._get_runtime_datasets()
+        ds_init, ds_gby_steps = _generate_runtime_datasets(self.dataset)
 
         validate_all = self._validate_option is ValidateOption.ALL
 
@@ -353,7 +381,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
         self._maybe_validate_inputs(in_vars)
 
         self.model.execute(
-            "initialize", runtime_context, hooks=self._hooks, validate=validate_all,
+            "initialize", runtime_context, hooks=self.hooks, validate=validate_all,
         )
 
         for step, (_, ds_step) in enumerate(ds_gby_steps):
@@ -370,7 +398,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
             self._maybe_validate_inputs(in_vars)
 
             self.model.execute(
-                "run_step", runtime_context, hooks=self._hooks, validate=validate_all,
+                "run_step", runtime_context, hooks=self.hooks, validate=validate_all,
             )
 
             self.store.write_output_vars(step)
@@ -378,13 +406,13 @@ class XarraySimulationDriver(BaseSimulationDriver):
             self.model.execute(
                 "finalize_step",
                 runtime_context,
-                hooks=self._hooks,
+                hooks=self.hooks,
                 validate=validate_all,
             )
 
         self.store.write_output_vars(-1)
         self.store.write_index_vars()
 
-        self.model.execute("finalize", runtime_context, hooks=self._hooks)
+        self.model.execute("finalize", runtime_context, hooks=self.hooks)
 
         return self._get_output_dataset()
