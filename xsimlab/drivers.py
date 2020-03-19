@@ -165,6 +165,11 @@ def _check_missing_master_clock(dataset):
         raise ValueError("Missing master clock dimension / coordinate")
 
 
+def _check_missing_batch_dim(dataset, batch_dim):
+    if batch_dim is not None and batch_dim not in dataset.dims:
+        raise KeyError(f"Batch dimension {batch_dim} missing in input dataset")
+
+
 def _check_missing_inputs(dataset, model):
     """Check if all model inputs have their corresponding variables
     in the input Dataset.
@@ -248,6 +253,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
         self,
         dataset,
         model,
+        batch_dim=None,
         state=None,
         store=None,
         encoding=None,
@@ -256,12 +262,15 @@ class XarraySimulationDriver(BaseSimulationDriver):
         hooks=None,
     ):
         _check_missing_master_clock(dataset)
+        _check_missing_batch_dim(dataset, batch_dim)
         _check_missing_inputs(dataset, model)
 
         self.dataset = dataset
         self.model = model
 
         super(XarraySimulationDriver, self).__init__(model, state=state)
+
+        self.batch_dim = batch_dim
 
         if check_dims is not None:
             check_dims = CheckDimsOption(check_dims)

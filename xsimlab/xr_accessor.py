@@ -642,6 +642,7 @@ class SimlabAccessor:
     def run(
         self,
         model=None,
+        batch_dim=None,
         check_dims="strict",
         validate="inputs",
         store=None,
@@ -655,6 +656,9 @@ class SimlabAccessor:
         ----------
         model : :class:`xsimlab.Model` object, optional
             Reference model. If None, tries to get model from context.
+        batch_dim : str, optional
+            Dimension label in the input dataset used to run batches of
+            simulations.
         check_dims : {'strict', 'transpose'}, optional
             Check the dimension(s) of each input variable given in Dataset.
             It may be one of the following options:
@@ -666,7 +670,8 @@ class SimlabAccessor:
               match (one of) the label sequences defined by their respective
               model variables
 
-            If None is given, no check is performed.
+            Note that ``batch_dim`` (if any) and clock dimensions are excluded
+            from this check. If None is given, no check is performed.
         validate : {'inputs', 'all'}, optional
             Define what will be validated using the variable's validators
             defined in ``model``'s processes (if any). It may be one of the
@@ -677,8 +682,7 @@ class SimlabAccessor:
               variables in process classes
 
             The latter may significantly impact performance, but it may be
-            useful for debugging.
-            If None is given, no validation is performed.
+            useful for debugging. If None is given, no validation is performed.
         store : str or :class:`collections.abc.MutableMapping` or :class:`zarr.Group` object, optional
             If a string (path) is given, simulation I/O data
             will be saved in that specified directory in the file
@@ -728,6 +732,7 @@ class SimlabAccessor:
         driver = XarraySimulationDriver(
             self._ds,
             model,
+            batch_dim=batch_dim,
             store=store,
             encoding=encoding,
             check_dims=check_dims,
