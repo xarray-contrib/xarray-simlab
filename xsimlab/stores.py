@@ -208,11 +208,11 @@ class ZarrSimulationStore:
             self.var_info[var_key]["shape"] = new_shape
             self.zgroup[zkey].resize(new_shape)
 
-    def write_output_vars(self, ibatch: int, istep: int):
-        save_istep = self.output_save_steps.isel(**{self.mclock_dim: istep})
+    def write_output_vars(self, batch: int, step: int):
+        save_istep = self.output_save_steps.isel(**{self.mclock_dim: step})
 
         for clock, var_keys in self.output_vars.items():
-            if clock is None and istep != -1:
+            if clock is None and step != -1:
                 continue
             if not save_istep.data_vars.get(clock, True):
                 continue
@@ -234,16 +234,16 @@ class ZarrSimulationStore:
                 self._maybe_resize_zarr_dataset(vk)
 
                 if clock is None:
-                    if ibatch == -1:
+                    if batch == -1:
                         idx = slice(None)
                     else:
-                        idx = ibatch
+                        idx = batch
 
                 else:
                     idx_dims = [clock_inc] + [slice(0, n) for n in array.shape]
 
-                    if ibatch != -1:
-                        idx_dims.insert(0, ibatch)
+                    if batch != -1:
+                        idx_dims.insert(0, batch)
 
                     idx = tuple(idx_dims)
 

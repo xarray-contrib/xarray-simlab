@@ -24,7 +24,7 @@ class RuntimeContext(Mapping[str, Any]):
 
     _context_keys = (
         "batch_size",
-        "ibatch",
+        "batch",
         "sim_start",
         "sim_end",
         "step",
@@ -394,12 +394,12 @@ class XarraySimulationDriver(BaseSimulationDriver):
         else:
             ds_gby_batch = self.dataset.groupby(self.batch_dim)
 
-            for ibatch, (_, ds_batch) in enumerate(ds_gby_batch):
-                self._run_one_model(ds_batch, ibatch=ibatch)
+            for batch, (_, ds_batch) in enumerate(ds_gby_batch):
+                self._run_one_model(ds_batch, batch=batch)
 
         self.store.write_index_vars()
 
-    def _run_one_model(self, dataset, ibatch=-1):
+    def _run_one_model(self, dataset, batch=-1):
         """Run one simulation.
 
         - Set model inputs from the input Dataset (update
@@ -414,7 +414,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
 
         runtime_context = RuntimeContext(
             batch_size=self.batch_size,
-            ibatch=ibatch,
+            batch=batch,
             sim_start=ds_init["_sim_start"].values,
             nsteps=ds_init["_nsteps"].values,
             sim_end=ds_init["_sim_end"].values,
@@ -445,7 +445,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
                 "run_step", runtime_context, hooks=self.hooks, validate=validate_all,
             )
 
-            self.store.write_output_vars(ibatch, step)
+            self.store.write_output_vars(batch, step)
 
             self.model.execute(
                 "finalize_step",
@@ -454,6 +454,6 @@ class XarraySimulationDriver(BaseSimulationDriver):
                 validate=validate_all,
             )
 
-        self.store.write_output_vars(ibatch, -1)
+        self.store.write_output_vars(batch, -1)
 
         self.model.execute("finalize", runtime_context, hooks=self.hooks)
