@@ -301,7 +301,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
         self.hooks = _get_all_active_hooks(hooks)
 
         self.store = ZarrSimulationStore(
-            dataset, model, zobject=store, encoding=encoding
+            dataset, model, zobject=store, encoding=encoding, batch_dim=batch_dim
         )
 
     def _maybe_transpose(self, xr_var, p_name, var_name):
@@ -389,17 +389,17 @@ class XarraySimulationDriver(BaseSimulationDriver):
         self.store.write_input_xr_dataset()
 
         if self.batch_dim is None:
-            self._run_one_model(self.dataset)
+            self._run_one_model(self.dataset, self.model)
 
         else:
             ds_gby_batch = self.dataset.groupby(self.batch_dim)
 
             for batch, (_, ds_batch) in enumerate(ds_gby_batch):
-                self._run_one_model(ds_batch, batch=batch)
+                self._run_one_model(ds_batch, self.model.clone(), batch=batch)
 
         self.store.write_index_vars()
 
-    def _run_one_model(self, dataset, batch=-1):
+    def _run_one_model(self, dataset, model, batch=-1):
         """Run one simulation.
 
         - Set model inputs from the input Dataset (update
@@ -424,7 +424,9 @@ class XarraySimulationDriver(BaseSimulationDriver):
         self.initialize_state(in_vars)
         self._maybe_validate_inputs(in_vars)
 
-        self.model.execute(
+        self.store.init_var_cache(batch, model)
+
+        model.execute(
             "initialize", runtime_context, hooks=self.hooks, validate=validate_all,
         )
 
@@ -441,13 +443,13 @@ class XarraySimulationDriver(BaseSimulationDriver):
             self.update_state(in_vars)
             self._maybe_validate_inputs(in_vars)
 
-            self.model.execute(
+            model.execute(
                 "run_step", runtime_context, hooks=self.hooks, validate=validate_all,
             )
 
             self.store.write_output_vars(batch, step)
 
-            self.model.execute(
+            model.execute(
                 "finalize_step",
                 runtime_context,
                 hooks=self.hooks,
@@ -456,4 +458,4 @@ class XarraySimulationDriver(BaseSimulationDriver):
 
         self.store.write_output_vars(batch, -1)
 
-        self.model.execute("finalize", runtime_context, hooks=self.hooks)
+        model.execute("finalize", runtime_context, hooks=self.hooks)
