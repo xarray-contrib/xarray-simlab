@@ -144,7 +144,6 @@ class ZarrSimulationStore:
             }
 
     def _cache_value_as_array(self, var_key: VarKey, batch: int):
-        print(self.var_cache)
         value = self.var_cache[var_key][batch]["value_getter"]()
 
         if np.isscalar(value) or isinstance(value, (list, tuple)):
