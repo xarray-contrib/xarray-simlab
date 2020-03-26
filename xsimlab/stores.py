@@ -192,13 +192,15 @@ class ZarrSimulationStore:
         zkey = self.var_info[var_key]["name"]
         zshape = self.var_info[var_key]["shape"]
         array = self.var_info[var_key]["value"]
+        array_shape = list(array.shape)
 
-        # prepend clock dim
-        array_shape = np.concatenate(([0], array.shape))
+        # maybe prepend clock dim (do not resize this dim)
+        if self.var_info[var_key]["clock"] is not None:
+            array_shape.insert(0, 0)
 
-        # maybe preprend batch dim
+        # maybe preprend batch dim (do not resize this dim)
         if self.batch_dim is not None:
-            array_shape = np.concatenate(([0], array_shape))
+            array_shape.insert(0, 0)
 
         new_shape = np.maximum(zshape, array_shape)
 
@@ -229,12 +231,15 @@ class ZarrSimulationStore:
                 zkey = self.var_info[vk]["name"]
                 array = self.var_info[vk]["value"]
 
+                self._maybe_resize_zarr_dataset(vk)
+
                 if clock is None:
-                    idx = slice(None) if ibatch == -1 else ibatch
+                    if ibatch == -1:
+                        idx = slice(None)
+                    else:
+                        idx = ibatch
 
                 else:
-                    self._maybe_resize_zarr_dataset(vk)
-
                     idx_dims = [clock_inc] + [slice(0, n) for n in array.shape]
 
                     if ibatch != -1:
