@@ -296,6 +296,8 @@ def runtime(meth=None, args=None):
         positional argument(s) of the method during simulation runtime.
         The following labels are defined:
 
+        - ``batch_size`` : total number of simulations run in the batch
+        - ``batch`` : current simulation number in the batch
         - ``sim_start`` : simulation start (date)time
         - ``sim_end`` : simulation end (date)time
         - ``step`` : current step number

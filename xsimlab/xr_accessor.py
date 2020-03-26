@@ -703,8 +703,10 @@ class SimlabAccessor:
             :class:`~xsimlab.RuntimeHook`. The latter can also be used using
             the ``with`` statement or using their ``register()`` method.
         safe_mode : bool, optional
-            If True (default), it is safe to run multiple simulations
-            simultaneously. Generally safe mode shouldn't be disabled, except
+            If True (default), a clone of ``model`` will be used to run each
+            simulation so that it is safe to run multiple simulations
+            simultaneously (provided that the code executed in ``model`` is
+            thread-safe too). Generally safe mode shouldn't be disabled, except
             in a few cases (e.g., debugging).
 
         Notes
