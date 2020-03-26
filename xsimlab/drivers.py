@@ -367,7 +367,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
         # (could be advanced Index objects that don't support serialization)
         for key in self.model.index_vars:
             _, var_name = key
-            out_ds[var_name].data = self.state[key]
+            out_ds[var_name] = (out_ds[var_name].dims, self.state[key])
 
         # transpose back
         for xr_var_name, dims in self._original_dims.items():
