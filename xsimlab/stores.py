@@ -140,7 +140,7 @@ class ZarrSimulationStore:
             self.var_cache[var_key][batch] = {
                 "value_getter": _variable_value_getter(model, var_key),
                 "value": None,
-                "shape": None
+                "shape": None,
             }
 
     def _cache_value_as_array(self, var_key: VarKey, batch: int):
@@ -152,7 +152,9 @@ class ZarrSimulationStore:
 
         self.var_cache[var_key][batch]["value"] = value
 
-    def _create_zarr_dataset(self, var_key: VarKey, batch: int, name: Optional[str] = None):
+    def _create_zarr_dataset(
+        self, var_key: VarKey, batch: int, name: Optional[str] = None
+    ):
         var_info = self.var_info[var_key]
         var_cache = self.var_cache[var_key]
 
