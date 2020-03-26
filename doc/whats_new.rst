@@ -74,6 +74,7 @@ Enhancements
   :issue:`113`).
 - Added :class:`~xsimlab.monitoring.ProgressBar` to track simulation progress
   (:issue:`104`, :issue:`110`).
+- Added the ability to easily run batches of simulations (:issue:`115`).
 
 Bug fixes
 ~~~~~~~~~
