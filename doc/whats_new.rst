@@ -74,7 +74,8 @@ Enhancements
   :issue:`113`).
 - Added :class:`~xsimlab.monitoring.ProgressBar` to track simulation progress
   (:issue:`104`, :issue:`110`).
-- Added the ability to easily run batches of simulations (:issue:`115`).
+- Added the ability to easily run batches of simulations using the ``batch_dim``
+  parameter of :func:`xarray.Dataset.xsimlab.run` (:issue:`115`).
 
 Bug fixes
 ~~~~~~~~~
