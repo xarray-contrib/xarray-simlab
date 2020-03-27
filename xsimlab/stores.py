@@ -61,16 +61,16 @@ def _get_var_info(
             "clock": clock,
             "name": v_name_str,
             "metadata": v_obj.metadata,
-            "value_getter": _variable_value_getter(model, var_key),
-            "value": None,
-            "shape": None,
+            "shape": None,   # not yet known
             "encoding": v_encoding,
         }
 
     return var_info
 
 
-def default_fill_value_from_dtype(dtype):
+def default_fill_value_from_dtype(dtype=None):
+    if dtype is None:
+        return 0
     if dtype.kind == "f":
         return np.nan
     elif dtype.kind in "c":
@@ -124,8 +124,22 @@ class ZarrSimulationStore:
         self.clock_sizes = dataset.xsimlab.clock_sizes
 
         # initialize clock incrementers
-        self.clock_incs = {clock: 0 for clock in dataset.xsimlab.clock_coords}
-        self.clock_incs[None] = 0
+        self.clock_incs = self._init_clock_incrementers()
+
+    def _init_clock_incrementers(self):
+        clock_incs = {}
+
+        clock_keys = list(self.dataset.xsimlab.clock_coords) + [None]
+
+        for clock in clock_keys:
+            clock_incs[clock] = {}
+
+            batch_keys = range(self.batch_size) if self.batch_dim else [-1]
+
+            for batch in batch_keys:
+                clock_incs[clock][batch] = 0
+
+        return clock_incs
 
     def write_input_xr_dataset(self):
         # output/index variables already in input dataset will be replaced
@@ -140,14 +154,10 @@ class ZarrSimulationStore:
             self.var_cache[var_key][batch] = {
                 "value_getter": _variable_value_getter(model, var_key),
                 "value": None,
-                "shape": None,
             }
 
-    def _cache_value_as_array(self, var_key: VarKey, batch: int):
+    def _cache_variable_value(self, var_key: VarKey, batch: int):
         value = self.var_cache[var_key][batch]["value_getter"]()
-
-        if np.isscalar(value) or isinstance(value, (list, tuple)):
-            value = np.asarray(value)
 
         self.var_cache[var_key][batch]["value"] = value
 
@@ -160,25 +170,23 @@ class ZarrSimulationStore:
         if name is None:
             name = var_info["name"]
 
-        array = var_cache[batch]["value"]
+        value = var_cache[batch]["value"]
         clock = var_info["clock"]
 
-        shape = list(array.shape)
+        dtype = getattr(value, "dtype", np.asarray(value).dtype)
+        shape = list(np.shape(value))
 
         if clock is not None:
             shape.insert(0, self.clock_sizes[clock])
         if self.batch_dim is not None:
             shape.insert(0, self.batch_size)
 
-        # init shape for dynamically sized arrays
-        var_cache[batch]["shape"] = np.asarray(shape)
-
         zkwargs = {
             "shape": tuple(shape),
             "chunks": True,
-            "dtype": array.dtype,
+            "dtype": dtype,
             "compressor": "default",
-            "fill_value": default_fill_value_from_dtype(array.dtype),
+            "fill_value": default_fill_value_from_dtype(dtype),
         }
 
         zkwargs.update(var_info["encoding"])
@@ -194,12 +202,12 @@ class ZarrSimulationStore:
         dim_labels = None
 
         for dims in var_info["metadata"]["dims"]:
-            if len(dims) == array.ndim:
+            if len(dims) == len(np.shape(value)):
                 dim_labels = list(dims)
 
         if dim_labels is None:
             raise ValueError(
-                f"Output array of {array.ndim} dimension(s) "
+                f"Output array of {value.ndim} dimension(s) "
                 f"for variable '{name}' doesn't match any of "
                 f"its accepted dimension(s): {var_info['metadata']['dims']}"
             )
@@ -214,6 +222,9 @@ class ZarrSimulationStore:
             zdataset.attrs["description"] = var_info["metadata"]["description"]
         zdataset.attrs.update(var_info["metadata"]["attrs"])
 
+        # init shape for dynamically sized arrays
+        var_info["shape"] = shape
+
         # reset consolidated since metadata has just been updated
         self.consolidated = False
 
@@ -224,22 +235,22 @@ class ZarrSimulationStore:
         var_cache = self.var_cache[var_key]
 
         zkey = var_info["name"]
-        zshape = var_cache[batch]["shape"]
-        array = var_cache[batch]["value"]
-        array_shape = list(array.shape)
+        zshape = var_info["shape"]
+        value = var_cache[batch]["value"]
+        value_shape = list(np.shape(value))
 
         # maybe prepend clock dim (do not resize this dim)
         if var_info["clock"] is not None:
-            array_shape.insert(0, 0)
+            value_shape.insert(0, 0)
 
         # maybe preprend batch dim (do not resize this dim)
         if self.batch_dim is not None:
-            array_shape.insert(0, 0)
+            value_shape.insert(0, 0)
 
-        new_shape = np.maximum(zshape, array_shape)
+        new_shape = np.maximum(zshape, value_shape)
 
         if np.any(new_shape > zshape):
-            var_cache[batch]["shape"] = new_shape
+            var_info["shape"] = new_shape
             self.zgroup[zkey].resize(new_shape)
 
     def write_output_vars(self, batch: int, step: int):
@@ -251,38 +262,46 @@ class ZarrSimulationStore:
             if not save_istep.data_vars.get(clock, True):
                 continue
 
-            clock_inc = self.clock_incs[clock]
+            clock_inc = self.clock_incs[clock][batch]
 
             for vk in var_keys:
-                self._cache_value_as_array(vk, batch)
+                self._cache_variable_value(vk, batch)
 
             if clock_inc == 0:
                 for vk in var_keys:
-                    self._create_zarr_dataset(vk, batch)
+                    try:
+                        self._create_zarr_dataset(vk, batch)
+                    except ValueError as err:
+                        if self.batch_dim:
+                            pass
+                        else:
+                            raise err
 
             for vk in var_keys:
                 zkey = self.var_info[vk]["name"]
-                array = self.var_cache[vk][batch]["value"]
+                value = self.var_cache[vk][batch]["value"]
 
                 self._maybe_resize_zarr_dataset(vk, batch)
 
                 if clock is None:
-                    if batch == -1:
-                        idx = slice(None)
-                    else:
+                    if batch != -1:
                         idx = batch
+                    elif np.isscalar(value):
+                        idx = tuple()
+                    else:
+                        idx = slice(None)
 
                 else:
-                    idx_dims = [clock_inc] + [slice(0, n) for n in array.shape]
+                    idx_dims = [clock_inc] + [slice(0, n) for n in np.shape(value)]
 
                     if batch != -1:
                         idx_dims.insert(0, batch)
 
                     idx = tuple(idx_dims)
 
-                self.zgroup[zkey][idx] = array
+                self.zgroup[zkey][idx] = value
 
-            self.clock_incs[clock] += 1
+            self.clock_incs[clock][batch] += 1
 
     def write_index_vars(self):
         for var_key in self.model.index_vars:
@@ -293,7 +312,7 @@ class ZarrSimulationStore:
             batch = next(iter(var_cache))
 
             _, vname = var_key
-            self._cache_value_as_array(var_key, batch)
+            self._cache_variable_value(var_key, batch)
             self._create_zarr_dataset(var_key, batch, name=vname)
 
             self.zgroup[vname][:] = var_cache[batch]["value"]

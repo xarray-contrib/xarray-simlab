@@ -1,5 +1,3 @@
-from tempfile import mkdtemp
-
 import numpy as np
 from numpy.testing import assert_array_equal
 import pytest
@@ -18,11 +16,28 @@ def _bind_state(model):
         p_obj.__xsimlab_state__ = state
 
 
+@pytest.fixture(params=["directory", zarr.MemoryStore])
+def zobject(request, tmpdir):
+    if request.param == "directory":
+        return str(tmpdir)
+    else:
+        return request.param()
+
+
 @pytest.fixture
-def store(in_dataset, model):
+def in_ds(in_dataset, model):
+    # need to test for scalar output variables
+    return in_dataset.xsimlab.update_vars(
+        model=model,
+        output_vars={"add__offset": None}
+    )
+
+
+@pytest.fixture
+def store(in_ds, model, zobject):
     _bind_state(model)
 
-    zstore = ZarrSimulationStore(in_dataset, model)
+    zstore = ZarrSimulationStore(in_ds, model, zobject=zobject)
 
     # init cache for the case of a single simulation
     zstore.init_var_cache(-1, zstore.model)
@@ -30,25 +45,59 @@ def store(in_dataset, model):
     return zstore
 
 
+@pytest.fixture
+def in_ds_batch(in_ds):
+    # a batch of two simulations
+    in_ds["roll__shift"] = ("batch", [1, 2])
+
+    return in_ds
+
+
+@pytest.fixture
+def model_batch1(model):
+    return model.clone()
+
+
+@pytest.fixture
+def model_batch2(model):
+    return model.clone()
+
+
+@pytest.fixture
+def store_batch(in_ds_batch, model, zobject):
+    return ZarrSimulationStore(in_ds_batch, model, zobject=zobject, batch_dim="batch")
+
+
 class TestZarrSimulationStore:
-    @pytest.mark.parametrize(
-        "zobject", [None, mkdtemp(), zarr.MemoryStore(), zarr.group()]
-    )
-    def test_constructor(self, in_dataset, model, zobject):
-        store = ZarrSimulationStore(in_dataset, model)
+    @pytest.mark.parametrize("zobj", [None, "dir", zarr.MemoryStore(), zarr.group()])
+    def test_constructor(self, in_ds, model, zobj, tmpdir):
+        if zobj == "dir":
+            zobj = str(tmpdir)
+
+        store = ZarrSimulationStore(in_ds, model, zobject=zobj)
 
         assert store.zgroup.store is not None
+        assert store.batch_size == -1
 
-    def test_write_input_xr_dataset(self, in_dataset, store):
+        if zobj is None:
+            assert store.in_memory is True
+
+    def test_constructor_batch(self, store_batch):
+        assert store_batch.batch_size == 2
+
+    def test_write_input_xr_dataset(self, in_ds, store):
         store.write_input_xr_dataset()
         ds = xr.open_zarr(store.zgroup.store, chunks=None)
 
-        xr.testing.assert_equal(ds, in_dataset)
+        # output variables removed
+        del in_ds["add__offset"]
+
+        xr.testing.assert_equal(ds, in_ds)
 
         # check output variables attrs removed before saving input dataset
         assert not ds.xsimlab.output_vars
 
-    def test_write_output_vars(self, in_dataset, store):
+    def test_write_output_vars(self, in_ds, store):
         model = store.model
         model.state[("profile", "u")] = np.array([1.0, 2.0, 3.0])
         model.state[("roll", "u_diff")] = np.array([-1.0, 1.0, 0.0])
@@ -58,13 +107,13 @@ class TestZarrSimulationStore:
 
         ztest = zarr.open_group(store.zgroup.store, mode="r")
 
-        assert ztest.profile__u.shape == (in_dataset.clock.size, 3)
+        assert ztest.profile__u.shape == (in_ds.clock.size, 3)
         assert_array_equal(ztest.profile__u[0], np.array([1.0, 2.0, 3.0]))
 
-        assert ztest.roll__u_diff.shape == (in_dataset.out.size, 3)
+        assert ztest.roll__u_diff.shape == (in_ds.out.size, 3)
         assert_array_equal(ztest.roll__u_diff[0], np.array([-1.0, 1.0, 0.0]))
 
-        assert ztest.add__u_diff.shape == (in_dataset.out.size,)
+        assert ztest.add__u_diff.shape == (in_ds.out.size,)
         assert_array_equal(ztest.add__u_diff, np.array([2.0, np.nan, np.nan]))
 
         # test save master clock but not out clock
@@ -75,6 +124,7 @@ class TestZarrSimulationStore:
         # test save no-clock outputs
         store.write_output_vars(-1, -1)
         assert_array_equal(ztest.profile__u_opp, np.array([-1.0, -2.0, -3.0]))
+        assert ztest.add__offset[()] == 2.0
 
     def test_write_output_vars_error(self, store):
         model = store.model
@@ -84,6 +134,40 @@ class TestZarrSimulationStore:
 
         with pytest.raises(ValueError, match=r".*accepted dimension.*"):
             store.write_output_vars(-1, 0)
+
+    def test_write_output_vars_batch(self, store_batch, model_batch1, model_batch2):
+        # init state and cache for the two simulations in the batch
+        _bind_state(model_batch1)
+        _bind_state(model_batch2)
+
+        store_batch.init_var_cache(0, model_batch1)
+        store_batch.init_var_cache(1, model_batch2)
+
+        model_batch1.state[("profile", "u")] = np.array([1.0, 2.0, 3.0])
+        model_batch2.state[("profile", "u")] = np.array([4.0, 5.0, 6.0])
+
+        model_batch1.state[("roll", "u_diff")] = np.array([-1.0, 1.0, 0.0])
+        model_batch2.state[("roll", "u_diff")] = np.array([0.0, 1.0, -1.0])
+
+        model_batch1.state[("add", "offset")] = 2.0
+        model_batch2.state[("add", "offset")] = 3.0
+
+        store_batch.write_output_vars(0, 0)
+        store_batch.write_output_vars(1, 0)
+
+        ztest = zarr.open_group(store_batch.zgroup.store, mode="r")
+
+        assert ztest.profile__u.ndim == 3
+        assert_array_equal(
+            ztest.profile__u[:, 0, :],
+            np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+        )
+
+        store_batch.write_output_vars(0, -1)
+        store_batch.write_output_vars(1, -1)
+
+        print(store_batch.output_vars)
+        assert_array_equal(ztest.add__offset[:], np.array([2.0, 3.0]))
 
     def test_write_index_vars(self, store):
         store.model.state[("init_profile", "x")] = np.array([1.0, 2.0, 3.0])
@@ -164,21 +248,14 @@ class TestZarrSimulationStore:
         model.state[("add", "offset")] = 2.0
 
         store.write_output_vars(-1, 0)
+        store.write_output_vars(-1, -1)
 
         ds = store.open_as_xr_dataset()
-        assert ds.profile__u.chunks is None
 
-    def test_open_as_xr_dataset_chunks(self, in_dataset, model):
-        _bind_state(model)
-        store = ZarrSimulationStore(in_dataset, model, zobject=mkdtemp())
-        store.init_var_cache(-1, model)
+        if store.in_memory:
+            assert ds.profile__u.chunks is None
+        else:
+            assert ds.profile__u.chunks is not None
 
-        model = store.model
-        model.state[("profile", "u")] = np.array([1.0, 2.0, 3.0])
-        model.state[("roll", "u_diff")] = np.array([-1.0, 1.0, 0.0])
-        model.state[("add", "offset")] = 2.0
-
-        store.write_output_vars(-1, 0)
-
-        ds = store.open_as_xr_dataset()
-        assert ds.profile__u.chunks is not None
+            # test scalars still loaded in memory
+            assert isinstance(ds.variables["add__offset"]._data, np.ndarray)
