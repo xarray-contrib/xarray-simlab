@@ -61,7 +61,7 @@ def _get_var_info(
             "clock": clock,
             "name": v_name_str,
             "metadata": v_obj.metadata,
-            "shape": None,   # not yet known
+            "shape": None,  # not yet known
             "encoding": v_encoding,
         }
 

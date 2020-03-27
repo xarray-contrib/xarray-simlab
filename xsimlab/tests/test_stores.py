@@ -28,8 +28,7 @@ def zobject(request, tmpdir):
 def in_ds(in_dataset, model):
     # need to test for scalar output variables
     return in_dataset.xsimlab.update_vars(
-        model=model,
-        output_vars={"add__offset": None}
+        model=model, output_vars={"add__offset": None}
     )
 
 
@@ -159,8 +158,7 @@ class TestZarrSimulationStore:
 
         assert ztest.profile__u.ndim == 3
         assert_array_equal(
-            ztest.profile__u[:, 0, :],
-            np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+            ztest.profile__u[:, 0, :], np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
         )
 
         store_batch.write_output_vars(0, -1)
