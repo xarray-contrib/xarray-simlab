@@ -344,13 +344,13 @@ class TestSimlabAccessor:
         assert ds.xsimlab.output_vars_by_clock == expected
 
     def test_run_safe_mode(self, model, in_dataset):
-        # safe mode True: ensure model is cloned
+        # safe mode True: ensure model is cloned (empty state)
         _ = in_dataset.xsimlab.run(model=model, safe_mode=True)
-        assert model.profile.__xsimlab_state__ is None
+        assert model.state == {}
 
-        # safe mode False: model not cloned -> original model is used
+        # safe mode False: model not cloned (non empty state)
         _ = in_dataset.xsimlab.run(model=model, safe_mode=False)
-        assert model.profile.u is not None
+        assert model.state != {}
 
     def test_run_check_dims(self):
         @xs.process

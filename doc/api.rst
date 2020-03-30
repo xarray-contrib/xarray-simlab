@@ -103,16 +103,19 @@ process names and values are objects of ``Process`` subclasses
 Running a model
 ---------------
 
-In most cases, the methods listed below should not be used directly.
-For running simulations, it is preferable to use the
-``Dataset.xsimlab`` accessor instead. These methods might be useful
-though, e.g., for debugging or for using ``Model`` objects with other
-interfaces.
+In most cases, the methods and properties listed below should not be used
+directly. For running simulations, it is preferable to use the
+``Dataset.xsimlab`` accessor instead. These methods might be useful though,
+e.g., for debugging or for using ``Model`` objects with other interfaces.
 
 .. autosummary::
    :toctree: _api_generated/
 
+   Model.state
+   Model.cache_state
+   Model.set_inputs
    Model.execute
+   Model.validate
 
 Process
 =======

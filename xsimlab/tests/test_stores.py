@@ -8,14 +8,6 @@ import xsimlab as xs
 from xsimlab.stores import ZarrSimulationStore
 
 
-def _bind_state(model):
-    state = {}
-    model.state = state
-
-    for p_obj in model.values():
-        p_obj.__xsimlab_state__ = state
-
-
 @pytest.fixture(params=["directory", zarr.MemoryStore])
 def zobject(request, tmpdir):
     if request.param == "directory":
@@ -34,12 +26,7 @@ def in_ds(in_dataset, model):
 
 @pytest.fixture
 def store(in_ds, model, zobject):
-    _bind_state(model)
-
     zstore = ZarrSimulationStore(in_ds, model, zobject=zobject)
-
-    # init cache for the case of a single simulation
-    zstore.init_var_cache(-1, zstore.model)
 
     return zstore
 
@@ -135,13 +122,6 @@ class TestZarrSimulationStore:
             store.write_output_vars(-1, 0)
 
     def test_write_output_vars_batch(self, store_batch, model_batch1, model_batch2):
-        # init state and cache for the two simulations in the batch
-        _bind_state(model_batch1)
-        _bind_state(model_batch2)
-
-        store_batch.init_var_cache(0, model_batch1)
-        store_batch.init_var_cache(1, model_batch2)
-
         model_batch1.state[("profile", "u")] = np.array([1.0, 2.0, 3.0])
         model_batch2.state[("profile", "u")] = np.array([4.0, 5.0, 6.0])
 
@@ -151,8 +131,8 @@ class TestZarrSimulationStore:
         model_batch1.state[("add", "offset")] = 2.0
         model_batch2.state[("add", "offset")] = 3.0
 
-        store_batch.write_output_vars(0, 0)
-        store_batch.write_output_vars(1, 0)
+        store_batch.write_output_vars(0, 0, model=model_batch1)
+        store_batch.write_output_vars(1, 0, model=model_batch2)
 
         ztest = zarr.open_group(store_batch.zgroup.store, mode="r")
 
@@ -161,10 +141,9 @@ class TestZarrSimulationStore:
             ztest.profile__u[:, 0, :], np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
         )
 
-        store_batch.write_output_vars(0, -1)
-        store_batch.write_output_vars(1, -1)
+        store_batch.write_output_vars(0, -1, model=model_batch1)
+        store_batch.write_output_vars(1, -1, model=model_batch2)
 
-        print(store_batch.output_vars)
         assert_array_equal(ztest.add__offset[:], np.array([2.0, 3.0]))
 
     def test_write_index_vars(self, store):
@@ -186,9 +165,7 @@ class TestZarrSimulationStore:
             model=model, clocks={"clock": [0, 1, 2]}, output_vars={"p__arr": "clock"},
         )
 
-        _bind_state(model)
         store = ZarrSimulationStore(in_ds, model)
-        store.init_var_cache(-1, model)
 
         for step, size in zip([0, 1, 2], [1, 3, 2]):
             model.state[("p", "arr")] = np.ones(size)
@@ -220,13 +197,11 @@ class TestZarrSimulationStore:
             output_vars={"p__v1": None, "p__v2": None, "p__v3": None},
         )
 
-        _bind_state(model)
         store = ZarrSimulationStore(
             in_ds,
             model,
             encoding={"p__v2": {"fill_value": -1}, "p__v3": {"compressor": None}},
         )
-        store.init_var_cache(-1, model)
 
         model.state[("p", "v1")] = [0]
         model.state[("p", "v3")] = [0]

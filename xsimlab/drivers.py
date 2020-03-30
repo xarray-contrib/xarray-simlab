@@ -71,89 +71,10 @@ class BaseSimulationDriver:
     """Base class that provides a minimal interface for creating
     simulation drivers (should be inherited).
 
-    It implements methods for binding an active simulation
-    data store (i.e., state) to a model and for feeding/updating this
-    this active data from outside of the process classes (e.g., from
-    inputs).
-
     """
 
-    def __init__(self, model, state=None):
+    def __init__(self, model):
         self.model = model
-
-        if state is None:
-            self.state = {}
-        else:
-            self.state = state
-
-        self._bind_state_to_model()
-
-    def _bind_state_to_model(self):
-        """Bind the simulation active data store to each process in the
-        model.
-        """
-        self.model.state = self.state
-
-        for p_obj in self.model.values():
-            p_obj.__xsimlab_state__ = self.state
-
-    def _set_state(self, input_vars, check_static=True):
-        for key in self.model.input_vars:
-            value = input_vars.get(key)
-
-            if value is None:
-                continue
-
-            p_name, var_name = key
-            var = variables_dict(self.model[p_name].__class__)[var_name]
-
-            if check_static and var.metadata.get("static", False):
-                raise RuntimeError(
-                    "Cannot set value in simulation active store for "
-                    f"static variable {var_name!r} defined "
-                    f"in process {p_name!r}"
-                )
-
-            if var.converter is not None:
-                self.state[key] = var.converter(value)
-            else:
-                self.state[key] = copy.copy(value)
-
-    def initialize_state(self, input_vars):
-        """Pre-populate the simulation active data store (state)
-        with input variable values.
-
-        This should be called before the simulation starts.
-
-        ``input_vars`` is a dictionary where keys are state keys, i.e.,
-        ``(process_name, var_name)`` tuples, and values are the input
-        values to set in the active store.
-
-        Values are first copied from ``input_vars`` before being put in
-        the store to prevent weird behavior (as model processes might
-        update in-place the values in the store).
-
-        Entries of ``input_vars`` that doesn't correspond to model
-        inputs are silently ignored.
-
-        """
-        self._set_state(input_vars, check_static=False)
-
-    def update_state(self, input_vars):
-        """Update the simulation active data store with input variable
-        values.
-
-        Like ``initialize_state``, but here meant to be called during
-        simulation runtime.
-
-        """
-        self._set_state(input_vars, check_static=True)
-
-    def validate(self, p_names):
-        """Run validators for all processes given in `p_names`."""
-
-        for pn in p_names:
-            attr.validate(self.model[pn])
 
     def run_model(self):
         """Main function of the driver used to run a simulation (must be
@@ -268,7 +189,6 @@ class XarraySimulationDriver(BaseSimulationDriver):
         dataset,
         model,
         batch_dim=None,
-        state=None,
         store=None,
         encoding=None,
         check_dims=CheckDimsOption.STRICT,
@@ -281,7 +201,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
         self.dataset = dataset
         self.model = model
 
-        super(XarraySimulationDriver, self).__init__(model, state=state)
+        super(XarraySimulationDriver, self).__init__(model)
 
         self.batch_dim = batch_dim
         self.batch_size = _get_batch_size(dataset, batch_dim)
@@ -349,11 +269,11 @@ class XarraySimulationDriver(BaseSimulationDriver):
 
         return input_vars
 
-    def _maybe_validate_inputs(self, input_vars):
+    def _maybe_validate_inputs(self, model, input_vars):
         p_names = set([v[0] for v in input_vars])
 
         if self._validate_option is not None:
-            self.validate(p_names)
+            model.validate(p_names)
 
     def get_results(self):
         """Get simulation results as a xarray.Dataset loaded from
@@ -363,11 +283,11 @@ class XarraySimulationDriver(BaseSimulationDriver):
 
         out_ds = self.store.open_as_xr_dataset()
 
-        # replace index variables data with simulation data
+        # TODO: replace index variables data with simulation data
         # (could be advanced Index objects that don't support serialization)
-        for key in self.model.index_vars:
-            _, var_name = key
-            out_ds[var_name] = (out_ds[var_name].dims, self.state[key])
+        # for key in self.model.index_vars:
+        #     _, var_name = key
+        #     out_ds[var_name] = (out_ds[var_name].dims, self.model.state[key])
 
         # transpose back
         for xr_var_name, dims in self._original_dims.items():
@@ -389,15 +309,17 @@ class XarraySimulationDriver(BaseSimulationDriver):
         self.store.write_input_xr_dataset()
 
         if self.batch_dim is None:
-            self._run_one_model(self.dataset, self.model)
+            model = self.model
+            self._run_one_model(self.dataset, model)
 
         else:
             ds_gby_batch = self.dataset.groupby(self.batch_dim)
 
             for batch, (_, ds_batch) in enumerate(ds_gby_batch):
-                self._run_one_model(ds_batch, self.model.clone(), batch=batch)
+                model = self.model.clone()
+                self._run_one_model(ds_batch, model, batch=batch)
 
-        self.store.write_index_vars()
+        self.store.write_index_vars(model=model)
 
     def _run_one_model(self, dataset, model, batch=-1):
         """Run one simulation.
@@ -421,10 +343,8 @@ class XarraySimulationDriver(BaseSimulationDriver):
         )
 
         in_vars = self._get_input_vars(ds_init)
-        self.initialize_state(in_vars)
-        self._maybe_validate_inputs(in_vars)
-
-        self.store.init_var_cache(batch, model)
+        model.set_inputs(in_vars, ignore_static=True)
+        self._maybe_validate_inputs(model, in_vars)
 
         model.execute(
             "initialize", runtime_context, hooks=self.hooks, validate=validate_all,
@@ -440,14 +360,14 @@ class XarraySimulationDriver(BaseSimulationDriver):
             )
 
             in_vars = self._get_input_vars(ds_step)
-            self.update_state(in_vars)
-            self._maybe_validate_inputs(in_vars)
+            model.set_inputs(in_vars, ignore_static=False)
+            self._maybe_validate_inputs(model, in_vars)
 
             model.execute(
                 "run_step", runtime_context, hooks=self.hooks, validate=validate_all,
             )
 
-            self.store.write_output_vars(batch, step)
+            self.store.write_output_vars(batch, step, model=model)
 
             model.execute(
                 "finalize_step",
@@ -456,6 +376,6 @@ class XarraySimulationDriver(BaseSimulationDriver):
                 validate=validate_all,
             )
 
-        self.store.write_output_vars(batch, -1)
+        self.store.write_output_vars(batch, -1, model=model)
 
         model.execute("finalize", runtime_context, hooks=self.hooks)
