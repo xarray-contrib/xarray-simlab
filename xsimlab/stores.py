@@ -132,10 +132,7 @@ class ZarrSimulationStore:
         ds.to_zarr(self.zgroup.store, group=self.zgroup.path, mode="a")
 
     def _create_zarr_dataset(
-        self,
-        model: Model,
-        var_key: VarKey,
-        name: Optional[str] = None
+        self, model: Model, var_key: VarKey, name: Optional[str] = None
     ):
         var_info = self.var_info[var_key]
 
@@ -201,10 +198,7 @@ class ZarrSimulationStore:
         self.consolidated = False
 
     def _maybe_create_zarr_dataset(
-        self,
-        model: Model,
-        var_key: VarKey,
-        name: Optional[str] = None,
+        self, model: Model, var_key: VarKey, name: Optional[str] = None,
     ):
         # do not create if already exists (only for batches of simulation)
         try:
@@ -216,9 +210,7 @@ class ZarrSimulationStore:
                 raise err
 
     def _maybe_resize_zarr_dataset(
-        self,
-        model: Model,
-        var_key: VarKey,
+        self, model: Model, var_key: VarKey,
     ):
         # Maybe increases the length of one or more dimensions of
         # the zarr array (only increases, never shrinks dimensions).
