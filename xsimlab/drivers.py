@@ -3,6 +3,7 @@ from enum import Enum
 from typing import Any, Iterator, Mapping
 
 import attr
+import pandas as pd
 
 from .hook import flatten_hooks, group_hooks, RuntimeHook
 from .stores import ZarrSimulationStore
@@ -110,6 +111,20 @@ def _check_missing_inputs(dataset, model):
         raise KeyError(f"Missing variables {missing_xr_vars} in Dataset")
 
 
+def _reset_multi_indexes(dataset):
+    multi_indexes = {}
+    dims = []
+
+    for cname in dataset.coords:
+        idx = dataset.indexes.get(cname)
+
+        if isinstance(idx, pd.MultiIndex):
+            multi_indexes[cname] = idx.names
+            dims.append(cname)
+
+    return dataset.reset_index(dims), multi_indexes
+
+
 def _get_all_active_hooks(hooks):
     """Get all active runtime hooks (i.e, provided as argument, activated from
     context manager or glabally registered) and return them grouped by runtime
@@ -133,7 +148,9 @@ def _generate_runtime_datasets(dataset):
 
     """
     mclock_dim = dataset.xsimlab.master_clock_dim
-    mclock_coord = dataset[mclock_dim]
+
+    # prevent non-index coordinates be included
+    mclock_coord = dataset[mclock_dim].reset_coords(drop=True)
 
     init_data_vars = {
         "_sim_start": mclock_coord[0],
@@ -150,7 +167,8 @@ def _generate_runtime_datasets(dataset):
     }
 
     ds_all_steps = (
-        dataset.drop(list(ds_init.data_vars.keys()), errors="ignore")
+        dataset
+        .drop(list(ds_init.variables), errors="ignore")
         .isel({mclock_dim: slice(0, -1)})
         .assign(step_data_vars)
     )
@@ -184,10 +202,12 @@ class XarraySimulationDriver(BaseSimulationDriver):
         validate=ValidateOption.INPUTS,
         hooks=None,
     ):
-        _check_missing_master_clock(dataset)
-        _check_missing_inputs(dataset, model)
+        # these are not yet supported with zarr
+        self.dataset, self.multi_indexes = _reset_multi_indexes(dataset)
 
-        self.dataset = dataset
+        _check_missing_master_clock(self.dataset)
+        _check_missing_inputs(self.dataset, model)
+
         self.model = model
 
         super(XarraySimulationDriver, self).__init__(model)
@@ -210,7 +230,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
         self.hooks = _get_all_active_hooks(hooks)
 
         self.store = ZarrSimulationStore(
-            dataset, model, zobject=store, encoding=encoding, batch_dim=batch_dim
+            self.dataset, model, zobject=store, encoding=encoding, batch_dim=batch_dim
         )
 
     def _maybe_transpose(self, xr_var, p_name, var_name):
@@ -277,6 +297,9 @@ class XarraySimulationDriver(BaseSimulationDriver):
         # for key in self.model.index_vars:
         #     _, var_name = key
         #     out_ds[var_name] = (out_ds[var_name].dims, self.model.state[key])
+
+        # rebuild multi-indexes
+        out_ds = out_ds.set_index(self.multi_indexes)
 
         # transpose back
         for xr_var_name, dims in self._original_dims.items():

@@ -306,6 +306,11 @@ class SimlabAccessor:
                 xr_var.attrs["description"] = var.metadata["description"]
             xr_var.attrs.update(var.metadata["attrs"])
 
+            # maybe delete first to avoid merge conflicts
+            # (we just want to replace here)
+            if xr_var_name in self._ds:
+                del self._ds[xr_var_name]
+
             self._ds[xr_var_name] = xr_var
 
     def _set_output_vars_attr(self, clock, value):

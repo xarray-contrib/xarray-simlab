@@ -111,11 +111,13 @@ class ZarrSimulationStore:
         return clock_incs
 
     def write_input_xr_dataset(self):
-        # output/index variables already in input dataset will be replaced
+        # remove output/index variables already present (if any)
         drop_vars = [vi["name"] for vi in self.var_info.values()]
         ds = self.dataset.drop(drop_vars, errors="ignore")
 
+        # remove xarray-simlab reserved attributes for output variables
         ds.xsimlab._reset_output_vars(self.model, {})
+
         ds.to_zarr(self.zgroup.store, group=self.zgroup.path, mode="a")
 
     def _create_zarr_dataset(
