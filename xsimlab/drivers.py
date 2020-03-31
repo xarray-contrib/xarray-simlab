@@ -167,8 +167,7 @@ def _generate_runtime_datasets(dataset):
     }
 
     ds_all_steps = (
-        dataset
-        .drop(list(ds_init.variables), errors="ignore")
+        dataset.drop(list(ds_init.variables), errors="ignore")
         .isel({mclock_dim: slice(0, -1)})
         .assign(step_data_vars)
     )
