@@ -6,8 +6,7 @@ import xarray as xr
 import zarr
 
 from . import Model
-from .process import variables_dict
-from .utils import normalize_encoding
+from .utils import get_batch_size, normalize_encoding
 
 
 VarKey = Tuple[str, str]
@@ -16,26 +15,16 @@ EncodingDict = Dict[str, Dict[str, Any]]
 _DIMENSION_KEY = "_ARRAY_DIMENSIONS"
 
 
-def _get_vars_to_store(
-    dataset: xr.Dataset, model: Model
-) -> Dict[VarKey, Optional[str]]:
-    """Get all model variables to save in the store (i.e., the
-    output variables and and in the index variables) and their
-    clock dimension.
-    """
-    var_clocks = {k: v for k, v in dataset.xsimlab.output_vars.items()}
-    var_clocks.update({vk: None for vk in model.index_vars})
-
-    return var_clocks
-
-
 def _get_var_info(
     dataset: xr.Dataset, model: Model, encoding: EncodingDict
 ) -> Dict[VarKey, Dict]:
 
     var_info = {}
 
-    for var_key, clock in _get_vars_to_store(dataset, model).items():
+    var_clocks = {k: v for k, v in dataset.xsimlab.output_vars.items()}
+    var_clocks.update({vk: None for vk in model.index_vars})
+
+    for var_key, clock in var_clocks.items():
         var_cache = model._var_cache[var_key]
         v_encoding = var_cache["metadata"]["encoding"]
         v_encoding.update(normalize_encoding(encoding.get(var_cache["name"])))
@@ -97,10 +86,7 @@ class ZarrSimulationStore:
         self.var_info = _get_var_info(dataset, model, encoding)
 
         self.batch_dim = batch_dim
-        if batch_dim is not None:
-            self.batch_size = dataset.dims[batch_dim]
-        else:
-            self.batch_size = -1
+        self.batch_size = get_batch_size(dataset, batch_dim)
 
         self.mclock_dim = dataset.xsimlab.master_clock_dim
         self.clock_sizes = dataset.xsimlab.clock_sizes

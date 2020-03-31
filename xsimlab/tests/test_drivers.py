@@ -33,7 +33,7 @@ def test_runtime_context():
     assert repr(RuntimeContext()).startswith("RuntimeContext({")
 
 
-class TestBaseDriver:
+class TestBaseSimulationDriver:
     def test_constructor(self, model):
         driver = BaseSimulationDriver(model)
 

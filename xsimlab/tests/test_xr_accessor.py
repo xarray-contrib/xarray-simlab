@@ -423,6 +423,42 @@ class TestSimlabAccessor:
         with pytest.raises(TypeError, match=r".*'int'.*"):
             in_dataset.xsimlab.run(model=m, validate="all")
 
+    @pytest.mark.parametrize(
+        "dims,data,clock",
+        [
+            ("batch", [1, 2], None),
+            (("batch", "clock"), [[1, 1, 1], [2, 2, 2]], "clock"),
+            (("batch", "x"), [[1, 1], [2, 2]], None),
+        ],
+    )
+    def test_run_batch_dim(self, dims, data, clock):
+        @xs.process
+        class P:
+            in_var = xs.variable(dims=[(), "x"])
+            out_var = xs.variable(dims=[(), "x"], intent="out")
+
+            def run_step(self):
+                self.out_var = self.in_var * 2
+
+        m = xs.Model({"p": P})
+
+        in_ds = xs.create_setup(
+            model=m,
+            clocks={"clock": [0, 1, 2]},
+            input_vars={"p__in_var": (dims, data)},
+            output_vars={"p__out_var": clock},
+        )
+
+        out_ds = in_ds.xsimlab.run(model=m, batch_dim="batch")
+
+        if clock is None:
+            coords = {}
+        else:
+            coords = {"clock": in_ds["clock"]}
+
+        expected = xr.DataArray(data, dims=dims, coords=coords) * 2
+        xr.testing.assert_equal(out_ds["p__out_var"], expected)
+
 
 def test_create_setup(model, in_dataset):
     expected = xr.Dataset()

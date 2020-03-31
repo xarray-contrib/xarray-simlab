@@ -61,6 +61,17 @@ def normalize_encoding(encoding):
         return {k: v for k, v in encoding.items() if k in used_keys}
 
 
+def get_batch_size(xr_dataset, batch_dim):
+    if batch_dim is not None:
+        if batch_dim not in xr_dataset.dims:
+            raise KeyError(f"Batch dimension {batch_dim} missing in input dataset")
+
+        return xr_dataset.dims[batch_dim]
+
+    else:
+        return -1
+
+
 class AttrMapping:
     """A class similar to `collections.abc.Mapping`,
     which also allows getting keys with attribute access.

@@ -6,7 +6,7 @@ import attr
 
 from .hook import flatten_hooks, group_hooks, RuntimeHook
 from .stores import ZarrSimulationStore
-from .utils import variables_dict
+from .utils import get_batch_size, variables_dict
 
 
 class ValidateOption(Enum):
@@ -92,17 +92,6 @@ class BaseSimulationDriver:
 def _check_missing_master_clock(dataset):
     if dataset.xsimlab.master_clock_dim is None:
         raise ValueError("Missing master clock dimension / coordinate")
-
-
-def _get_batch_size(dataset, batch_dim):
-    if batch_dim is not None:
-        if batch_dim not in dataset.dims:
-            raise KeyError(f"Batch dimension {batch_dim} missing in input dataset")
-
-        return dataset.dims[batch_dim]
-
-    else:
-        return -1
 
 
 def _check_missing_inputs(dataset, model):
@@ -204,7 +193,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
         super(XarraySimulationDriver, self).__init__(model)
 
         self.batch_dim = batch_dim
-        self.batch_size = _get_batch_size(dataset, batch_dim)
+        self.batch_size = get_batch_size(dataset, batch_dim)
 
         if check_dims is not None:
             check_dims = CheckDimsOption(check_dims)
@@ -330,7 +319,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
           'finalize_step' stages or at the end of the simulation.
 
         """
-        ds_init, ds_gby_steps = _generate_runtime_datasets(self.dataset)
+        ds_init, ds_gby_steps = _generate_runtime_datasets(dataset)
 
         validate_all = self._validate_option is ValidateOption.ALL
 
