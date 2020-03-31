@@ -14,7 +14,7 @@ it exemplifies how to create your own custom monitoring.
 
     import sys
     sys.path.append('scripts')
-    from advection_model import model2, model3
+    from advection_model import advect_model, advect_model_src
 
 The following imports are necessary for the examples below.
 
@@ -26,7 +26,7 @@ The following imports are necessary for the examples below.
    :suppress:
 
     in_ds = xs.create_setup(
-        model=model2,
+        model=advect_model,
         clocks={
             'time': np.linspace(0., 1., 5),
         },
@@ -59,11 +59,11 @@ used as a context manager around simulation calls:
 .. ipython:: python
 
    with ProgressBar():
-       out_ds = in_ds.xsimlab.run(model=model2)
+       out_ds = in_ds.xsimlab.run(model=advect_model)
 
 Alternatively, you can pass the progress bar via the ``hooks`` argument of
 ``Dataset.xsimlab.run()`` or you can use the ``register`` method (for more
-information, refer to the :ref:`custom_runtime_hooks` subsection).
+information, refer to Section :ref:`custom_runtime_hooks`).
 
 ``ProgressBar`` and the underlying Tqdm tool are built to work with different
 Python front-ends. Use the optional argument ``frontend`` depending on your
@@ -85,7 +85,7 @@ keyword arguments list to ``ProgressBar``, e.g.:
 .. ipython:: python
 
    with ProgressBar(bar_format="{desc}|{bar}{r_bar}"):
-       out_ds = in_ds.xsimlab.run(model=model2)
+       out_ds = in_ds.xsimlab.run(model=advect_model)
 
 For a full list of customization options, refer to the `Tqdm documentation`_.
 
@@ -109,7 +109,7 @@ prints the step number as the simulation proceeds:
       ...:     print(f"Starting execution of step {context['step']}")
       ...:
 
-   In [3]: out_ds = in_ds.xsimlab.run(model=model2, hooks=[print_step_start])
+   In [3]: out_ds = in_ds.xsimlab.run(model=advect_model, hooks=[print_step_start])
 
 Runtime hook functions are always called with the following 3 arguments:
 
@@ -132,7 +132,7 @@ number of hook functions, e.g.,
 
    In [5]: print_steps = xs.RuntimeHook(print_step_start, print_step_end)
 
-   In [6]: out_ds = in_ds.xsimlab.run(model=model2, hooks=[print_steps])
+   In [6]: out_ds = in_ds.xsimlab.run(model=advect_model, hooks=[print_steps])
 
 An advantage over directly using hook functions is that you can also use an
 instance of ``RuntimeHook`` either as a context manager over a model run
@@ -141,15 +141,15 @@ call or globally with its ``register`` method:
 .. ipython::
 
    In [7]: with print_steps:
-      ...:     out_ds = in_ds.xsimlab.run(model=model2)
+      ...:     out_ds = in_ds.xsimlab.run(model=advect_model)
 
    In [8]: print_steps.register()
 
-   In [9]: out_ds = in_ds.xsimlab.run(model=model2)
+   In [9]: out_ds = in_ds.xsimlab.run(model=advect_model)
 
    In [10]: print_steps.unregister()
 
-   In [11]: out_ds = in_ds.xsimlab.run(model=model2)  # no print
+   In [11]: out_ds = in_ds.xsimlab.run(model=advect_model)  # no print
 
 Another advantage is that you can subclass ``RuntimeHook`` and add decorated
 methods that may share some state:
@@ -165,4 +165,4 @@ methods that may share some state:
 .. ipython:: python
 
    with PrintStepTime():
-       in_ds.xsimlab.run(model=model2)
+       in_ds.xsimlab.run(model=advect_model)

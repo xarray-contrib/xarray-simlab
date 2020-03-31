@@ -3,7 +3,7 @@
 Create and Modify Models
 ========================
 
-Like the previous :doc:`framework` section, this section is useful
+Like the previous Section :doc:`framework`, this section is useful
 mostly for users who want to create new models from scratch or
 customize existing models. Users who only want to run simulations from
 existing models may skip this section.
@@ -82,7 +82,7 @@ computes a value for these two variables.
 Note also ``static=True`` set for ``spacing``, ``length``, ``loc`` and
 ``scale``. This is to prevent providing time varying values as model inputs for
 those parameters. By default, it is possible to change the value of a variable
-during a simulation (external forcing), see section :ref:`time_varying_inputs`
+during a simulation (external forcing), see Section :ref:`time_varying_inputs`
 for an example. This is not always desirable, though.
 
 Process "runtime" methods
@@ -142,10 +142,10 @@ to include in the model, e.g., with only the process created above:
    :lines: 37
 
 That's it! Now we have different tools already available to inspect
-the model (see section :doc:`inspect_model`). We can also use that
+the model (see Section :doc:`inspect_model`). We can also use that
 model with the xarray extension provided by xarray-simlab to create
 new setups, run the model, take snapshots for one or more variables on
-a given frequency, etc. (see section :doc:`run_model`).
+a given frequency, etc. (see Section :doc:`run_model`).
 
 Fine-grained process refactoring
 --------------------------------
@@ -176,8 +176,13 @@ x-coordinate values.
 .. literalinclude:: scripts/advection_model.py
    :lines: 40-49
 
-Grid x-coordinate values only need to be set once at the beginning of
-the simulation ; there is no need to implement ``.run_step()`` here.
+All grid variables are static, i.e., their values must be time-invariant. The
+``x`` variable is declared using :func:`~xsimlab.index`. This is a specific kind
+of variable intended for storing coordinate labels, here useful for indexing any
+data on the grid. ``x`` values must be set somewhere in the process runtime
+methods and they should also be time-invariant (i.e., all index variables imply
+``intent='out'`` and ``static=True``). Those values are set here once at the
+beginning of the simulation ; there is no need to implement ``.run_step()``.
 
 **ProfileU**
 
@@ -226,20 +231,21 @@ We now have all the building blocks to create a more flexible model:
 .. literalinclude:: scripts/advection_model.py
    :lines: 104-111
 
-The order in which processes are given doesn't matter (it is a
-dictionary). A computationally consistent order, as well as model
-inputs among all declared variables, are both automatically figured
-out when creating the Model instance.
+The order in which the processes are given in the dictionary doesn't matter.
+When creating a new instance of :class:`~xsimlab.Model`, the xarray-simlab
+modeling framework automatically sorts the given processes into a
+computationally consistent order and retrieves the model inputs among all
+declared variables in all processes.
 
-In terms of computation and inputs, ``model2`` is equivalent to the
-``model1`` instance created above ; it is just organized
+In terms of computation and inputs, ``advect_model`` is equivalent to the
+``advect_model_raw`` instance created above ; it is just organized
 differently.
 
 Update existing models
 ----------------------
 
 Between the two Model instances created so far, the advantage of
-``model2`` over ``model1`` is that we can easily update the model --
+``advect_model`` over ``advect_model_raw`` is that we can easily update the model --
 change its behavior and/or add many new features -- without
 sacrificing readability or losing the ability to get back to the
 original, simple version.
@@ -275,9 +281,9 @@ Using one command, we can then update the model with these new
 features:
 
 .. literalinclude:: scripts/advection_model.py
-   :lines: 155
+   :lines: 155-157
 
-Compared to ``model2``, this new ``model3`` have a new process named
+Compared to ``advect_model``, this new ``advect_model_src`` have a new process named
 'source' and a replaced process 'init'.
 
 **Removing one or more processes**
@@ -286,7 +292,7 @@ It is also possible to create new models by removing one or more
 processes from existing Model instances, e.g.,
 
 .. literalinclude:: scripts/advection_model.py
-   :lines: 158
+   :lines: 160
 
 In this latter case, users will have to provide initial values of
 :math:`u` along the grid directly as an input array.
@@ -304,26 +310,26 @@ Customize existing processes
 Sometimes we only want to update an existing model with very minor
 changes.
 
-As an example, let's update ``model2`` by using a fixed grid (i.e.,
+As an example, let's update ``advect_model`` by using a fixed grid (i.e.,
 with hard-coded values for grid spacing and length). One way to
 achieve this is to create a small new process class that sets
 the values of ``spacing`` and ``length``:
 
 .. literalinclude:: scripts/advection_model.py
-   :lines: 161-168
+   :lines: 163-170
 
 However, one drawback of this "additive" approach is that the number
 of processes in a model might become unnecessarily high:
 
 .. literalinclude:: scripts/advection_model.py
-   :lines: 171
+   :lines: 173-175
 
 Alternatively, it is possible to write a process class that inherits
 from ``UniformGrid1D``, in which we can re-declare variables *and/or*
 re-define "runtime" methods:
 
 .. literalinclude:: scripts/advection_model.py
-   :lines: 174-182
+   :lines: 178-186
 
 We can here directly update the model and replace the original process
 ``UniformGrid1D`` by the inherited class ``FixedGrid``. Foreign
@@ -331,7 +337,7 @@ variables that refer to ``UniformGrid1D`` will still correctly point
 to the ``grid`` process in the updated model:
 
 .. literalinclude:: scripts/advection_model.py
-   :lines: 185
+   :lines: 189
 
 .. warning::
 

@@ -104,6 +104,5 @@ group of the GFZ Helmholtz Centre Potsdam.
 Citation
 --------
 
-If you use xarray-simlab and would like to cite it in a scientific
-publication, we would certainly appreciate it (see :doc:`citation`
-section).
+If you use xarray-simlab and would like to cite it in a scientific publication,
+we would certainly appreciate it (see Section :doc:`citation`).
