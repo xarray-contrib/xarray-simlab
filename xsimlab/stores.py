@@ -7,6 +7,7 @@ import zarr
 
 from . import Model
 from .utils import get_batch_size, normalize_encoding
+from .variable import VarType
 
 
 VarKey = Tuple[str, str]
@@ -131,9 +132,14 @@ class ZarrSimulationStore:
         dtype = getattr(value, "dtype", np.asarray(value).dtype)
         shape = list(np.shape(value))
 
+        add_batch_dim = (
+            self.batch_dim is not None
+            and var_info["metadata"]["var_type"] != VarType.INDEX
+        )
+
         if clock is not None:
             shape.insert(0, self.clock_sizes[clock])
-        if self.batch_dim is not None:
+        if add_batch_dim:
             shape.insert(0, self.batch_size)
 
         zkwargs = {
@@ -169,7 +175,7 @@ class ZarrSimulationStore:
 
         if clock is not None:
             dim_labels.insert(0, clock)
-        if self.batch_dim is not None:
+        if add_batch_dim:
             dim_labels.insert(0, self.batch_dim)
 
         zdataset.attrs[_DIMENSION_KEY] = tuple(dim_labels)

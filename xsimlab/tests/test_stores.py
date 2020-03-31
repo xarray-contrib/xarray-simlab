@@ -154,6 +154,15 @@ class TestZarrSimulationStore:
 
         assert_array_equal(ztest.x, np.array([1.0, 2.0, 3.0]))
 
+    def test_write_index_vars_batch(self, store_batch, model_batch1):
+        # ensure that no batch dim is created
+        model_batch1.state[("init_profile", "x")] = np.array([1.0, 2.0, 3.0])
+
+        store_batch.write_index_vars(model=model_batch1)
+        ztest = zarr.open_group(store_batch.zgroup.store, mode="r")
+
+        assert_array_equal(ztest.x, np.array([1.0, 2.0, 3.0]))
+
     def test_resize_zarr_dataset(self):
         @xs.process
         class P:
