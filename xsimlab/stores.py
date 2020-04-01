@@ -27,8 +27,15 @@ def _get_var_info(
 
     for var_key, clock in var_clocks.items():
         var_cache = model._var_cache[var_key]
+
+        # encoding defined at model run
+        run_encoding = normalize_encoding(
+            encoding.get(var_cache["name"]), extra_keys=["chunks", "synchronizer"]
+        )
+
+        # encoding defined in model variable + update
         v_encoding = var_cache["metadata"]["encoding"]
-        v_encoding.update(normalize_encoding(encoding.get(var_cache["name"])))
+        v_encoding.update(run_encoding)
 
         var_info[var_key] = {
             "clock": clock,

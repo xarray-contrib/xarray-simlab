@@ -44,9 +44,8 @@ def import_required(mod_name, error_msg):
         raise RuntimeError(error_msg)
 
 
-def normalize_encoding(encoding):
+def normalize_encoding(encoding, extra_keys=None):
     used_keys = [
-        "chunks",
         "dtype",
         "compressor",
         "fill_value",
@@ -54,6 +53,9 @@ def normalize_encoding(encoding):
         "filters",
         "object_codec",
     ]
+
+    if extra_keys is not None:
+        used_keys += extra_keys
 
     if encoding is None:
         return {}
