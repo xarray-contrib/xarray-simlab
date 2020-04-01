@@ -27,8 +27,15 @@ def _get_var_info(
 
     for var_key, clock in var_clocks.items():
         var_cache = model._var_cache[var_key]
+
+        # encoding defined at model run
+        run_encoding = normalize_encoding(
+            encoding.get(var_cache["name"]), extra_keys=["chunks", "synchronizer"]
+        )
+
+        # encoding defined in model variable + update
         v_encoding = var_cache["metadata"]["encoding"]
-        v_encoding.update(normalize_encoding(encoding.get(var_cache["name"])))
+        v_encoding.update(run_encoding)
 
         var_info[var_key] = {
             "clock": clock,
@@ -39,6 +46,16 @@ def _get_var_info(
         }
 
     return var_info
+
+
+def ensure_no_dataset_conflict(zgroup, znames):
+    existing_datasets = [name for name in znames if name in zgroup]
+
+    if existing_datasets:
+        raise ValueError(
+            f"Zarr path {zgroup.path} already contains the following datasets: "
+            + ",".join(existing_datasets)
+        )
 
 
 def default_fill_value_from_dtype(dtype=None):
@@ -53,6 +70,12 @@ def default_fill_value_from_dtype(dtype=None):
         )
     else:
         return 0
+
+
+def get_auto_chunks(shape, dtype):
+    # A hack to get chunks guessed by zarr
+    arr = zarr.create(shape, dtype=dtype)
+    return arr.chunks
 
 
 class ZarrSimulationStore:
@@ -95,6 +118,10 @@ class ZarrSimulationStore:
         # initialize clock incrementers
         self.clock_incs = self._init_clock_incrementers()
 
+        # ensure no dataset conflict in zarr group
+        znames = [vi["name"] for vi in self.var_info.values()]
+        ensure_no_dataset_conflict(self.zgroup, znames)
+
     def _init_clock_incrementers(self):
         clock_incs = {}
 
@@ -133,6 +160,7 @@ class ZarrSimulationStore:
 
         dtype = getattr(value, "dtype", np.asarray(value).dtype)
         shape = list(np.shape(value))
+        chunks = list(get_auto_chunks(shape, dtype))
 
         add_batch_dim = (
             self.batch_dim is not None
@@ -141,12 +169,15 @@ class ZarrSimulationStore:
 
         if clock is not None:
             shape.insert(0, self.clock_sizes[clock])
+            chunks = list(get_auto_chunks(shape, dtype))
         if add_batch_dim:
             shape.insert(0, self.batch_size)
+            # by default: chunk of length 1 along batch dimension
+            chunks.insert(0, 1)
 
         zkwargs = {
             "shape": tuple(shape),
-            "chunks": True,
+            "chunks": chunks,
             "dtype": dtype,
             "compressor": "default",
             "fill_value": default_fill_value_from_dtype(dtype),
@@ -154,12 +185,11 @@ class ZarrSimulationStore:
 
         zkwargs.update(var_info["encoding"])
 
-        # TODO: more performance assessment
-        # if self.in_memory:
-        #     chunks = False
-        #     compressor = None
-
-        zdataset = self.zgroup.create_dataset(name, **zkwargs)
+        try:
+            zdataset = self.zgroup.create_dataset(name, **zkwargs)
+        except ValueError:
+            # return early if already existing dataset (batches of simulations)
+            return
 
         # add dimension labels and variable attributes as metadata
         dim_labels = None
@@ -190,18 +220,6 @@ class ZarrSimulationStore:
 
         # reset consolidated since metadata has just been updated
         self.consolidated = False
-
-    def _maybe_create_zarr_dataset(
-        self, model: Model, var_key: VarKey, name: Optional[str] = None,
-    ):
-        # do not create if already exists (only for batches of simulation)
-        try:
-            self._create_zarr_dataset(model, var_key, name=name)
-        except ValueError as err:
-            if self.batch_dim:
-                pass
-            else:
-                raise err
 
     def _maybe_resize_zarr_dataset(
         self, model: Model, var_key: VarKey,
@@ -248,7 +266,7 @@ class ZarrSimulationStore:
 
             if clock_inc == 0:
                 for vk in var_keys:
-                    self._maybe_create_zarr_dataset(model, vk)
+                    self._create_zarr_dataset(model, vk)
 
             for vk in var_keys:
                 zkey = self.var_info[vk]["name"]
@@ -284,7 +302,7 @@ class ZarrSimulationStore:
             _, vname = var_key
             model.cache_state(var_key)
 
-            self._maybe_create_zarr_dataset(model, var_key, name=vname)
+            self._create_zarr_dataset(model, var_key, name=vname)
             self.zgroup[vname][:] = model._var_cache[var_key]["value"]
 
     def consolidate(self):

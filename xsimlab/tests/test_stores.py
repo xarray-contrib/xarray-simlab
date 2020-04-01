@@ -71,6 +71,13 @@ class TestZarrSimulationStore:
     def test_constructor_batch(self, store_batch):
         assert store_batch.batch_size == 2
 
+    def test_constructor_conflict(self, in_ds, model):
+        zgroup = zarr.group()
+        zgroup.create_dataset("profile__u", shape=(1, 1))
+
+        with pytest.raises(ValueError, match=r".*already contains.*"):
+            ZarrSimulationStore(in_ds, model, zobject=zgroup)
+
     def test_write_input_xr_dataset(self, in_ds, store):
         store.write_input_xr_dataset()
         ds = xr.open_zarr(store.zgroup.store, chunks=None)
@@ -146,6 +153,9 @@ class TestZarrSimulationStore:
 
         assert_array_equal(ztest.add__offset[:], np.array([2.0, 3.0]))
 
+        # test default chunk size along batch dim
+        assert ztest.profile__u.chunks[0] == 1
+
     def test_write_index_vars(self, store):
         store.model.state[("init_profile", "x")] = np.array([1.0, 2.0, 3.0])
 
@@ -190,7 +200,7 @@ class TestZarrSimulationStore:
     def test_encoding(self):
         @xs.process
         class P:
-            v1 = xs.variable(dims="x", intent="out", encoding={"chunks": (10,)})
+            v1 = xs.variable(dims="x", intent="out", encoding={"dtype": np.int32})
             v2 = xs.on_demand(dims="x", encoding={"fill_value": 0})
             v3 = xs.index(dims="x")
 
@@ -209,7 +219,7 @@ class TestZarrSimulationStore:
         store = ZarrSimulationStore(
             in_ds,
             model,
-            encoding={"p__v2": {"fill_value": -1}, "p__v3": {"compressor": None}},
+            encoding={"p__v2": {"fill_value": -1}, "p__v3": {"chunks": (10,)}},
         )
 
         model.state[("p", "v1")] = [0]
@@ -218,10 +228,10 @@ class TestZarrSimulationStore:
 
         ztest = zarr.open_group(store.zgroup.store, mode="r")
 
-        assert ztest.p__v1.chunks == (10,)
+        assert ztest.p__v1.dtype == np.int32
         # test encoding precedence ZarrSimulationStore > model variable
         assert ztest.p__v2.fill_value == -1
-        assert ztest.p__v3.compressor is None
+        assert ztest.p__v3.chunks == (10,)
 
     def test_open_as_xr_dataset(self, store):
         model = store.model

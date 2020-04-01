@@ -41,7 +41,6 @@ def test_normalize_encoding():
     assert utils.normalize_encoding(None) == {}
 
     encoding = {
-        "chunks": True,
         "dtype": "int",
         "compressor": None,
         "fill_value": 0,
@@ -53,6 +52,10 @@ def test_normalize_encoding():
 
     actual = utils.normalize_encoding(encoding)
     encoding.pop("ignored_key")
+    assert actual == encoding
+
+    encoding = {"chunks": True}
+    actual = utils.normalize_encoding(encoding, extra_keys=["chunks"])
     assert actual == encoding
 
 
