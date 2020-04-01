@@ -170,8 +170,8 @@ change submission.
 Release notes
 ~~~~~~~~~~~~~
 
-Every significative code contribution should be listed in the
-:doc:`whats_new` section of this documentation under the corresponding version.
+Every significative code contribution should be listed in Section
+:doc:`whats_new` of this documentation under the corresponding version.
 
 Contributing to documentation
 -----------------------------

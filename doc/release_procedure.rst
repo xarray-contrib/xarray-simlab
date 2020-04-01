@@ -65,7 +65,7 @@ How to issue a xarray-simlab release in a few steps:
 
       $ shasum -a 256 xarray-simlab-0.X.Y.tar.gz
 
-12. Add a section for the next release (v.X.(Y+1)) to
+12. Add a Section for the next release (v.X.(Y+1)) to
     ``doc/whats-new.rst``.
 
 13. Commit your changes and push to master again::

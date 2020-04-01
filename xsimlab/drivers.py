@@ -3,10 +3,11 @@ from enum import Enum
 from typing import Any, Iterator, Mapping
 
 import attr
+import pandas as pd
 
 from .hook import flatten_hooks, group_hooks, RuntimeHook
 from .stores import ZarrSimulationStore
-from .utils import variables_dict
+from .utils import get_batch_size, variables_dict
 
 
 class ValidateOption(Enum):
@@ -23,6 +24,8 @@ class RuntimeContext(Mapping[str, Any]):
     """A mapping providing runtime information at the current time step."""
 
     _context_keys = (
+        "batch_size",
+        "batch",
         "sim_start",
         "sim_end",
         "step",
@@ -69,89 +72,20 @@ class BaseSimulationDriver:
     """Base class that provides a minimal interface for creating
     simulation drivers (should be inherited).
 
-    It implements methods for binding an active simulation
-    data store (i.e., state) to a model and for feeding/updating this
-    this active data from outside of the process classes (e.g., from
-    inputs).
-
     """
 
-    def __init__(self, model, state):
+    def __init__(self, model):
         self.model = model
-        self.state = state
-
-        self._bind_state_to_model()
-
-    def _bind_state_to_model(self):
-        """Bind the simulation active data store to each process in the
-        model.
-        """
-        self.model.state = self.state
-
-        for p_obj in self.model.values():
-            p_obj.__xsimlab_state__ = self.state
-
-    def _set_state(self, input_vars, check_static=True):
-        for key in self.model.input_vars:
-            value = input_vars.get(key)
-
-            if value is None:
-                continue
-
-            p_name, var_name = key
-            var = variables_dict(self.model[p_name].__class__)[var_name]
-
-            if check_static and var.metadata.get("static", False):
-                raise RuntimeError(
-                    "Cannot set value in simulation active store for "
-                    f"static variable {var_name!r} defined "
-                    f"in process {p_name!r}"
-                )
-
-            if var.converter is not None:
-                self.state[key] = var.converter(value)
-            else:
-                self.state[key] = copy.copy(value)
-
-    def initialize_state(self, input_vars):
-        """Pre-populate the simulation active data store (state)
-        with input variable values.
-
-        This should be called before the simulation starts.
-
-        ``input_vars`` is a dictionary where keys are state keys, i.e.,
-        ``(process_name, var_name)`` tuples, and values are the input
-        values to set in the active store.
-
-        Values are first copied from ``input_vars`` before being put in
-        the store to prevent weird behavior (as model processes might
-        update in-place the values in the store).
-
-        Entries of ``input_vars`` that doesn't correspond to model
-        inputs are silently ignored.
-
-        """
-        self._set_state(input_vars, check_static=False)
-
-    def update_state(self, input_vars):
-        """Update the simulation active data store with input variable
-        values.
-
-        Like ``initialize_state``, but here meant to be called during
-        simulation runtime.
-
-        """
-        self._set_state(input_vars, check_static=True)
-
-    def validate(self, p_names):
-        """Run validators for all processes given in `p_names`."""
-
-        for pn in p_names:
-            attr.validate(self.model[pn])
 
     def run_model(self):
         """Main function of the driver used to run a simulation (must be
         implemented in sub-classes).
+        """
+        raise NotImplementedError()
+
+    def get_results(self):
+        """Function of the driver used to return results of a simulation
+        (must be implemented in sub-classes).
         """
         raise NotImplementedError()
 
@@ -177,6 +111,20 @@ def _check_missing_inputs(dataset, model):
         raise KeyError(f"Missing variables {missing_xr_vars} in Dataset")
 
 
+def _reset_multi_indexes(dataset):
+    multi_indexes = {}
+    dims = []
+
+    for cname in dataset.coords:
+        idx = dataset.indexes.get(cname)
+
+        if isinstance(idx, pd.MultiIndex):
+            multi_indexes[cname] = idx.names
+            dims.append(cname)
+
+    return dataset.reset_index(dims), multi_indexes
+
+
 def _get_all_active_hooks(hooks):
     """Get all active runtime hooks (i.e, provided as argument, activated from
     context manager or glabally registered) and return them grouped by runtime
@@ -200,7 +148,9 @@ def _generate_runtime_datasets(dataset):
 
     """
     mclock_dim = dataset.xsimlab.master_clock_dim
-    mclock_coord = dataset[mclock_dim]
+
+    # prevent non-index coordinates be included
+    mclock_coord = dataset[mclock_dim].reset_coords(drop=True)
 
     init_data_vars = {
         "_sim_start": mclock_coord[0],
@@ -217,7 +167,7 @@ def _generate_runtime_datasets(dataset):
     }
 
     ds_all_steps = (
-        dataset.drop(list(ds_init.data_vars.keys()), errors="ignore")
+        dataset.drop(list(ds_init.variables), errors="ignore")
         .isel({mclock_dim: slice(0, -1)})
         .assign(step_data_vars)
     )
@@ -244,23 +194,25 @@ class XarraySimulationDriver(BaseSimulationDriver):
         self,
         dataset,
         model,
-        state=None,
+        batch_dim=None,
         store=None,
         encoding=None,
         check_dims=CheckDimsOption.STRICT,
         validate=ValidateOption.INPUTS,
         hooks=None,
     ):
-        _check_missing_master_clock(dataset)
-        _check_missing_inputs(dataset, model)
+        # these are not yet supported with zarr
+        self.dataset, self.multi_indexes = _reset_multi_indexes(dataset)
 
-        self.dataset = dataset
+        _check_missing_master_clock(self.dataset)
+        _check_missing_inputs(self.dataset, model)
+
         self.model = model
 
-        if state is None:
-            state = {}
+        super(XarraySimulationDriver, self).__init__(model)
 
-        super(XarraySimulationDriver, self).__init__(model, state)
+        self.batch_dim = batch_dim
+        self.batch_size = get_batch_size(dataset, batch_dim)
 
         if check_dims is not None:
             check_dims = CheckDimsOption(check_dims)
@@ -277,7 +229,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
         self.hooks = _get_all_active_hooks(hooks)
 
         self.store = ZarrSimulationStore(
-            dataset, model, zobject=store, encoding=encoding
+            self.dataset, model, zobject=store, encoding=encoding, batch_dim=batch_dim
         )
 
     def _maybe_transpose(self, xr_var, p_name, var_name):
@@ -325,22 +277,28 @@ class XarraySimulationDriver(BaseSimulationDriver):
 
         return input_vars
 
-    def _maybe_validate_inputs(self, input_vars):
+    def _maybe_validate_inputs(self, model, input_vars):
         p_names = set([v[0] for v in input_vars])
 
         if self._validate_option is not None:
-            self.validate(p_names)
+            model.validate(p_names)
 
-    def _get_output_dataset(self):
+    def get_results(self):
+        """Get simulation results as a xarray.Dataset loaded from
+        the zarr store.
+        """
         self.store.consolidate()
 
         out_ds = self.store.open_as_xr_dataset()
 
-        # replace index variables data with simulation data
+        # TODO: replace index variables data with simulation data
         # (could be advanced Index objects that don't support serialization)
-        for key in self.model.index_vars:
-            _, var_name = key
-            out_ds[var_name].data = self.state[key]
+        # for key in self.model.index_vars:
+        #     _, var_name = key
+        #     out_ds[var_name] = (out_ds[var_name].dims, self.model.state[key])
+
+        # rebuild multi-indexes
+        out_ds = out_ds.set_index(self.multi_indexes)
 
         # transpose back
         for xr_var_name, dims in self._original_dims.items():
@@ -358,8 +316,24 @@ class XarraySimulationDriver(BaseSimulationDriver):
         return out_ds
 
     def run_model(self):
-        """Run the model and return a new Dataset with all the simulation
-        inputs and outputs.
+        """Run one or multiple simulation(s)."""
+        self.store.write_input_xr_dataset()
+
+        if self.batch_dim is None:
+            model = self.model
+            self._run_one_model(self.dataset, model)
+
+        else:
+            ds_gby_batch = self.dataset.groupby(self.batch_dim)
+
+            for batch, (_, ds_batch) in enumerate(ds_gby_batch):
+                model = self.model.clone()
+                self._run_one_model(ds_batch, model, batch=batch)
+
+        self.store.write_index_vars(model=model)
+
+    def _run_one_model(self, dataset, model, batch=-1):
+        """Run one simulation.
 
         - Set model inputs from the input Dataset (update
           time-dependent model inputs -- if any -- before each time step).
@@ -367,22 +341,23 @@ class XarraySimulationDriver(BaseSimulationDriver):
           'finalize_step' stages or at the end of the simulation.
 
         """
-        self.store.write_input_xr_dataset()
-        ds_init, ds_gby_steps = _generate_runtime_datasets(self.dataset)
+        ds_init, ds_gby_steps = _generate_runtime_datasets(dataset)
 
         validate_all = self._validate_option is ValidateOption.ALL
 
         runtime_context = RuntimeContext(
+            batch_size=self.batch_size,
+            batch=batch,
             sim_start=ds_init["_sim_start"].values,
             nsteps=ds_init["_nsteps"].values,
             sim_end=ds_init["_sim_end"].values,
         )
 
         in_vars = self._get_input_vars(ds_init)
-        self.initialize_state(in_vars)
-        self._maybe_validate_inputs(in_vars)
+        model.set_inputs(in_vars, ignore_static=True)
+        self._maybe_validate_inputs(model, in_vars)
 
-        self.model.execute(
+        model.execute(
             "initialize", runtime_context, hooks=self.hooks, validate=validate_all,
         )
 
@@ -396,25 +371,22 @@ class XarraySimulationDriver(BaseSimulationDriver):
             )
 
             in_vars = self._get_input_vars(ds_step)
-            self.update_state(in_vars)
-            self._maybe_validate_inputs(in_vars)
+            model.set_inputs(in_vars, ignore_static=False)
+            self._maybe_validate_inputs(model, in_vars)
 
-            self.model.execute(
+            model.execute(
                 "run_step", runtime_context, hooks=self.hooks, validate=validate_all,
             )
 
-            self.store.write_output_vars(step)
+            self.store.write_output_vars(batch, step, model=model)
 
-            self.model.execute(
+            model.execute(
                 "finalize_step",
                 runtime_context,
                 hooks=self.hooks,
                 validate=validate_all,
             )
 
-        self.store.write_output_vars(-1)
-        self.store.write_index_vars()
+        self.store.write_output_vars(batch, -1, model=model)
 
-        self.model.execute("finalize", runtime_context, hooks=self.hooks)
-
-        return self._get_output_dataset()
+        model.execute("finalize", runtime_context, hooks=self.hooks)

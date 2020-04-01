@@ -1,4 +1,5 @@
 from collections import OrderedDict, defaultdict
+import copy
 
 import attr
 
@@ -9,7 +10,7 @@ from .process import (
     get_target_variable,
     SimulationStage,
 )
-from .utils import AttrMapping, ContextMixin, Frozen
+from .utils import AttrMapping, ContextMixin, Frozen, variables_dict
 from .formatting import repr_model
 
 
@@ -36,6 +37,9 @@ class _ModelBuilder:
 
     - Attach the model instance to each process and assign their given
       name in model.
+    - Create a "state", i.e., a mapping used to store active simulation data
+    - Create a cache for fastpath access to the (meta)data of all variables
+      defined in the model
     - Define for each variable of the model its corresponding key
       (in state or on-demand)
     - Find variables that are model inputs
@@ -80,6 +84,33 @@ class _ModelBuilder:
         for p_name, p_obj in self._processes_obj.items():
             p_obj.__xsimlab_model__ = model_obj
             p_obj.__xsimlab_name__ = p_name
+
+    def set_state(self):
+        state = {}
+
+        # bind state to each process in the model
+        for p_obj in self._processes_obj.values():
+            p_obj.__xsimlab_state__ = state
+
+        return state
+
+    def create_variable_cache(self):
+        """Create a cache for fastpath access to the (meta)data of all
+        variables defined in the model.
+
+        """
+        var_cache = {}
+
+        for p_name, p_cls in self._processes_cls.items():
+            for v_name, attrib in variables_dict(p_cls).items():
+                var_cache[(p_name, v_name)] = {
+                    "name": f"{p_name}__{v_name}",
+                    "attrib": attrib,
+                    "metadata": attrib.metadata,
+                    "value": None,
+                }
+
+        return var_cache
 
     def _get_var_key(self, p_name, var):
         """Get state and/or on-demand keys for variable `var` declared in
@@ -438,6 +469,9 @@ class Model(AttrMapping, ContextMixin):
         builder.bind_processes(self)
         builder.set_process_keys()
 
+        self._state = builder.set_state()
+        self._var_cache = builder.create_variable_cache()
+
         self._all_vars = builder.get_variables()
         self._all_vars_dict = None
 
@@ -453,9 +487,6 @@ class Model(AttrMapping, ContextMixin):
 
         self._dep_processes = builder.get_process_dependencies()
         self._processes = builder.get_sorted_processes()
-
-        # overwritten by simulation drivers
-        self.state = {}
 
         super(Model, self).__init__(self._processes)
         self._initialized = True
@@ -567,6 +598,95 @@ class Model(AttrMapping, ContextMixin):
             show_variables=show_variables,
         )
 
+    @property
+    def state(self):
+        """Returns a mapping of model variables and their current value.
+
+        Mapping keys are in the form of ``('process_name', 'var_name')`` tuples.
+
+        This mapping does not include "on demand" variables.
+        """
+        return self._state
+
+    def set_inputs(self, input_data, ignore_static=False, ignore_invalid_keys=True):
+        """Set or update input variable values in the model's state.
+
+        Prior to update the model's state, first convert the values for model
+        variables that have a converter, otherwise copy the values.
+
+        Parameters
+        ----------
+        input_data : dict_like
+            A mapping where keys are in the form of a
+            ``('process_name', 'var_name')`` tuple and values are
+            the input values to set in the model state.
+        ignore_static : bool, optional
+            If True, sets the values even for static variables. Otherwise
+            (default), raises a ``ValueError`` in order to prevent updating
+            values of static variables.
+        ignore_invalid_keys : bool, optional
+            If True (default), ignores keys in ``input_data`` that do not
+            correspond to input variables in the model. Otherwise, raises
+            a ``KeyError``.
+
+        """
+        for key, value in input_data.items():
+
+            if key not in self.input_vars:
+                if ignore_invalid_keys:
+                    continue
+                else:
+                    raise KeyError(f"{key} is not a valid input variable in model")
+
+            var = self._var_cache[key]["attrib"]
+
+            if not ignore_static and var.metadata.get("static", False):
+                raise ValueError(f"Cannot set value for static variable {key}")
+
+            if var.converter is not None:
+                self._state[key] = var.converter(value)
+            else:
+                self._state[key] = copy.copy(value)
+
+    def cache_state(self, var_key):
+        """Explicitly cache the current value in state for a given model
+        variable.
+
+        This is generally not really needed, except for on demand variables
+        where this may optimize multiple accesses to the variable value between
+        two simulation stages.
+
+        No copy is performed.
+
+        Parameters
+        ----------
+        var_key : tuple
+            Variable key in the form of a ``('process_name', 'var_name')``
+            tuple.
+
+        """
+        p_name, v_name = var_key
+        self._var_cache[var_key]["value"] = getattr(self._processes[p_name], v_name)
+
+    def validate(self, p_names=None):
+        """Run the variable validators of all or some of the processes
+        in the model.
+
+        Parameters
+        ----------
+        p_names : list, optional
+            Names of the processes to validate. If None is given (default),
+            validators are run for all processes.
+
+        """
+        if p_names is None:
+            processes = self._processes.values()
+        else:
+            processes = [self._processes[pn] for pn in p_names]
+
+        for p_obj in processes:
+            attr.validate(p_obj)
+
     def _call_hooks(self, hooks, runtime_context, stage, level, trigger):
         try:
             event_hooks = hooks[stage][level][trigger]
@@ -579,11 +699,9 @@ class Model(AttrMapping, ContextMixin):
     def execute(self, stage, runtime_context, hooks=None, validate=False):
         """Run one stage of a simulation.
 
-        This shouldn't be called directly, except for debugging purpose.
-
         Parameters
         ----------
-        stage : str
+        stage : {'initialize', 'run_step', 'finalize_step', 'finalize'}
             Name of the simulation stage.
         runtime_context : dict
             Dictionary containing runtime variables (e.g., time step
@@ -613,14 +731,17 @@ class Model(AttrMapping, ContextMixin):
             self._call_hooks(hooks, runtime_context, stage, "process", "post")
 
             if validate:
-                for pn in self._processes_to_validate[p_name]:
-                    attr.validate(self._processes[pn])
+                self.validate(self._processes_to_validate[p_name])
 
         self._call_hooks(hooks, runtime_context, stage, "model", "post")
 
     def clone(self):
-        """Clone the Model, i.e., create a new Model instance with the same
-        process classes but different instances.
+        """Clone the Model.
+
+        Returns
+        -------
+        cloned : Model
+            New Model instance with the same processes.
 
         """
         processes_cls = {k: type(obj) for k, obj in self._processes.items()}

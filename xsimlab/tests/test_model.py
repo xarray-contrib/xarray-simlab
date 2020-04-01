@@ -1,3 +1,5 @@
+import attr
+import numpy as np
 import pytest
 
 import xsimlab as xs
@@ -9,6 +11,22 @@ class TestModelBuilder:
     def test_bind_processes(self, model):
         assert model._processes["profile"].__xsimlab_model__ is model
         assert model._processes["profile"].__xsimlab_name__ == "profile"
+
+    def test_set_state(self, model):
+        # test state bound to processes
+        model.state[("init_profile", "n_points")] = 10
+        assert model.init_profile.n_points == 10
+
+    def test_create_variable_cache(self, model):
+        actual = model._var_cache[("init_profile", "n_points")]
+
+        assert actual["name"] == "init_profile__n_points"
+        assert (
+            actual["attrib"]
+            is attr.fields_dict(model["init_profile"].__class__)["n_points"]
+        )
+        assert actual["metadata"] == attr.fields_dict(InitProfile)["n_points"].metadata
+        assert actual["value"] is None
 
     @pytest.mark.parametrize(
         "p_name,expected_state_keys,expected_od_keys",
@@ -181,6 +199,53 @@ class TestModel:
             [isinstance(p_vars, list) for p_vars in model.input_vars_dict.values()]
         )
         assert "n_points" in model.input_vars_dict["init_profile"]
+
+    def test_set_inputs(self, model):
+        arr = np.array([1, 2, 3, 4])
+
+        input_vars = {
+            ("init_profile", "n_points"): 10.2,
+            ("add", "offset"): arr,
+            ("not-a-model", "input"): 0,
+        }
+
+        model.set_inputs(input_vars, ignore_static=True, ignore_invalid_keys=True)
+
+        # test converted value
+        assert model.state[("init_profile", "n_points")] == 10
+        assert type(model.state[("init_profile", "n_points")]) is int
+
+        # test copy
+        np.testing.assert_array_equal(model.state[("add", "offset")], arr)
+        assert model.state[("add", "offset")] is not arr
+
+        # test invalid key ignored
+        assert ("not-a-model", "input") not in model.state
+
+        # test errors
+        with pytest.raises(ValueError, match=r".* static variable .*"):
+            model.set_inputs(input_vars, ignore_static=False, ignore_invalid_keys=True)
+
+        with pytest.raises(KeyError, match=r".* not a valid input variable .*"):
+            model.set_inputs(input_vars, ignore_static=True, ignore_invalid_keys=False)
+
+    def test_cache_state(self, model):
+        model.state[("init_profile", "n_points")] = 10
+        model.cache_state(("init_profile", "n_points"))
+
+        assert model._var_cache[("init_profile", "n_points")]["value"] == 10
+
+        # test on demand variables
+        model.state[("add", "offset")] = 1
+        model.cache_state(("add", "u_diff"))
+
+        assert model._var_cache[("add", "u_diff")]["value"] == 1
+
+    def test_validate(self, model):
+        model.state[("roll", "shift")] = 2.5
+
+        with pytest.raises(TypeError, match=r".*'int'.*"):
+            model.validate(["roll"])
 
     def test_clone(self, model):
         cloned = model.clone()

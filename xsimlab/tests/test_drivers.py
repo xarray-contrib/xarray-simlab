@@ -1,7 +1,7 @@
 import numpy as np
+import pandas as pd
 import pytest
-from numpy.testing import assert_array_equal
-from xarray.testing import assert_identical
+import xarray as xr
 
 import xsimlab as xs
 from xsimlab.drivers import (
@@ -13,8 +13,7 @@ from xsimlab.drivers import (
 
 @pytest.fixture
 def base_driver(model):
-    state = {}
-    return BaseSimulationDriver(model, state)
+    return BaseSimulationDriver(model)
 
 
 @pytest.fixture
@@ -34,55 +33,19 @@ def test_runtime_context():
     assert repr(RuntimeContext()).startswith("RuntimeContext({")
 
 
-class TestBaseDriver:
-    def test_bind_state(self, base_driver):
-        base_driver.state[("init_profile", "n_points")] = 10
-        assert base_driver.model.init_profile.n_points == 10
+class TestBaseSimulationDriver:
+    def test_constructor(self, model):
+        driver = BaseSimulationDriver(model)
 
-    def test_set_state_ignore(self, base_driver):
-        input_vars = {("not-a-model", "input"): 0}
-        base_driver.initialize_state(input_vars)
-
-        assert ("not-a-model", "input") not in base_driver.state
-
-    def test_set_state_copy(self, base_driver):
-        n = np.array([1, 2, 3, 4])
-        input_vars = {("add", "offset"): n}
-        base_driver.initialize_state(input_vars)
-
-        actual = base_driver.state[("add", "offset")]
-        assert_array_equal(actual, n)
-        assert actual is not n
-
-    def test_set_state_converter(self, base_driver):
-        input_vars = {("init_profile", "n_points"): 10.2}
-        base_driver.initialize_state(input_vars)
-
-        actual = base_driver.state[("init_profile", "n_points")]
-        assert actual == 10
-        assert type(actual) is int
-
-    def test_initialize_state(self, base_driver):
-        input_vars = {("init_profile", "n_points"): 10}
-        base_driver.initialize_state(input_vars)
-
-        assert base_driver.state[("init_profile", "n_points")] == 10
-
-    def test_update_state(self, base_driver):
-        input_vars = {("init_profile", "n_points"): 10}
-
-        with pytest.raises(RuntimeError, match=r".* static variable .*"):
-            base_driver.update_state(input_vars)
-
-    def test_validate(self, base_driver):
-        base_driver.state[("roll", "shift")] = 2.5
-
-        with pytest.raises(TypeError, match=r".*'int'.*"):
-            base_driver.validate(["roll"])
+        assert driver.model is model
 
     def test_run_model(self, base_driver):
         with pytest.raises(NotImplementedError):
             base_driver.run_model()
+
+    def test_get_results(self, base_driver):
+        with pytest.raises(NotImplementedError):
+            base_driver.get_results()
 
 
 class TestXarraySimulationDriver:
@@ -110,23 +73,44 @@ class TestXarraySimulationDriver:
             assert np.isscalar(actual)
 
         else:
-            assert_array_equal(actual, expected)
+            np.testing.assert_array_equal(actual, expected)
             assert not np.isscalar(actual)
 
-    def test_get_output_dataset(self, in_dataset, xarray_driver):
-        # regression test: make sure a copy of input dataset is used
-        out_ds = xarray_driver.run_model()
-        assert not in_dataset.identical(out_ds)
-
-    def test_run_model(self, in_dataset, out_dataset, xarray_driver):
-        out_ds_actual = xarray_driver.run_model()
+    def test_run_model_get_results(self, in_dataset, out_dataset, xarray_driver):
+        xarray_driver.run_model()
+        out_ds_actual = xarray_driver.get_results()
 
         # skip attributes added by xr.open_zarr from check
         for xr_var in out_ds_actual.variables.values():
             xr_var.attrs.pop("_FillValue", None)
 
         assert out_ds_actual is not out_dataset
-        assert_identical(out_ds_actual.load(), out_dataset)
+        xr.testing.assert_identical(out_ds_actual.load(), out_dataset)
+
+    def test_multi_index(self, in_dataset, model):
+        # just check that multi-index pass through model run (reset -> zarr -> rebuilt)
+        midx = pd.MultiIndex.from_tuples([(0, 1), (0, 2)], names=["a", "b"])
+
+        in_dataset["dummy"] = ("dummy", midx)
+
+        driver = XarraySimulationDriver(in_dataset, model)
+        driver.run_model()
+        out_dataset = driver.get_results()
+
+        pd.testing.assert_index_equal(out_dataset.indexes["dummy"], midx)
+
+    def test_static_var_as_scalar_coord(self, in_dataset, out_dataset, model):
+        # test that a model input (static variable) given as a scalar coordinate
+        # doesn't cause any trouble
+        in_dataset.coords["init_profile__n_points"] = in_dataset[
+            "init_profile__n_points"
+        ]
+
+        driver = XarraySimulationDriver(in_dataset, model)
+        driver.run_model()
+        out_ds = driver.get_results()
+
+        xr.testing.assert_equal(out_ds.reset_coords(), out_dataset)
 
     def test_runtime_context(self, in_dataset, model):
         @xs.process

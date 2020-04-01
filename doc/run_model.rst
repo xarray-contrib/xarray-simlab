@@ -6,7 +6,7 @@ Setup and Run Models
 This section shows how to create new settings (either from scratch or
 from existing settings) and run simulations with :class:`~xsimlab.Model`
 instances, using the xarray extension provided by xarray-simlab. We'll
-use here the simple advection models that we have created in section
+use here the simple advection models that we have created in Section
 :doc:`create_model`.
 
 .. ipython:: python
@@ -14,7 +14,7 @@ use here the simple advection models that we have created in section
 
     import sys
     sys.path.append('scripts')
-    from advection_model import model2, model3
+    from advection_model import advect_model, advect_model_src
 
 The following imports are necessary for the examples below.
 
@@ -35,11 +35,11 @@ The following imports are necessary for the examples below.
 Create a new setup from scratch
 -------------------------------
 
-In this example we use the ``model2`` Model instance:
+In this example we use the ``advect_model`` Model instance:
 
 .. ipython:: python
 
-    model2
+    advect_model
 
 The convenient :func:`~xsimlab.create_setup` function can be used to
 create a new setup in a very declarative way:
@@ -47,7 +47,7 @@ create a new setup in a very declarative way:
 .. ipython:: python
 
     in_ds = xs.create_setup(
-        model=model2,
+        model=advect_model,
         clocks={
             'time': np.linspace(0., 1., 101),
             'otime': [0, 0.5, 1]
@@ -59,7 +59,6 @@ create a new setup in a very declarative way:
             'advect__v': 1.
         },
         output_vars={
-            'grid__x': None,
             'profile__u': 'otime'
         }
     )
@@ -80,8 +79,7 @@ A setup consists in:
 In the example above, we set ``time`` as the master clock dimension
 and ``otime`` as another dimension for taking snapshots of :math:`u`
 along the grid at three given times of the simulation (beginning,
-middle and end). The time-independent x-coordinate values of the grid
-will be saved as well.
+middle and end).
 
 ``create_setup`` returns all these settings packaged into a
 :class:`xarray.Dataset` :
@@ -106,48 +104,46 @@ method from the input dataset created above. It returns a new dataset:
 
 .. ipython:: python
 
-    out_ds = in_ds.xsimlab.run(model=model2)
+    out_ds = in_ds.xsimlab.run(model=advect_model)
 
 The returned dataset contains all the variables of the input
 dataset. It also contains simulation outputs as new or updated data
-variables, e.g., ``grid__x`` and ``profile__u`` in this example:
+variables, e.g., ``profile__u`` in this example:
 
 .. ipython:: python
 
     out_ds
+
+Note also the ``x`` coordinate present in this output dataset. ``x`` is declared
+in ``advect_model.grid`` as an index variable and therefore has been
+automatically added as a coordinate in the dataset.
 
 Post-processing and plotting
 ----------------------------
 
-A great advantage of using xarray Datasets is that it is
-straightforward to include the simulation as part of a processing
-pipeline, i.e., by chaining ``xsimlab.run()`` with other methods
-that can also be applied on Dataset objects.
+A great advantage of using xarray Datasets is that it is straightforward to
+include the simulation as part of a processing pipeline, i.e., by chaining
+``xsimlab.run()`` with other methods that can also be applied on Dataset (or
+DataArray) objects.
 
-As an example, instead of a data variable ``grid__x`` it would be
-nicer to save the grid :math:`x` values as a coordinate in the output
-dataset:
-
-.. ipython:: python
-
-    out_ds = (in_ds.xsimlab.run(model=model2)
-                   .set_index(x='grid__x'))
-    out_ds
-
-All convenient methods provided by xarray are directly accessible,
-e.g., for plotting snapshots:
+For example, we can extract the values of ``profile__u`` at a given position on
+the grid (and clearly notice the advection of the pulse):
 
 .. ipython:: python
 
-    def plot_u(ds):
-        fig, axes = plt.subplots(ncols=3, figsize=(10, 3))
-        for t, ax in zip(ds.otime, axes):
-            ds.profile__u.sel(otime=t).plot(ax=ax)
-        fig.tight_layout()
-        return fig
+    out_ds.profile__u.sel(x=0.75)
 
-    @savefig run_model.png width=100%
-    plot_u(out_ds);
+Or plot the whole profile for all snapshots:
+
+.. ipython:: python
+
+    @savefig run_advect_model.png width=100%
+    out_ds.profile__u.plot(col='otime', figsize=(9, 3));
+
+There is a huge number of features available for selecting data, computation,
+plotting, I/O, and more, see `xarray's documentation`_!
+
+.. _`xarray's documentation`: https://xarray.pydata.org/en/stable/
 
 Reuse existing settings
 -----------------------
@@ -164,10 +160,9 @@ update only the value of velocity, thanks to
 .. ipython:: python
 
     in_vars = {('advect', 'v'): 0.5}
-    with model2:
+    with advect_model:
         out_ds2 = (in_ds.xsimlab.update_vars(input_vars=in_vars)
-                        .xsimlab.run()
-                        .set_index(x='grid__x'))
+                        .xsimlab.run())
 
 .. note::
 
@@ -181,8 +176,8 @@ which is more visible here):
 
 .. ipython:: python
 
-    @savefig run_model2.png width=100%
-    plot_u(out_ds2);
+    @savefig run_advect_model_input.png width=100%
+    out_ds2.profile__u.plot(col='otime', figsize=(9, 3));
 
 Update time dimensions
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -195,13 +190,12 @@ for the ``otime`` coordinate (which serves to take snapshots of
 .. ipython:: python
 
     clocks = {'otime': [0, 0.25, 0.5]}
-    with model2:
+    with advect_model:
         out_ds3 = (in_ds.xsimlab.update_clocks(clocks=clocks,
                                                master_clock='time')
-                        .xsimlab.run()
-                        .set_index(x='grid__x'))
-    @savefig run_model3.png width=100%
-    plot_u(out_ds3);
+                        .xsimlab.run())
+    @savefig run_advect_model_clock.png width=100%
+    out_ds3.profile__u.plot(col='otime', figsize=(9, 3));
 
 Use an alternative model
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -212,19 +206,18 @@ existing dataset, e.g., by dropping data variables that are irrelevant
 (see :meth:`.xsimlab.filter_vars`) and by adding data variables for
 inputs that are present only in the alternative model.
 
-Here is an example of simulation using ``model3`` (source point and
-flat initial profile for :math:`u`) instead of ``model2`` :
+Here is an example of simulation using ``advect_model_src`` (source point and
+flat initial profile for :math:`u`) instead of ``advect_model`` :
 
 .. ipython:: python
 
     in_vars = {'source': {'loc': 1., 'flux': 100.}}
-    with model3:
+    with advect_model_src:
         out_ds4 = (in_ds.xsimlab.filter_vars()
                         .xsimlab.update_vars(input_vars=in_vars)
-                        .xsimlab.run()
-                        .set_index(x='grid__x'))
-    @savefig run_model4.png width=100%
-    plot_u(out_ds4);
+                        .xsimlab.run())
+    @savefig run_advect_model_alt.png width=100%
+    out_ds4.profile__u.plot(col='otime', figsize=(9, 3));
 
 .. _time_varying_inputs:
 
@@ -243,10 +236,98 @@ time at a fixed rate:
 
     flux = 100. - 100. * in_ds.time
     in_vars = {'source': {'loc': 1., 'flux': flux}}
-    with model3:
+    with advect_model_src:
         out_ds5 = (in_ds.xsimlab.filter_vars()
                         .xsimlab.update_vars(input_vars=in_vars)
-                        .xsimlab.run()
-                        .set_index(x='grid__x'))
-    @savefig run_model5.png width=100%
-    plot_u(out_ds5);
+                        .xsimlab.run())
+    @savefig run_advect_model_time.png width=100%
+    out_ds5.profile__u.plot(col='otime', figsize=(9, 3));
+
+Run multiple simulations
+------------------------
+
+Besides a time dimension, model inputs may also accept another extra dimension
+that is used to run batches of simulations. This is very convenient for
+sensitivity analyses: the inputs and results from all simulations are neatly
+combined into one xarray Dataset object.
+
+.. note::
+
+   Because of the limitations of the xarray data model, model inputs with a
+   "batch" dimension may not work well if these directly or indirectly affect
+   the shape of other variables defined in the model (e.g., grid size).
+
+As a simple example, let's update the setup for the advection model and set
+different values for velocity:
+
+.. ipython:: python
+
+    in_ds_vel = in_ds.xsimlab.update_vars(
+        model=advect_model,
+        input_vars={'advect__v': ('batch', [1.0, 0.5, 0.2])}
+    )
+
+Those values are defined along a dimension named "batch", that we need to
+explicitly pass to :func:`xarray.Dataset.xsimlab.run` via its ``batch_dim``
+parameter in order to run one simulation for each value of velocity:
+
+.. ipython:: python
+
+    out_ds_vel = in_ds_vel.xsimlab.run(model=advect_model, batch_dim='batch')
+    out_ds_vel
+
+Note the additional ``batch`` dimension in the resulting dataset for the
+``profile__u`` variable.
+
+Having all simulations results in a single Dataset allows to fully leverage
+xarray's powerful capabilities for analysis and plotting those results. For
+example, the one-liner expression below plots the profile of all snapshots
+(columns) from all simulations (rows):
+
+.. ipython:: python
+
+    @savefig run_advect_model_batch.png width=100%
+    out_ds_vel.profile__u.plot(row='batch', col='otime', figsize=(9, 6));
+
+Advanced examples
+~~~~~~~~~~~~~~~~~
+
+Running batches of simulations works well with time-varying input values,
+since the time and batch dimensions are orthogonal.
+
+It is also possible to run multiple simulations by varying the value of several
+model inputs, e.g., with different value combinations for the advection velocity
+and the initial location of the pulse:
+
+.. ipython:: python
+
+    in_ds_comb = in_ds.xsimlab.update_vars(
+        model=advect_model,
+        input_vars={'init__loc': ('batch', [0.3, 0.6, 0.9]),
+                    'advect__v': ('batch', [1.0, 0.5, 0.2])}
+    )
+    out_ds_comb = in_ds_comb.xsimlab.run(model=advect_model, batch_dim='batch')
+
+    @savefig run_advect_model_comb.png width=100%
+     out_ds_comb.profile__u.plot(row='batch', col='otime', figsize=(9, 6));
+
+Using :meth:`xarray.Dataset.stack` and :meth:`xarray.Dataset.unstack`
+respectively before and after ``run``, it is straightforward to regularly sample
+a n-dimensional parameter space (i.e., from combinations obtained by the cartesian
+product of values along each parameter dimension). Note the dimensions of
+``profile__u`` in the example below, which include the parameter space:
+
+.. ipython:: python
+
+    in_vars = {'init__loc': ('init__loc', [0.3, 0.6, 0.9]),
+               'advect__v': ('advect__v', [1.0, 0.5, 0.2])}
+    with advect_model:
+        out_ds_nparams = (
+            in_ds
+            .xsimlab.update_vars(input_vars=in_vars)
+            .stack(batch=['init__loc', 'advect__v'])
+            .xsimlab.run(batch_dim='batch')
+            .unstack('batch')
+        )
+    out_ds_nparams
+

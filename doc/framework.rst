@@ -169,6 +169,14 @@ returns their value. They have always ``intent='out'``.
 
 On-demand variables are useful, e.g., for optional model diagnostics.
 
+Index variables
+~~~~~~~~~~~~~~~
+
+Index variables are intended for indexing data of other variables in a model
+like, e.g., coordinate labels of grid nodes. They are declared using
+:func:`~xsimlab.index`. They have always ``intent='out'`` although their values
+could be computed from other input variables.
+
 Simulation workflow
 -------------------
 

@@ -1,5 +1,6 @@
 import attr
 import pytest
+import xarray as xr
 
 from xsimlab import utils
 from xsimlab.process import get_process_cls
@@ -53,6 +54,16 @@ def test_normalize_encoding():
     actual = utils.normalize_encoding(encoding)
     encoding.pop("ignored_key")
     assert actual == encoding
+
+
+def test_get_batch_size():
+    ds = xr.Dataset({"bdim": ("bdim", [1, 2, 3])})
+
+    assert utils.get_batch_size(ds, "bdim") == 3
+    assert utils.get_batch_size(xr.Dataset(), None) == -1
+
+    with pytest.raises(KeyError, match=r".* missing in input dataset"):
+        utils.get_batch_size(ds, "invalid_dim")
 
 
 class TestAttrMapping:

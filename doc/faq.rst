@@ -67,7 +67,7 @@ Three levels of parallelism are possible:
 
 Note that the notion of process used above is different from
 multiprocessing: a process here corresponds to a component of a model
-(see :ref:`framework` section).
+(see Section :ref:`framework`).
 
 The first level "inter-model" is an embarrassingly parallel problem.
 Next versions of xarray-simlab will allow to very easily run

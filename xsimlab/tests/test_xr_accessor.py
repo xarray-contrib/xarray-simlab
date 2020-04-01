@@ -256,6 +256,16 @@ class TestSimlabAccessor:
         assert not ds["roll__shift"].equals(in_dataset["roll__shift"])
         assert not ds["out"].identical(in_dataset["out"])
 
+    def test_update_vars_promote_to_coords(self, model, in_dataset):
+        # It should be possible to update an input variable with a dimension
+        # label that cooresponds to its name (turned into a coordinate). This
+        # should not raise any merge conflict error
+        ds = in_dataset.xsimlab.update_vars(
+            model=model, input_vars={"roll__shift": ("roll__shift", [1, 2])},
+        )
+
+        assert "roll__shift" in ds.coords
+
     def test_reset_vars(self, model, in_dataset):
         # add new variable
         ds = xr.Dataset().xsimlab.reset_vars(model)
@@ -344,13 +354,13 @@ class TestSimlabAccessor:
         assert ds.xsimlab.output_vars_by_clock == expected
 
     def test_run_safe_mode(self, model, in_dataset):
-        # safe mode True: ensure model is cloned
+        # safe mode True: ensure model is cloned (empty state)
         _ = in_dataset.xsimlab.run(model=model, safe_mode=True)
-        assert model.profile.__xsimlab_state__ is None
+        assert model.state == {}
 
-        # safe mode False: model not cloned -> original model is used
+        # safe mode False: model not cloned (non empty state)
         _ = in_dataset.xsimlab.run(model=model, safe_mode=False)
-        assert model.profile.u is not None
+        assert model.state != {}
 
     def test_run_check_dims(self):
         @xs.process
@@ -422,6 +432,42 @@ class TestSimlabAccessor:
         # internal validation -> raises within attr.validate()
         with pytest.raises(TypeError, match=r".*'int'.*"):
             in_dataset.xsimlab.run(model=m, validate="all")
+
+    @pytest.mark.parametrize(
+        "dims,data,clock",
+        [
+            ("batch", [1, 2], None),
+            (("batch", "clock"), [[1, 1, 1], [2, 2, 2]], "clock"),
+            (("batch", "x"), [[1, 1], [2, 2]], None),
+        ],
+    )
+    def test_run_batch_dim(self, dims, data, clock):
+        @xs.process
+        class P:
+            in_var = xs.variable(dims=[(), "x"])
+            out_var = xs.variable(dims=[(), "x"], intent="out")
+
+            def run_step(self):
+                self.out_var = self.in_var * 2
+
+        m = xs.Model({"p": P})
+
+        in_ds = xs.create_setup(
+            model=m,
+            clocks={"clock": [0, 1, 2]},
+            input_vars={"p__in_var": (dims, data)},
+            output_vars={"p__out_var": clock},
+        )
+
+        out_ds = in_ds.xsimlab.run(model=m, batch_dim="batch")
+
+        if clock is None:
+            coords = {}
+        else:
+            coords = {"clock": in_ds["clock"]}
+
+        expected = xr.DataArray(data, dims=dims, coords=coords) * 2
+        xr.testing.assert_equal(out_ds["p__out_var"], expected)
 
 
 def test_create_setup(model, in_dataset):

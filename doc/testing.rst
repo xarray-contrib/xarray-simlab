@@ -15,7 +15,7 @@ regular Python classes.
     sys.path.append('scripts')
     from advection_model import InitUGauss
 
-Here is an example with one of the process classes created in section
+Here is an example with the ``InitUGauss`` process class created in Section
 :doc:`create_model`:
 
 .. ipython:: python
@@ -27,8 +27,8 @@ Here is an example with one of the process classes created in section
     @savefig gauss.png width=50%
     plt.plot(gauss.x, gauss.u);
 
-Like for any other process class, the parameters of
-``InitUGauss.__init__`` correspond to each of the variables declared
+Like for any other process class, the parameters of the
+``InitUGauss`` constructor correspond to each of the variables declared
 in that class with either ``intent='in'`` or ``intent='inout'``. Those
 parameters are "keyword only" (see `PEP 3102`_), i.e., it is not
 possible to set these as positional arguments.

@@ -14,31 +14,31 @@ either `xarray`_'s or `zarr`_'s I/O capabilities.
 
     import sys
     sys.path.append('scripts')
-    from advection_model import model2
+    from advection_model import advect_model
 
 Using xarray
 ------------
 
 The :class:`xarray.Dataset` structure, used for both simulation inputs and
 outputs, already supports serialization and I/O to several file formats, among
-which netCDF_ is the recommended format. For more information, see section
+which netCDF_ is the recommended format. For more information, see Section
 `reading and writing files`_ in xarray's docs.
 
 .. _netCDF: https://www.unidata.ucar.edu/software/netcdf/
 .. _`reading and writing files`: http://xarray.pydata.org/en/stable/io.html
 
 Before showing some examples, let's first create the same initial setup than the
-one used in section :doc:`run_model`:
+one used in Section :doc:`run_model`:
 
 .. ipython:: python
 
-    model2
+    advect_model
 
 .. ipython:: python
 
     import xsimlab as xs
     ds = xs.create_setup(
-        model=model2,
+        model=advect_model,
         clocks={
             'time': np.linspace(0., 1., 101),
             'otime': [0, 0.5, 1]
@@ -60,7 +60,7 @@ You can save the dataset here above, e.g., using :meth:`xarray.Dataset.to_netcdf
 
 .. ipython:: python
 
-   ds.to_netcdf("model2_setup.nc")
+   ds.to_netcdf("advect_model_setup.nc")
 
 You can then reload this setup later or elsewhere before starting a new
 simulation:
@@ -68,8 +68,8 @@ simulation:
 .. ipython:: python
 
    import xarray as xr
-   in_ds = xr.load_dataset("model2_setup.nc")
-   out_ds = in_ds.xsimlab.run(model=model2)
+   in_ds = xr.load_dataset("advect_model_setup.nc")
+   out_ds = in_ds.xsimlab.run(model=advect_model)
    out_ds
 
 The latter dataset ``out_ds`` contains both the inputs and the outputs of this
@@ -78,7 +78,7 @@ supported by xarray, e.g.,
 
 .. ipython:: python
 
-   out_ds.to_netcdf("model2_run.nc")
+   out_ds.to_netcdf("advect_model_run.nc")
 
 Using zarr
 ----------
@@ -94,22 +94,22 @@ specify a directory where to store it:
 
 .. ipython:: python
 
-   out_ds = in_ds.xsimlab.run(model=model2, store="model2_run.zarr")
+   out_ds = in_ds.xsimlab.run(model=advect_model, store="advect_model_run.zarr")
 
 You can also store the data in a temporary directory:
 
 .. ipython:: python
 
    import zarr
-   out_ds = in_ds.xsimlab.run(model=model2, store=zarr.TempStore())
+   out_ds = in_ds.xsimlab.run(model=advect_model, store=zarr.TempStore())
 
 Or you can directly use :func:`zarr.group` for more options, e.g., if you want
 to overwrite a directory that has been used for old model runs:
 
 .. ipython:: python
 
-   zg = zarr.group("model2_run.zarr", overwrite=True)
-   out_ds = in_ds.xsimlab.run(model=model2, store=zg)
+   zg = zarr.group("advect_model_run.zarr", overwrite=True)
+   out_ds = in_ds.xsimlab.run(model=advect_model, store=zg)
 
 .. note::
 
@@ -129,7 +129,7 @@ store:
 
 Zarr stores large multi-dimensional arrays as contiguous chunks. When opened as
 a ``xarray.Dataset``, xarray keeps track of those chunks, which enables efficient
-and parallel post-processing via the dask_ library (see section `parallel
+and parallel post-processing via the dask_ library (see Section `parallel
 computing with Dask`_ in xarray's docs).
 
 .. _`storage alternatives`: https://zarr.readthedocs.io/en/stable/tutorial.html#storage-alternatives
@@ -141,9 +141,9 @@ computing with Dask`_ in xarray's docs).
 
    import os
    import shutil
-   os.remove("model2_setup.nc")
-   os.remove("model2_run.nc")
-   shutil.rmtree("model2_run.zarr")
+   os.remove("advect_model_setup.nc")
+   os.remove("advect_model_run.nc")
+   shutil.rmtree("advect_model_run.zarr")
 
 Advanced usage
 --------------

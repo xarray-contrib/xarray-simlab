@@ -34,7 +34,7 @@ class AdvectionLax1D:
         self.u = self.u1
 
 
-model1 = xs.Model({"advect": AdvectionLax1D})
+advect_model_raw = xs.Model({"advect": AdvectionLax1D})
 
 
 @xs.process
@@ -43,7 +43,7 @@ class UniformGrid1D:
 
     spacing = xs.variable(description="uniform spacing", static=True)
     length = xs.variable(description="total length", static=True)
-    x = xs.variable(dims="x", intent="out")
+    x = xs.index(dims="x")
 
     def initialize(self):
         self.x = np.arange(0, self.length, self.spacing)
@@ -101,7 +101,7 @@ class InitUGauss:
         self.u = np.exp(-1 / self.scale ** 2 * (self.x - self.loc) ** 2)
 
 
-model2 = xs.Model(
+advect_model = xs.Model(
     {
         "grid": UniformGrid1D,
         "profile": ProfileU,
@@ -152,10 +152,12 @@ class InitUFlat:
         self.u = np.zeros_like(self.x)
 
 
-model3 = model2.update_processes({"source": SourcePoint, "init": InitUFlat})
+advect_model_src = advect_model.update_processes(
+    {"source": SourcePoint, "init": InitUFlat}
+)
 
 
-model4 = model2.drop_processes("init")
+advect_model_no_init = advect_model.drop_processes("init")
 
 
 @xs.process
@@ -168,7 +170,9 @@ class FixedGridParams:
         self.length = 1.0
 
 
-model5 = model2.update_processes({"fixed_grid_params": FixedGridParams})
+advect_model_fgrid = advect_model.update_processes(
+    {"fixed_grid_params": FixedGridParams}
+)
 
 
 @xs.process
@@ -182,4 +186,4 @@ class FixedGrid(UniformGrid1D):
         super(FixedGrid, self).initialize()
 
 
-model6 = model2.update_processes({"grid": FixedGrid})
+advect_model_fgrid2 = advect_model.update_processes({"grid": FixedGrid})
