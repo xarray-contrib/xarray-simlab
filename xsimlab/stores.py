@@ -161,12 +161,12 @@ class ZarrSimulationStore:
 
         zkwargs.update(var_info["encoding"])
 
-        # TODO: more performance assessment
-        # if self.in_memory:
-        #     chunks = False
-        #     compressor = None
-
-        zdataset = self.zgroup.create_dataset(name, **zkwargs)
+        try:
+            zdataset = self.zgroup.create_dataset(name, **zkwargs)
+        except ValueError:
+            # silently ignore already existing dataset (batches of simulations)
+            # TODO: check for existing dataset before starting any simulation
+            return
 
         # add dimension labels and variable attributes as metadata
         dim_labels = None
@@ -197,18 +197,6 @@ class ZarrSimulationStore:
 
         # reset consolidated since metadata has just been updated
         self.consolidated = False
-
-    def _maybe_create_zarr_dataset(
-        self, model: Model, var_key: VarKey, name: Optional[str] = None,
-    ):
-        # do not create if already exists (only for batches of simulation)
-        try:
-            self._create_zarr_dataset(model, var_key, name=name)
-        except ValueError as err:
-            if self.batch_dim:
-                pass
-            else:
-                raise err
 
     def _maybe_resize_zarr_dataset(
         self, model: Model, var_key: VarKey,
@@ -255,7 +243,7 @@ class ZarrSimulationStore:
 
             if clock_inc == 0:
                 for vk in var_keys:
-                    self._maybe_create_zarr_dataset(model, vk)
+                    self._create_zarr_dataset(model, vk)
 
             for vk in var_keys:
                 zkey = self.var_info[vk]["name"]
@@ -291,7 +279,7 @@ class ZarrSimulationStore:
             _, vname = var_key
             model.cache_state(var_key)
 
-            self._maybe_create_zarr_dataset(model, var_key, name=vname)
+            self._create_zarr_dataset(model, var_key, name=vname)
             self.zgroup[vname][:] = model._var_cache[var_key]["value"]
 
     def consolidate(self):
