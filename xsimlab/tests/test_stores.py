@@ -146,6 +146,9 @@ class TestZarrSimulationStore:
 
         assert_array_equal(ztest.add__offset[:], np.array([2.0, 3.0]))
 
+        # test default chunk size along batch dim
+        assert ztest.profile__u.chunks[0] == 1
+
     def test_write_index_vars(self, store):
         store.model.state[("init_profile", "x")] = np.array([1.0, 2.0, 3.0])
 

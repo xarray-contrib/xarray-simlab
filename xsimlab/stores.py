@@ -62,6 +62,12 @@ def default_fill_value_from_dtype(dtype=None):
         return 0
 
 
+def get_auto_chunks(shape, dtype):
+    # A hack to get chunks guessed by zarr
+    arr = zarr.create(shape, dtype=dtype)
+    return arr.chunks
+
+
 class ZarrSimulationStore:
     def __init__(
         self,
@@ -140,6 +146,7 @@ class ZarrSimulationStore:
 
         dtype = getattr(value, "dtype", np.asarray(value).dtype)
         shape = list(np.shape(value))
+        chunks = list(get_auto_chunks(shape, dtype))
 
         add_batch_dim = (
             self.batch_dim is not None
@@ -148,12 +155,15 @@ class ZarrSimulationStore:
 
         if clock is not None:
             shape.insert(0, self.clock_sizes[clock])
+            chunks = list(get_auto_chunks(shape, dtype))
         if add_batch_dim:
             shape.insert(0, self.batch_size)
+            # by default: chunk of length 1 along batch dimension
+            chunks.insert(0, 1)
 
         zkwargs = {
             "shape": tuple(shape),
-            "chunks": True,
+            "chunks": chunks,
             "dtype": dtype,
             "compressor": "default",
             "fill_value": default_fill_value_from_dtype(dtype),
