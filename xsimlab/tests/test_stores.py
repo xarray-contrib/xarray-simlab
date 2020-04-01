@@ -71,6 +71,13 @@ class TestZarrSimulationStore:
     def test_constructor_batch(self, store_batch):
         assert store_batch.batch_size == 2
 
+    def test_constructor_conflict(self, in_ds, model):
+        zgroup = zarr.group()
+        zgroup.create_dataset("profile__u", shape=(1, 1))
+
+        with pytest.raises(ValueError, match=r".*already contains.*"):
+            ZarrSimulationStore(in_ds, model, zobject=zgroup)
+
     def test_write_input_xr_dataset(self, in_ds, store):
         store.write_input_xr_dataset()
         ds = xr.open_zarr(store.zgroup.store, chunks=None)

@@ -48,6 +48,16 @@ def _get_var_info(
     return var_info
 
 
+def ensure_no_dataset_conflict(zgroup, znames):
+    existing_datasets = [name for name in znames if name in zgroup]
+
+    if existing_datasets:
+        raise ValueError(
+            f"Zarr path {zgroup.path} already contains the following datasets: "
+            + ",".join(existing_datasets)
+        )
+
+
 def default_fill_value_from_dtype(dtype=None):
     if dtype is None:
         return 0
@@ -107,6 +117,10 @@ class ZarrSimulationStore:
 
         # initialize clock incrementers
         self.clock_incs = self._init_clock_incrementers()
+
+        # ensure no dataset conflict in zarr group
+        znames = [vi["name"] for vi in self.var_info.values()]
+        ensure_no_dataset_conflict(self.zgroup, znames)
 
     def _init_clock_incrementers(self):
         clock_incs = {}
@@ -174,8 +188,7 @@ class ZarrSimulationStore:
         try:
             zdataset = self.zgroup.create_dataset(name, **zkwargs)
         except ValueError:
-            # silently ignore already existing dataset (batches of simulations)
-            # TODO: check for existing dataset before starting any simulation
+            # return early if already existing dataset (batches of simulations)
             return
 
         # add dimension labels and variable attributes as metadata
