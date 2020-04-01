@@ -176,9 +176,9 @@ def variable(
     encoding : dict, optional
         Dictionary specifying how to encode this variable's data into a
         serialized format (i.e., as a zarr dataset). Currently used keys
-        include 'chunks', 'dtype', 'compressor', 'fill_value', 'order',
-        'filters' and 'object_codec'. See :func:`zarr.creation.create` for
-        details about these options. Other keys are ignored.
+        include 'dtype', 'compressor', 'fill_value', 'order', 'filters'
+        and 'object_codec'. See :func:`zarr.creation.create` for details
+        about these options. Other keys are ignored.
 
     See Also
     --------
@@ -244,9 +244,9 @@ def index(dims, groups=None, description="", attrs=None, encoding=None):
     encoding : dict, optional
         Dictionary specifying how to encode this variable's data into a
         serialized format (i.e., as a zarr dataset). Currently used keys
-        include 'chunks', 'dtype', 'compressor', 'fill_value', 'order',
-        'filters' and 'object_codec'. See :func:`zarr.creation.create` for
-        details about these options. Other keys are ignored.
+        include 'dtype', 'compressor', 'fill_value', 'order', 'filters'
+        and 'object_codec'. See :func:`zarr.creation.create` for details
+        about these options. Other keys are ignored.
 
     See Also
     --------
@@ -313,9 +313,9 @@ def on_demand(
     encoding : dict, optional
         Dictionary specifying how to encode this variable's data into a
         serialized format (i.e., as a zarr dataset). Currently used keys
-        include 'chunks', 'dtype', 'compressor', 'fill_value', 'order',
-        'filters' and 'object_codec'. See :func:`zarr.creation.create` for
-        details about these options. Other keys are ignored.
+        include 'dtype', 'compressor', 'fill_value', 'order', 'filters'
+        and 'object_codec'. See :func:`zarr.creation.create` for details
+        about these options. Other keys are ignored.
 
     See Also
     --------

@@ -699,9 +699,10 @@ class SimlabAccessor:
             Nested dictionary with variable names as keys and dictionaries of
             variable specific encodings as values, e.g.,
             ``{'my_variable': {'dtype': 'int16', 'fill_value': -9999,}, ...}``.
-            See the ``encoding`` parameter of :func:`~xsimlab.variable`.
             Encoding options provided here override encoding options defined in
-            model variables.
+            model variables (see :func:`~xsimlab.variable` for a full list of
+            of options available). Additionally, 'chunks' and 'synchronizer'
+            options are supported here.
         hooks : list, optional
             One or more runtime hooks, i.e., functions decorated with
             :func:`~xsimlab.runtime_hook` or instances of
