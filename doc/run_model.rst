@@ -249,18 +249,16 @@ Run multiple simulations
 Besides a time dimension, model inputs may also accept another extra dimension
 that is used to run batches of simulations. This is very convenient for
 sensitivity analyses: the inputs and results from all simulations are neatly
-combined into one Dataset.
+combined into one xarray Dataset object.
 
 .. note::
 
-   Because of the limitations of the xarray data model, define a "batch"
-   dimension may not work well for model inputs that directly or indirectly
-   affect the shape of other variables (arrays) defined in the model, such as
-   grid size.
+   Because of the limitations of the xarray data model, model inputs with a
+   "batch" dimension may not work well if these directly or indirectly affect
+   the shape of other variables defined in the model (e.g., grid size).
 
-As a simple example, let's update the setup for the advection model, now with
-different values set for velocity and a dimension label here simply named
-"batch":
+As a simple example, let's update the setup for the advection model and set
+different values for velocity:
 
 .. ipython:: python
 
@@ -269,9 +267,9 @@ different values set for velocity and a dimension label here simply named
         input_vars={'advect__v': ('batch', [1.0, 0.5, 0.2])}
     )
 
-We then need to explcitily pass this "batch" dimension label to
-:func:`xarray.Dataset.xsimlab.run` (using the ``batch_dim`` parameter) so that
-one simulation is run for each value of velocity:
+Those values are defined along a dimension named "batch", that we need to
+explicitly pass to :func:`xarray.Dataset.xsimlab.run` via its ``batch_dim``
+parameter in order to run one simulation for each value of velocity:
 
 .. ipython:: python
 
@@ -281,10 +279,10 @@ one simulation is run for each value of velocity:
 Note the additional ``batch`` dimension in the resulting dataset for the
 ``profile__u`` variable.
 
-Having all simulations results in a single Dataset allows us to fully leverage
-xarray's powerful capabilities for analysis and plotting those results, like
-shown by this one-liner expression that plots the profile for all snapshots of all
-simulations:
+Having all simulations results in a single Dataset allows to fully leverage
+xarray's powerful capabilities for analysis and plotting those results. For
+example, the one-liner expression below plots the profile of all snapshots
+(columns) from all simulations (rows):
 
 .. ipython:: python
 
@@ -298,8 +296,8 @@ Running batches of simulations works well with time-varying input values,
 since the time and batch dimensions are orthogonal.
 
 It is also possible to run multiple simulations by varying the value of several
-model inputs, e.g., with different combinations of velocity and initial location
-of the pulse:
+model inputs, e.g., with different value combinations for the advection velocity
+and the initial location of the pulse:
 
 .. ipython:: python
 
@@ -313,12 +311,11 @@ of the pulse:
     @savefig run_advect_model_comb.png width=100%
      out_ds_comb.profile__u.plot(row='batch', col='otime', figsize=(9, 6));
 
-Using :func:`xarray.Dataset.stack` and :func:`xarray.Dataset.unstack`
-respectively before and after ``run``, it is even straightforward to regularly
-sample a n-dimensional parameter space. Here below, nine simulations are
-performed from the cartesian product of the values sampled for the same two
-inputs than in the example above. The dimensions of the parameter space are
-restored in the resulting dataset:
+Using :meth:`xarray.Dataset.stack` and :meth:`xarray.Dataset.unstack`
+respectively before and after ``run``, it is straightforward to regularly sample
+a n-dimensional parameter space (i.e., from combinations obtained by the cartesian
+product of values along each parameter dimension). Note the dimensions of
+``profile__u`` in the example below, which include the parameter space:
 
 .. ipython:: python
 

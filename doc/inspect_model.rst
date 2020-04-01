@@ -3,10 +3,12 @@
 Inspect Models
 ==============
 
-We can inspect xarray-simlab's :class:`~xsimlab.Model` objects in
-different ways. As an example we'll use here the object ``advect_model``
-which has been created in the previous Section :doc:`create_model` of
-this user guide.
+Models may be complex and built from many processes and variables. To better
+explore those models, xarray-simlab provides many convenient ways to inspect and
+auto-document :class:`~xsimlab.Model` objects.
+
+As an example we'll use here the object ``advect_model`` which has been created
+in the previous Section :doc:`create_model` of this user guide.
 
 .. ipython:: python
    :suppress:
@@ -85,12 +87,19 @@ variable level:
     xs.variable_info(ProfileU, 'u')
     xs.variable_info(advect_model.profile, 'u_vars')
 
-Alternatively, we can look at the docstrings of auto-generated
-properties for each variable, e.g.,
+Alternatively, you can look at the auto-generated docstrings of a process class
+(configurable via the ``autodoc`` parameter of :func:`~xsimlab.process`):
 
 .. ipython:: python
 
-    ProfileU.u?
+   ProfileU?
+
+As well as the auto-generated docstrings for each variable (only accessible from
+Model objects), e.g.,
+
+.. ipython:: python
+
+    advect_model.profile.u?
 
 Like :attr:`~xsimlab.Model.input_vars` and
 :attr:`~xsimlab.Model.input_vars_dict`, Model properties
