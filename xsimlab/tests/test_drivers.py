@@ -1,7 +1,7 @@
 import numpy as np
+import pandas as pd
 import pytest
-from numpy.testing import assert_array_equal
-from xarray.testing import assert_identical
+import xarray as xr
 
 import xsimlab as xs
 from xsimlab.drivers import (
@@ -73,13 +73,8 @@ class TestXarraySimulationDriver:
             assert np.isscalar(actual)
 
         else:
-            assert_array_equal(actual, expected)
+            np.testing.assert_array_equal(actual, expected)
             assert not np.isscalar(actual)
-
-    def test_get_output_dataset(self, in_dataset, xarray_driver):
-        # regression test: make sure a copy of input dataset is used
-        out_ds = xarray_driver.run_model()
-        assert not in_dataset.identical(out_ds)
 
     def test_run_model_get_results(self, in_dataset, out_dataset, xarray_driver):
         xarray_driver.run_model()
@@ -90,7 +85,32 @@ class TestXarraySimulationDriver:
             xr_var.attrs.pop("_FillValue", None)
 
         assert out_ds_actual is not out_dataset
-        assert_identical(out_ds_actual.load(), out_dataset)
+        xr.testing.assert_identical(out_ds_actual.load(), out_dataset)
+
+    def test_multi_index(self, in_dataset, model):
+        # just check that multi-index pass through model run (reset -> zarr -> rebuilt)
+        midx = pd.MultiIndex.from_tuples([(0, 1), (0, 2)], names=["a", "b"])
+
+        in_dataset["dummy"] = ("dummy", midx)
+
+        driver = XarraySimulationDriver(in_dataset, model)
+        driver.run_model()
+        out_dataset = driver.get_results()
+
+        pd.testing.assert_index_equal(out_dataset.indexes["dummy"], midx)
+
+    def test_static_var_as_scalar_coord(self, in_dataset, out_dataset, model):
+        # test that a model input (static variable) given as a scalar coordinate
+        # doesn't cause any trouble
+        in_dataset.coords["init_profile__n_points"] = in_dataset[
+            "init_profile__n_points"
+        ]
+
+        driver = XarraySimulationDriver(in_dataset, model)
+        driver.run_model()
+        out_ds = driver.get_results()
+
+        xr.testing.assert_equal(out_ds.reset_coords(), out_dataset)
 
     def test_runtime_context(self, in_dataset, model):
         @xs.process

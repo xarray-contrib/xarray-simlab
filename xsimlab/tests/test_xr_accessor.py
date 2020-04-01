@@ -256,6 +256,16 @@ class TestSimlabAccessor:
         assert not ds["roll__shift"].equals(in_dataset["roll__shift"])
         assert not ds["out"].identical(in_dataset["out"])
 
+    def test_update_vars_promote_to_coords(self, model, in_dataset):
+        # It should be possible to update an input variable with a dimension
+        # label that cooresponds to its name (turned into a coordinate). This
+        # should not raise any merge conflict error
+        ds = in_dataset.xsimlab.update_vars(
+            model=model, input_vars={"roll__shift": ("roll__shift", [1, 2])},
+        )
+
+        assert "roll__shift" in ds.coords
+
     def test_reset_vars(self, model, in_dataset):
         # add new variable
         ds = xr.Dataset().xsimlab.reset_vars(model)
