@@ -3,6 +3,7 @@ from enum import Enum
 from typing import Any, Iterator, Mapping
 
 import attr
+import dask
 import pandas as pd
 
 from .hook import flatten_hooks, group_hooks, RuntimeHook
@@ -230,6 +231,9 @@ class XarraySimulationDriver(BaseSimulationDriver):
             hooks = []
         self.hooks = _get_all_active_hooks(hooks)
 
+        self.parallel = parallel
+        self.scheduler = scheduler
+
         self.store = ZarrSimulationStore(
             self.dataset, model, zobject=store, encoding=encoding, batch_dim=batch_dim
         )
@@ -323,18 +327,28 @@ class XarraySimulationDriver(BaseSimulationDriver):
 
         if self.batch_dim is None:
             model = self.model
-            self._run_one_model(self.dataset, model)
+            self._run_one_model(self.dataset, model, parallel=self.parallel)
 
         else:
             ds_gby_batch = self.dataset.groupby(self.batch_dim)
+            futures = []
 
             for batch, (_, ds_batch) in enumerate(ds_gby_batch):
                 model = self.model.clone()
-                self._run_one_model(ds_batch, model, batch=batch)
+
+                if self.parallel:
+                    futures.append(
+                        dask.delayed(self._run_one_model)(ds_batch, model, batch=batch)
+                    )
+                else:
+                    self._run_one_model(ds_batch, model, batch=batch)
+
+            if self.parallel:
+                dask.compute(futures, scheduler=self.scheduler)
 
         self.store.write_index_vars(model=model)
 
-    def _run_one_model(self, dataset, model, batch=-1):
+    def _run_one_model(self, dataset, model, batch=-1, parallel=False):
         """Run one simulation.
 
         - Set model inputs from the input Dataset (update

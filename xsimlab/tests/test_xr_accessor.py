@@ -14,6 +14,16 @@ from xsimlab.xr_accessor import (
 from .fixture_model import Roll
 
 
+@pytest.fixture(params=[True, False])
+def parallel(request):
+    return request.param
+
+
+@pytest.fixture(params=["threads", "processes"])
+def scheduler(request):
+    return request.param
+
+
 def test_filter_accessor():
     ds = xr.Dataset(
         data_vars={"var1": ("x", [1, 2]), "var2": ("y", [3, 4])},
@@ -364,6 +374,13 @@ class TestSimlabAccessor:
 
         assert ds.xsimlab.output_vars_by_clock == expected
 
+    def test_run(self, model, in_dataset, out_dataset, parallel, scheduler):
+        out_ds = in_dataset.xsimlab.run(
+            model=model, parallel=parallel, scheduler=scheduler
+        )
+
+        xr.testing.assert_equal(out_ds, out_dataset)
+
     def test_run_safe_mode(self, model, in_dataset):
         # safe mode True: ensure model is cloned (empty state)
         _ = in_dataset.xsimlab.run(model=model, safe_mode=True)
@@ -452,7 +469,7 @@ class TestSimlabAccessor:
             (("batch", "x"), [[1, 1], [2, 2]], None),
         ],
     )
-    def test_run_batch_dim(self, dims, data, clock):
+    def test_run_batch_dim(self, dims, data, clock, parallel, scheduler):
         @xs.process
         class P:
             in_var = xs.variable(dims=[(), "x"])
@@ -470,7 +487,9 @@ class TestSimlabAccessor:
             output_vars={"p__out_var": clock},
         )
 
-        out_ds = in_ds.xsimlab.run(model=m, batch_dim="batch")
+        out_ds = in_ds.xsimlab.run(
+            model=m, batch_dim="batch", parallel=parallel, scheduler=scheduler
+        )
 
         if clock is None:
             coords = {}
