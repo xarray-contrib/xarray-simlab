@@ -76,6 +76,8 @@ Enhancements
   (:issue:`104`, :issue:`110`).
 - Added the ability to easily run batches of simulations using the ``batch_dim``
   parameter of :func:`xarray.Dataset.xsimlab.run` (:issue:`115`).
+- Added 'object' variables :func:`~xsimlab.any_object` for sharing arbitrary
+  Python objects between processes (:issue:`118`).
 
 Bug fixes
 ~~~~~~~~~
