@@ -200,6 +200,8 @@ class XarraySimulationDriver(BaseSimulationDriver):
         check_dims=CheckDimsOption.STRICT,
         validate=ValidateOption.INPUTS,
         hooks=None,
+        parallel=False,
+        scheduler=None,
     ):
         # these are not yet supported with zarr
         self.dataset, self.multi_indexes = _reset_multi_indexes(dataset)

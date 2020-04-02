@@ -663,6 +663,8 @@ class SimlabAccessor:
         store=None,
         encoding=None,
         hooks=None,
+        parallel=False,
+        scheduler=None,
         safe_mode=True,
     ):
         """Run the model.
@@ -672,7 +674,7 @@ class SimlabAccessor:
         model : :class:`xsimlab.Model` object, optional
             Reference model. If None, tries to get model from context.
         batch_dim : str, optional
-            Dimension label in the input dataset used to run batches of
+            Dimension label in the input dataset used to run a batch of
             simulations.
         check_dims : {'strict', 'transpose'}, optional
             Check the dimension(s) of each input variable given in Dataset.
@@ -718,12 +720,27 @@ class SimlabAccessor:
             :func:`~xsimlab.runtime_hook` or instances of
             :class:`~xsimlab.RuntimeHook`. The latter can also be used using
             the ``with`` statement or using their ``register()`` method.
+        parallel : bool, optional
+            If True, run the simulation(s) in parallel using Dask (default: False).
+            If a dimension label is set for ``batch_dim``, each simulation in
+            the batch will be run in parallel. Otherwise, the processes in
+            ``model`` will be executed in parallel for each simulation stage.
+        scheduler : str, optional
+            Dask's scheduler used to run the simulation(s) in parallel. See
+            :func:`dask.compute`. It also accepts any instance of
+            ``distributed.Client``.
         safe_mode : bool, optional
             If True (default), a clone of ``model`` will be used to run each
             simulation so that it is safe to run multiple simulations
             simultaneously (provided that the code executed in ``model`` is
             thread-safe too). Generally safe mode shouldn't be disabled, except
             in a few cases (e.g., debugging).
+
+        Returns
+        -------
+        output : Dataset
+            Another Dataset with both model inputs and outputs. The data is lazily
+            loaded from the zarr store used to save inputs and outputs.
 
         Notes
         -----
@@ -735,11 +752,26 @@ class SimlabAccessor:
         :class:`zarr.storage.ZipStore` is not supported because it is not
         possible to write data to a dataset after it has been created.
 
-        Returns
-        -------
-        output : Dataset
-            Another Dataset with both model inputs and outputs. The data is lazily
-            loaded from the zarr store used to save inputs and outputs.
+        xarray-simlab uses the dask library (https://docs.dask.org) to run the
+        simulation(s) in parallel. Dask is a powerful library that allows
+        running tasks (either simulations or model processes) on a single
+        machine (multi-threads or multi-processes) or even on a distributed
+        architecture (HPC, Cloud). Even though xarray-simlab includes some
+        safeguards against race conditions, those might still occur under some
+        circumstances and thus require extra care. In particular:
+
+        - The code implemented in the process classes of ``model`` should be
+          thread-safe if a dask multi-threaded scheduler is used.
+        - Not all zarr stores are safe to write in multiple threads or processes.
+          For example, :class:`zarr.storage.MemoryStore` used by default is
+          safe to write in multiple threads but not in multiple processes.
+        - If chunks are specified in ``encoding`` with chunk size > 1
+          for ``batch_dim``, then one of the zarr synchronizers should be used
+          too, otherwise model output values will not be saved properly.
+          Pick :class:`zarr.sync.ThreadSynchronizer` or
+          :class:`zarr.sync.ProcessSynchronizer` depending on which dask scheduler
+          is used. Also, check that the (distributed) scheduler doesn't use
+          both multiple processes and multiple threads.
 
         """
         model = _maybe_get_model_from_context(model)
@@ -756,6 +788,8 @@ class SimlabAccessor:
             check_dims=check_dims,
             validate=validate,
             hooks=hooks,
+            parallel=parallel,
+            scheduler=scheduler,
         )
 
         driver.run_model()
