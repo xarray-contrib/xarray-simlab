@@ -336,19 +336,17 @@ def on_demand(
     return attr.attrib(metadata=metadata, init=False, repr=False)
 
 
-def object(groups=None, description="", attrs=None):
-    """Create an 'object' variable used to hold any arbitrary object that
-    needs to be shared with other process classes.
-
-    Unlike regular variables, 'object' variables are not intended to be used as
-    model inputs or outputs.
-
-    A value must be set in the class within which this variable is declared
-    (i.e., intent='out').
+def any_object(groups=None, description="", attrs=None):
+    """Create an variable used to hold any arbitrary object that needs to be shared
+    with other process classes.
 
     Use this instead of :func:`~xsimlab.variable` if you need to pass anything
     other than scalar/array values to other processes (e.g., a callable or an
     instance of a custom class).
+
+    Unlike regular variables, 'object' variables are not intended to be used as
+    model inputs or outputs. Additionally, a value must be set in the class
+    within which this variable is declared (i.e., intent='out').
 
     Parameters
     ----------
@@ -357,8 +355,7 @@ def object(groups=None, description="", attrs=None):
     description : str, optional
         Short description of the variable.
     attrs : dict, optional
-        Dictionnary of additional metadata (e.g., standard_name,
-        units, math_symbol...).
+        Dictionnary of additional metadata.
 
     """
     metadata = {
