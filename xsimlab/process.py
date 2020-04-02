@@ -528,7 +528,7 @@ def process(maybe_cls=None, autodoc=True):
     """
 
     def wrap(cls):
-        attr_cls = attr.attrs(cls)
+        attr_cls = attr.attrs(cls, repr=False)
 
         builder = _ProcessBuilder(attr_cls)
 
