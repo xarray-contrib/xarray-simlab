@@ -144,29 +144,23 @@ def test_process_properties_readonly(cls, var_name, prop_is_read_only):
 
 
 def test_process_properties_errors():
-    with pytest.raises(ValueError) as excinfo:
+    with pytest.raises(ValueError, match=r".*links to group variable.*"):
 
         @xs.process
         class Process1:
             invalid_var = xs.foreign(ExampleProcess, "group_var")
 
-    assert "links to group variable" in str(excinfo.value)
-
-    with pytest.raises(ValueError) as excinfo:
+    with pytest.raises(ValueError, match=r".*both have intent='out'.*"):
 
         @xs.process
         class Process2:
             invalid_var = xs.foreign(ExampleProcess, "out_var", intent="out")
 
-    assert "both have intent='out'" in str(excinfo.value)
-
-    with pytest.raises(KeyError) as excinfo:
+    with pytest.raises(KeyError, match=r"No compute method found.*"):
 
         @xs.process
         class Process3:
             var = xs.on_demand()
-
-    assert "No compute method found" in str(excinfo.value)
 
 
 def test_process_properties_docstrings(in_var_details):
@@ -186,6 +180,9 @@ def test_process_properties_values(processes_with_state):
 
     example_process.inout_var = 2
     assert example_process.inout_var == 2
+
+    example_process.obj_var = lambda x: x * 2
+    assert example_process.obj_var(2) == 4
 
     example_process.out_foreign_var = 3
     assert another_process.another_var == 3
