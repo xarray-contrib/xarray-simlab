@@ -429,6 +429,7 @@ class _ProcessBuilder:
     _make_prop_funcs = {
         VarType.VARIABLE: _make_property_variable,
         VarType.INDEX: _make_property_variable,
+        VarType.OBJECT: _make_property_variable,
         VarType.ON_DEMAND: _make_property_on_demand,
         VarType.FOREIGN: _make_property_variable,
         VarType.GROUP: _make_property_group,

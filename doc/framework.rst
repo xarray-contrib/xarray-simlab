@@ -134,26 +134,24 @@ independently of each other.
 Group variables
 ~~~~~~~~~~~~~~~
 
-In some cases, using group variables may provide an elegant
-alternative to hard-coded links between processes.
+In some cases, using group variables may provide an elegant alternative to
+hard-coded links between processes.
 
 The membership of variables to one or several groups is defined via their
-``groups`` attribute. If you want to use in a separate process all the variables
-of a group, instead of explicitly declaring foreign variables you can declare a
-:func:`~xsimlab.group` variable. The latter behaves like an iterable of foreign
-variables pointing to each of the variables that are members of the group,
-across the model.
+``groups`` attribute. If you want to reuse in a separate process all the
+variables of a given group, instead of explicitly declaring each of them as
+foreign variables you can simply declare a :func:`~xsimlab.group` variable. The
+latter behaves like an iterable of foreign variables pointing to each of the
+variables (model-wise) that are members of the same group.
 
-Note that group variables only support ``intent='in'``, i.e, group
-variables should only be used to get the values of multiple foreign
-variables of a same group.
+Note that group variables implicitly have ``intent='in'``, i.e, they could only
+be used to get the values of multiple foreign variables, not set their values.
 
-Group variables are useful particularly in cases where you want to
-combine (aggregate) different processes that act on the same
-variable, e.g. in landscape evolution modeling combine the effect of
-different erosion processes on the evolution of the surface
-elevation. This way you can easily add or remove processes to/from a
-model and avoid missing or broken links between processes.
+Group variables are useful particularly in cases where you want to combine
+(aggregate) different processes that act on the same variable, e.g. in landscape
+evolution modeling combine the effect of different erosion processes on the
+evolution of the surface elevation. This way you can easily add or remove
+processes to/from a model and avoid missing or broken links between processes.
 
 On-demand variables
 ~~~~~~~~~~~~~~~~~~~
@@ -165,7 +163,7 @@ given few times (or not at all). These are declared using
 :func:`~xsimlab.on_demand` and must implement in the same
 process-ified class a dedicated method -- i.e., decorated with
 ``@foo.compute`` where ``foo`` is the name of the variable -- that
-returns their value. They have always ``intent='out'``.
+returns their value. They implicitly have ``intent='out'``.
 
 On-demand variables are useful, e.g., for optional model diagnostics.
 
@@ -174,8 +172,24 @@ Index variables
 
 Index variables are intended for indexing data of other variables in a model
 like, e.g., coordinate labels of grid nodes. They are declared using
-:func:`~xsimlab.index`. They have always ``intent='out'`` although their values
-could be computed from other input variables.
+:func:`~xsimlab.index`. They implicitly have ``intent='out'``, although their
+values could be computed from other input variables.
+
+'Object' variables
+~~~~~~~~~~~~~~~~~~
+
+Sometimes we need to share between processes one or more arbitrary objects,
+e.g., callables or instances of custom classes that have no array-like
+interface. Those objects should be declared in process-decorated classes using
+:func:`~xsimlab.any_object`.
+
+Within a model, those 'object' variables are reserved for internal use only,
+i.e., they never require an input value (they implicitly have ``intent='out'``)
+and they can't be saved as outputs as their value may not be compatible with the
+xarray data model. Of course, it is still possible to create those objects using
+data from other (input) variables declared in the process. Likewise, their data
+could still be coerced into a scalar or an array and be saved as output via
+another variable.
 
 Simulation workflow
 -------------------

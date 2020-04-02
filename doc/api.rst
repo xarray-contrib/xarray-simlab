@@ -154,6 +154,7 @@ Variable
 
    variable
    index
+   any_object
    foreign
    group
    on_demand

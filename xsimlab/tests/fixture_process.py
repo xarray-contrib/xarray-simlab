@@ -35,6 +35,7 @@ class ExampleProcess:
     out_var = xs.variable(groups="example_group", intent="out")
     inout_var = xs.variable(intent="inout", converter=int)
     od_var = xs.on_demand()
+    obj_var = xs.any_object(description="arbitrary object")
 
     in_foreign_var = xs.foreign(SomeProcess, "some_var")
     in_foreign_var2 = xs.foreign(AnotherProcess, "some_var")
@@ -66,6 +67,7 @@ def example_process_repr():
         out_var              [out]
         inout_var          [inout]
         od_var               [out]
+        obj_var              [out] arbitrary object
         in_foreign_var        [in] <--- SomeProcess.some_var
         in_foreign_var2       [in] <--- AnotherProcess.some_var
         out_foreign_var      [out] ---> AnotherProcess.another_var
@@ -139,6 +141,7 @@ def processes_with_state():
             "in_var": ("example_process", "in_var"),
             "out_var": ("example_process", "out_var"),
             "inout_var": ("example_process", "inout_var"),
+            "obj_var": ("example_process", "obj_var"),
             "in_foreign_var": ("some_process", "some_var"),
             "in_foreign_var2": ("some_process", "some_var"),
             "out_foreign_var": ("another_process", "another_var"),
@@ -171,6 +174,7 @@ def example_process_in_model_repr():
         out_var              [out]
         inout_var          [inout]
         od_var               [out]
+        obj_var              [out] arbitrary object
         in_foreign_var        [in] <--- some_process.some_var
         in_foreign_var2       [in] <--- some_process.some_var
         out_foreign_var      [out] ---> another_process.another_var

@@ -4,7 +4,15 @@ import pytest
 
 import xsimlab as xs
 from xsimlab.process import get_process_cls
+from xsimlab.model import get_model_variables
 from xsimlab.tests.fixture_model import AddOnDemand, InitProfile, Profile
+from xsimlab.variable import VarType
+
+
+def test_get_model_variables(model):
+    idx_vars = get_model_variables(model, var_type=VarType.INDEX)
+
+    assert idx_vars == model.index_vars
 
 
 class TestModelBuilder:
@@ -74,6 +82,15 @@ class TestModelBuilder:
 
         assert actual_state_keys == expected_state_keys
         assert actual_od_keys == expected_od_keys
+
+    def test_object_variable(self):
+        @xs.process
+        class P:
+            obj = xs.any_object()
+
+        m = xs.Model({"p": P})
+
+        assert m.p.__xsimlab_state_keys__["obj"] == ("p", "obj")
 
     def test_multiple_groups(self):
         @xs.process

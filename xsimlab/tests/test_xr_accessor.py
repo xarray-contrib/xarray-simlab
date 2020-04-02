@@ -320,6 +320,17 @@ class TestSimlabAccessor:
         with pytest.warns(FutureWarning):
             ds.xsimlab._set_output_vars(model, {"out": ("profile", "u_opp")})
 
+    def test_set_output_object_vars(self):
+        @xs.process
+        class P:
+            obj = xs.any_object()
+
+        m = xs.Model({"p": P})
+        ds = xr.Dataset()
+
+        with pytest.raises(ValueError, match=r"Object variables can't be set.*"):
+            ds.xsimlab._set_output_vars(m, {("p", "obj"): None})
+
     def test_output_vars(self, model):
         o_vars = {
             ("profile", "u_opp"): None,

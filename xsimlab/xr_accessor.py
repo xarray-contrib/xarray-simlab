@@ -10,8 +10,9 @@ import numpy as np
 from xarray import as_variable, Dataset, register_dataset_accessor
 
 from .drivers import XarraySimulationDriver
-from .model import Model
+from .model import get_model_variables, Model
 from .utils import Frozen, variables_dict
+from .variable import VarType
 
 
 @register_dataset_accessor("filter")
@@ -363,8 +364,17 @@ class SimlabAccessor:
         invalid_outputs = set(output_vars) - set(model.all_vars)
         if invalid_outputs:
             raise KeyError(
-                ", ".join([str(k) for k in invalid_outputs])
+                ", ".join([f"{pn}__{vn}" for pn, vn in invalid_outputs])
                 + f" is/are not valid key(s) for variables in model {model}",
+            )
+
+        object_outputs = set(output_vars) & set(
+            get_model_variables(model, var_type=VarType.OBJECT)
+        )
+        if object_outputs:
+            raise ValueError(
+                f"Object variables can't be set as model outputs: "
+                + ", ".join([f"{pn}__{vn}" for pn, vn in object_outputs])
             )
 
         clock_vars = defaultdict(list)

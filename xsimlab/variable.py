@@ -12,6 +12,7 @@ class VarType(Enum):
     VARIABLE = "variable"
     INDEX = "index"
     ON_DEMAND = "on_demand"
+    OBJECT = "object"
     FOREIGN = "foreign"
     GROUP = "group"
 
@@ -330,6 +331,39 @@ def on_demand(
         "attrs": attrs or {},
         "description": description,
         "encoding": normalize_encoding(encoding),
+    }
+
+    return attr.attrib(metadata=metadata, init=False, repr=False)
+
+
+def any_object(groups=None, description="", attrs=None):
+    """Create a variable used to hold any arbitrary object that needs to be shared
+    with other process classes.
+
+    Use this instead of :func:`~xsimlab.variable` if you need to pass anything
+    other than scalar/array values to other processes (e.g., a callable or an
+    instance of a custom class that have no array-like interface).
+
+    Unlike regular variables, 'object' variables are not intended to be used as
+    model inputs or outputs. Additionally, a value must be set in the class
+    within which this variable is declared (i.e., intent='out').
+
+    Parameters
+    ----------
+    groups : str or list, optional
+        Variable group(s).
+    description : str, optional
+        Short description of the variable.
+    attrs : dict, optional
+        Dictionnary of additional metadata.
+
+    """
+    metadata = {
+        "var_type": VarType.OBJECT,
+        "intent": VarIntent.OUT,
+        "groups": _as_group_tuple(groups, None),
+        "attrs": attrs or {},
+        "description": description,
     }
 
     return attr.attrib(metadata=metadata, init=False, repr=False)
