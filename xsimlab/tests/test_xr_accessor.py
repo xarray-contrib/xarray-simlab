@@ -1,6 +1,7 @@
 import pytest
 import xarray as xr
 import numpy as np
+import zarr
 
 import xsimlab as xs
 from xsimlab import xr_accessor, create_setup
@@ -486,7 +487,11 @@ class TestSimlabAccessor:
         )
 
         out_ds = in_ds.xsimlab.run(
-            model=m, batch_dim="batch", parallel=parallel, scheduler=scheduler
+            model=m,
+            batch_dim="batch",
+            parallel=parallel,
+            scheduler=scheduler,
+            store=zarr.TempStore(),
         )
 
         if clock is None:
