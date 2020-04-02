@@ -337,12 +337,12 @@ def on_demand(
 
 
 def any_object(groups=None, description="", attrs=None):
-    """Create an variable used to hold any arbitrary object that needs to be shared
+    """Create a variable used to hold any arbitrary object that needs to be shared
     with other process classes.
 
     Use this instead of :func:`~xsimlab.variable` if you need to pass anything
     other than scalar/array values to other processes (e.g., a callable or an
-    instance of a custom class).
+    instance of a custom class that have no array-like interface).
 
     Unlike regular variables, 'object' variables are not intended to be used as
     model inputs or outputs. Additionally, a value must be set in the class
