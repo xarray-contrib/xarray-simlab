@@ -64,6 +64,9 @@ def _summarize_var(var, process, col_width):
 
         var_info = f"{link_symbol} {'.'.join(key)}"
 
+    elif var_type == VarType.OBJECT:
+        var_info = var.metadata["description"]
+
     else:
         var_dims = " or ".join([str(d) for d in var.metadata["dims"]])
 

@@ -30,6 +30,23 @@ def _flatten_keys(key_seq):
     return flat_keys
 
 
+def get_model_variables(p_mapping, **kwargs):
+    """Get variables in the model (processes mapping) as a list of
+    ``(process_name, var_name)`` tuples.
+
+    **kwargs may be used to return only a subset of the variables.
+
+    """
+    var_keys = []
+
+    for p_name, proc in p_mapping.items():
+        var_keys += [
+            (p_name, var_name) for var_name in filter_variables(proc, **kwargs)
+        ]
+
+    return var_keys
+
+
 class _ModelBuilder:
     """Used to iteratively build a new model.
 
@@ -129,7 +146,7 @@ class _ModelBuilder:
 
         var_type = var.metadata["var_type"]
 
-        if var_type in (VarType.VARIABLE, VarType.INDEX):
+        if var_type in (VarType.VARIABLE, VarType.INDEX, VarType.OBJECT):
             state_key = (p_name, var.name)
 
         elif var_type == VarType.ON_DEMAND:
@@ -242,20 +259,7 @@ class _ModelBuilder:
             raise ValueError(f"Conflict(s) found in given variable intents:\n{msg}")
 
     def get_variables(self, **kwargs):
-        """Get variables in the model as a list of
-        ``(process_name, var_name)`` tuples.
-
-        **kwargs may be used to return only a subset of the variables.
-
-        """
-        all_keys = []
-
-        for p_name, p_cls in self._processes_cls.items():
-            all_keys += [
-                (p_name, var_name) for var_name in filter_variables(p_cls, **kwargs)
-            ]
-
-        return all_keys
+        return get_model_variables(self._processes_cls, **kwargs)
 
     def get_input_variables(self):
         """Get all input variables in the model as a list of

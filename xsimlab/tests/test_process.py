@@ -59,6 +59,7 @@ def test_get_process_raise():
                 "in_foreign_od_var",
                 "group_var",
                 "od_var",
+                "obj_var",
             },
         ),
         ({"var_type": "variable"}, {"in_var", "out_var", "inout_var"}),
@@ -72,7 +73,7 @@ def test_get_process_raise():
                 "group_var",
             },
         ),
-        ({"intent": "out"}, {"out_var", "out_foreign_var", "od_var"}),
+        ({"intent": "out"}, {"out_var", "out_foreign_var", "od_var", "obj_var"}),
         ({"group": "example_group"}, {"out_var"}),
         (
             {
