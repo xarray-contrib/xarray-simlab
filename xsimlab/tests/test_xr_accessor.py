@@ -35,16 +35,14 @@ def test_filter_accessor():
 
 
 def test_get_model_from_context(model):
-    with pytest.raises(TypeError) as excinfo:
+    with pytest.raises(ValueError, match="No model found in context"):
         _maybe_get_model_from_context(None)
-    assert "No model found in context" in str(excinfo.value)
 
     with model as m:
         assert _maybe_get_model_from_context(None) is m
 
-    with pytest.raises(TypeError) as excinfo:
+    with pytest.raises(TypeError, match=r".*is not an instance of.*"):
         _maybe_get_model_from_context("not a model")
-    assert "is not an instance of xsimlab.Model" in str(excinfo.value)
 
 
 def test_as_variable_key():

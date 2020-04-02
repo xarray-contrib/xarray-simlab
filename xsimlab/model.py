@@ -10,7 +10,7 @@ from .process import (
     get_target_variable,
     SimulationStage,
 )
-from .utils import AttrMapping, ContextMixin, Frozen, variables_dict
+from .utils import AttrMapping, Frozen, variables_dict
 from .formatting import repr_model
 
 
@@ -437,7 +437,7 @@ class _ModelBuilder:
         return self._sorted_processes
 
 
-class Model(AttrMapping, ContextMixin):
+class Model(AttrMapping):
     """An immutable collection of process units that together form a
     computational model.
 
@@ -452,6 +452,8 @@ class Model(AttrMapping, ContextMixin):
     value before running the model.
 
     """
+
+    active = []
 
     def __init__(self, processes):
         """
@@ -795,14 +797,24 @@ class Model(AttrMapping, ContextMixin):
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
             return NotImplemented
-        return all(
-            [
-                k1 == k2 and type(v1) is type(v2)
-                for (k1, v1), (k2, v2) in zip(
-                    self._processes.items(), other._processes.items()
-                )
-            ]
-        )
+
+        for (k1, v1), (k2, v2) in zip(
+            self._processes.items(), other._processes.items()
+        ):
+            if k1 != k2 or type(v1) is not type(v2):
+                return False
+
+        return True
+
+    def __enter__(self):
+        if len(Model.active):
+            raise ValueError("There is already a model object in context")
+
+        Model.active.append(self)
+        return self
+
+    def __exit__(self, *args):
+        Model.active.pop(0)
 
     def __repr__(self):
         return repr_model(self)

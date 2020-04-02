@@ -297,5 +297,13 @@ class TestModel:
         result = model.visualize(show_only_variable=("profile", "u"))
         assert isinstance(result, ipydisp.Image)
 
+    def test_context_manager(self):
+        m1 = xs.Model({})
+        m2 = xs.Model({})
+
+        with pytest.raises(ValueError, match=r"There is already a model object.*"):
+            with m1, m2:
+                pass
+
     def test_repr(self, simple_model, simple_model_repr):
         assert repr(simple_model) == simple_model_repr
