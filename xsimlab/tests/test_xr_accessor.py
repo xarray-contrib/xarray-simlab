@@ -12,6 +12,7 @@ from xsimlab.xr_accessor import (
     _maybe_get_model_from_context,
 )
 
+from . import use_dask_schedulers
 from .fixture_model import Roll
 
 
@@ -20,7 +21,7 @@ def parallel(request):
     return request.param
 
 
-@pytest.fixture(params=["threads", "processes"])
+@pytest.fixture(params=use_dask_schedulers)
 def scheduler(request):
     return request.param
 
