@@ -369,7 +369,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
 
         validate_all = self._validate_option is ValidateOption.ALL
 
-        runtime_context = RuntimeContext(
+        rt_context = RuntimeContext(
             batch_size=self.batch_size,
             batch=batch,
             sim_start=ds_init["_sim_start"].values,
@@ -381,13 +381,18 @@ class XarraySimulationDriver(BaseSimulationDriver):
         model.set_inputs(in_vars, ignore_static=True)
         self._maybe_validate_inputs(model, in_vars)
 
-        model.execute(
-            "initialize", runtime_context, hooks=self.hooks, validate=validate_all,
-        )
+        execute_kwargs = {
+            "hooks": self.hooks,
+            "validate": validate_all,
+            "parallel": parallel,
+            "scheduler": self.scheduler,
+        }
+
+        model.execute("initialize", rt_context, **execute_kwargs)
 
         for step, (_, ds_step) in enumerate(ds_gby_steps):
 
-            runtime_context.update(
+            rt_context.update(
                 step=step,
                 step_start=ds_step["_clock_start"].values,
                 step_end=ds_step["_clock_end"].values,
@@ -398,19 +403,12 @@ class XarraySimulationDriver(BaseSimulationDriver):
             model.set_inputs(in_vars, ignore_static=False)
             self._maybe_validate_inputs(model, in_vars)
 
-            model.execute(
-                "run_step", runtime_context, hooks=self.hooks, validate=validate_all,
-            )
+            model.execute("run_step", rt_context, **execute_kwargs)
 
             self.store.write_output_vars(batch, step, model=model)
 
-            model.execute(
-                "finalize_step",
-                runtime_context,
-                hooks=self.hooks,
-                validate=validate_all,
-            )
+            model.execute("finalize_step", rt_context, **execute_kwargs)
 
         self.store.write_output_vars(batch, -1, model=model)
 
-        model.execute("finalize", runtime_context, hooks=self.hooks)
+        model.execute("finalize", rt_context, **execute_kwargs)

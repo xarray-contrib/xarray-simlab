@@ -761,7 +761,12 @@ class SimlabAccessor:
         circumstances and thus require extra care. In particular:
 
         - The code implemented in the process classes of ``model`` should be
-          thread-safe if a dask multi-threaded scheduler is used.
+          thread-safe if a dask multi-threaded scheduler is used, and should be
+          serializable if a multi-process or distributed scheduler is used.
+        - Multi-process or distributed schedulers are not supported when running
+          the ``model`` processes in parallel, as currently ``model``'s state
+          (shared between its processes) is saved in memory using a simple Python
+          dictionary.
         - Not all zarr stores are safe to write in multiple threads or processes.
           For example, :class:`zarr.storage.MemoryStore` used by default is
           safe to write in multiple threads but not in multiple processes.

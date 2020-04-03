@@ -375,6 +375,9 @@ class TestSimlabAccessor:
         assert ds.xsimlab.output_vars_by_clock == expected
 
     def test_run(self, model, in_dataset, out_dataset, parallel, scheduler):
+        if parallel and scheduler == "processes":
+            pytest.skip("multi-processes scheduler not supported for one run")
+
         out_ds = in_dataset.xsimlab.run(
             model=model, parallel=parallel, scheduler=scheduler
         )
