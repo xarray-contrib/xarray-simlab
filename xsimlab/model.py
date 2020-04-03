@@ -764,12 +764,12 @@ class Model(AttrMapping):
         Notes
         -----
         Even when run in parallel, xarray-simlab ensures that processes will
-        not run before their dependent processes. However, race conditions or
-        perfomance issues may still occur under certain circumstances that
-        require extra care. In particular:
+        not be executed before their dependent processes. However, race
+        conditions or perfomance issues may still occur under certain
+        circumstances that require extra care. In particular:
 
-        - The gain of perfomance when running the processes in parallel
-          highly depends on the graph structure. It might be not worth the
+        - The gain in perfomance when running the processes in parallel
+          highly depends on the graph structure. It might not be worth the
           extra complexity and overhead.
         - If a multi-threaded scheduler is used, then the code implemented
           in the process classes must be thread-safe. Also, it should release
