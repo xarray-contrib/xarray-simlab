@@ -41,7 +41,6 @@ def _get_var_info(
             "clock": clock,
             "name": var_cache["name"],
             "metadata": var_cache["metadata"],
-            "shape": None,  # not yet known
             "encoding": v_encoding,
         }
 
@@ -78,6 +77,25 @@ def get_auto_chunks(shape, dtype):
     return arr.chunks
 
 
+class DummyLock:
+    """DummyLock provides the lock API without any actual locking."""
+
+    def acquire(self, blocking=True):
+        pass
+
+    def release(self):
+        pass
+
+    def __enter__(self):
+        pass
+
+    def __exit__(self, *args):
+        pass
+
+    def locked(self):
+        return False
+
+
 class ZarrSimulationStore:
     def __init__(
         self,
@@ -86,6 +104,7 @@ class ZarrSimulationStore:
         zobject: Optional[Union[zarr.Group, MutableMapping, str]] = None,
         encoding: Optional[EncodingDict] = None,
         batch_dim: Optional[str] = None,
+        lock: Optional[Any] = None,
     ):
         self.dataset = dataset
         self.model = model
@@ -121,6 +140,11 @@ class ZarrSimulationStore:
         # ensure no dataset conflict in zarr group
         znames = [vi["name"] for vi in self.var_info.values()]
         ensure_no_dataset_conflict(self.zgroup, znames)
+
+        if lock is None:
+            self.lock = DummyLock()
+        else:
+            self.lock = lock
 
     def _init_clock_incrementers(self):
         clock_incs = {}
@@ -215,9 +239,6 @@ class ZarrSimulationStore:
             zdataset.attrs["description"] = var_info["metadata"]["description"]
         zdataset.attrs.update(var_info["metadata"]["attrs"])
 
-        # init shape for dynamically sized arrays
-        var_info["shape"] = shape
-
         # reset consolidated since metadata has just been updated
         self.consolidated = False
 
@@ -229,7 +250,7 @@ class ZarrSimulationStore:
         var_info = self.var_info[var_key]
 
         zkey = var_info["name"]
-        zshape = var_info["shape"]
+        zshape = self.zgroup[zkey].shape
         value = model._var_cache[var_key]["value"]
         value_shape = list(np.shape(value))
 
@@ -244,8 +265,8 @@ class ZarrSimulationStore:
         new_shape = np.maximum(zshape, value_shape)
 
         if np.any(new_shape > zshape):
-            var_info["shape"] = new_shape
-            self.zgroup[zkey].resize(new_shape)
+            with self.lock:
+                self.zgroup[zkey].resize(new_shape)
 
     def write_output_vars(self, batch: int, step: int, model: Optional[Model] = None):
         if model is None:
@@ -266,7 +287,8 @@ class ZarrSimulationStore:
 
             if clock_inc == 0:
                 for vk in var_keys:
-                    self._create_zarr_dataset(model, vk)
+                    with self.lock:
+                        self._create_zarr_dataset(model, vk)
 
             for vk in var_keys:
                 zkey = self.var_info[vk]["name"]

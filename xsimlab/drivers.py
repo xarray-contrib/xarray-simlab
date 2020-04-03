@@ -234,8 +234,18 @@ class XarraySimulationDriver(BaseSimulationDriver):
         self.parallel = parallel
         self.scheduler = scheduler
 
+        if parallel:
+            lock = dask.utils.get_scheduler_lock(scheduler=scheduler)
+        else:
+            lock = None
+
         self.store = ZarrSimulationStore(
-            self.dataset, model, zobject=store, encoding=encoding, batch_dim=batch_dim
+            self.dataset,
+            model,
+            zobject=store,
+            encoding=encoding,
+            batch_dim=batch_dim,
+            lock=lock,
         )
 
     def _maybe_transpose(self, xr_var, p_name, var_name):
