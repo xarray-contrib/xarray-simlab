@@ -664,12 +664,11 @@ class Model(AttrMapping):
             p_names = set([pn for pn, _ in input_vars if pn in self._processes])
             self.validate(p_names)
 
-    def cache_state(self, var_key):
-        """Explicitly cache the current value in state for a given model
-        variable.
+    def update_cache(self, var_key):
+        """Update the model's cache for a given model variable.
 
         This is generally not really needed, except for on demand variables
-        where this may optimize multiple accesses to the variable value between
+        where this might optimize multiple accesses to the variable value between
         two simulation stages.
 
         No copy is performed.

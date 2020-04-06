@@ -250,15 +250,15 @@ class TestModel:
         with pytest.raises(KeyError, match=r".* not a valid input variable .*"):
             model.update_state(input_vars, ignore_static=True, ignore_invalid_keys=False)
 
-    def test_cache_state(self, model):
+    def test_update_cache(self, model):
         model.state[("init_profile", "n_points")] = 10
-        model.cache_state(("init_profile", "n_points"))
+        model.update_cache(("init_profile", "n_points"))
 
         assert model._var_cache[("init_profile", "n_points")]["value"] == 10
 
         # test on demand variables
         model.state[("add", "offset")] = 1
-        model.cache_state(("add", "u_diff"))
+        model.update_cache(("add", "u_diff"))
 
         assert model._var_cache[("add", "u_diff")]["value"] == 1
 
