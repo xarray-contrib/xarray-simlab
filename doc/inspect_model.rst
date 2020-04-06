@@ -107,6 +107,8 @@ Like :attr:`~xsimlab.Model.input_vars` and
 :attr:`~xsimlab.Model.all_vars_dict` are available for all model
 variables, not only inputs.
 
+.. _inspect_model_visualize:
+
 Visualize models as graphs
 --------------------------
 

@@ -28,12 +28,13 @@ library. There are two parallel modes:
 Single-model parallelism
 ------------------------
 
-This mode runs each process in a model in parallel.
+This mode runs the processes in a model in parallel.
 
 A :class:`~xsimlab.Model` object can be viewed as a Directed Acyclic Graph (DAG)
-built from a collection of processes (i.e., process-decorated classes). At each
-simulation stage, a task graph is built from this graph, which is then executed
-by one of the schedulers available in Dask.
+built from a collection of processes (i.e., process-decorated classes) as nodes
+and their inter-dependencies as directed edges. At each simulation stage, a task
+graph is built from this DAG, which is then executed by one of the schedulers
+available in Dask.
 
 To activate this parallel mode, simply set ``parallel=True`` when calling
 :func:`xarray.Dataset.xsimlab.run`:
@@ -44,22 +45,22 @@ To activate this parallel mode, simply set ``parallel=True`` when calling
 
 The default Dask scheduler used here is ``"threads"`` (this is the one used by
 ``dask.delayed``). Other schedulers may be selected via the ``scheduler``
-argument of :func:`~xarray.Dataset.xsimlab.run`. Dask also supports other ways to
+argument of :func:`~xarray.Dataset.xsimlab.run`. Dask also provides other ways to
 select a scheduler, see `here
 <https://docs.dask.org/en/latest/setup/single-machine.html>`_.
 
-Note, however, that multi-processes schedulers are not supported for this mode,
-since simulation active data (shared between all model components) is stored
-using a simple Python dictionary.
+Multi-processes schedulers are not supported for this mode since simulation
+active data, shared between all model components, is stored using a simple
+Python dictionary.
 
-Note also that the code in the process-decorated classes must be thread-safe
-and should release the CPython's Global Interpreter Lock (GIL) as much as
-possible in order to see a gain in performance. For example, most Numpy
-functions release the GIL.
+The code in the process-decorated classes must be thread-safe and should release
+CPython's Global Interpreter Lock (GIL) as much as possible in order to see
+a gain in performance. For example, most Numpy functions release the GIL.
 
 The gain in performance compared to sequential execution of the model processes
 will also depend on how the DAG is structured, i.e., how many processes can be
-executed in parallel.
+executed in parallel. Visualizing the DAG helps a lot, see Section
+:ref:`inspect_model_visualize`.
 
 .. _run_parallel_multi:
 
@@ -84,7 +85,7 @@ while calling :func:`xarray.Dataset.xsimlab.run` (see Section
 
 .. code:: python
 
-   >>> in_ds.xsimlab.run(model=my_model, batch_dim="batch", parallel=True)
+   >>> in_ds.xsimlab.run(model=my_model, batch_dim="batch", parallel=True, store="output.zarr")
 
 As opposed to single-model parallelism, both multi-threads and multi-processes
 Dask schedulers are supported for this embarrassingly parallel problem.
@@ -102,8 +103,8 @@ If you use a multi-processes scheduler, beware of the following:
 - By default, the chunk size of Zarr datasets along the batch dimension is equal
   to 1 in order to prevent race conditions during parallel writes. This might
   not be optimal for further post-processing, though. It is possible to override
-  this default and set larger chunk sizes (via the ``encoding`` parameter of
-  :func:`~xarray.Dataset.xsimlab.run`), but then you should also use one of the
-  Zarr's synchronizers (either :class:`zarr.sync.ThreadSynchronizer` or
+  this default value and set larger chunk sizes via the ``encoding`` parameter
+  of :func:`~xarray.Dataset.xsimlab.run`, but then you should also use one of
+  the Zarr's synchronizers (either :class:`zarr.sync.ThreadSynchronizer` or
   :class:`zarr.sync.ProcessSynchronizer`) to ensure that all output values will
   be properly saved.

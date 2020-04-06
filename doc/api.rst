@@ -17,6 +17,8 @@ Top-level functions
 
    create_setup
 
+.. _api_xarray_accessor:
+
 Dataset.xsimlab (xarray accessor)
 =================================
 
@@ -104,9 +106,9 @@ Running a model
 ---------------
 
 In most cases, the methods and properties listed below should not be used
-directly. For running simulations, it is preferable to use the
-``Dataset.xsimlab`` accessor instead. These methods might be useful though,
-e.g., for debugging or for using ``Model`` objects with other interfaces.
+directly. For running simulations, it is preferable to use the xarray extension
+instead, see :ref:`api_xarray_accessor`. These methods might be useful though,
+e.g., for using ``Model`` objects with other interfaces.
 
 .. autosummary::
    :toctree: _api_generated/
