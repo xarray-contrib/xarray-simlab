@@ -243,13 +243,17 @@ time at a fixed rate:
     @savefig run_advect_model_time.png width=100%
     out_ds5.profile__u.plot(col='otime', figsize=(9, 3));
 
+.. _run_batch:
+
 Run multiple simulations
 ------------------------
 
 Besides a time dimension, model inputs may also accept another extra dimension
 that is used to run batches of simulations. This is very convenient for
 sensitivity analyses: the inputs and results from all simulations are neatly
-combined into one xarray Dataset object.
+combined into one xarray Dataset object. Another advantage is that those
+simulations can be run in parallel easily, see Section
+:ref:`run_parallel_multi`.
 
 .. note::
 

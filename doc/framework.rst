@@ -246,9 +246,8 @@ computationally consistent can then be obtained using topological
 sorting. This is done at Model object creation. The same ordering is
 used at every stage of a model run.
 
-In principle, the DAG structure would also allow running the processes
-in parallel at every stage of a model run. This is not yet
-implemented, though.
+The DAG structure also allows running the processes in parallel at every stage
+of a model run, see Section :ref:`run_parallel_single`.
 
 Model inputs
 ------------

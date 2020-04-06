@@ -53,37 +53,23 @@ components (i.e., Python classes) together form.
 Does xarray-simlab support running model(s) in parallel?
 --------------------------------------------------------
 
-There is currently no support for model execution in parallel but it
-is a top priority for the next releases!
+Yes! Three levels of parallelism are possible:
 
-Three levels of parallelism are possible:
-
-- "inter-model" parallelism, i.e., execution of multiple model runs in
+- "multi-models" parallelism, i.e., execution of multiple model runs in
   parallel,
-- "inter-process" parallelism, i.e., execution of multiple processes of
+- "single-model" parallelism, i.e., execution of multiple processes of
   a model in parallel,
-- "intra-process" parallelism, i.e., parallel execution of some code
+- "user-specific" parallelism, i.e., parallel execution of some code
   written in one or more processes.
 
-Note that the notion of process used above is different from
-multiprocessing: a process here corresponds to a component of a model
-(see Section :ref:`framework`).
+Note that the notion of process used above is different from multiprocessing: a
+process here corresponds to a component of a model. See Section
+:ref:`framework`.
 
-The first level "inter-model" is an embarrassingly parallel problem.
-Next versions of xarray-simlab will allow to very easily run
-simulations in parallel (e.g., for sensitivity analyses).
+For the first two levels, see Section :ref:`run_parallel`.
 
-It shouldn't be hard to add support for the second level
-"inter-process" given that processes in a model together form a
-directed acyclic graph. However, those processes usually perform most
-of their computation on shared data, which may significantly reduce
-the gain of parallel execution when using multiple OS processes or in
-distributed environments. Using multiple threads is limited by the
-CPython's GIL, unless it is released by the code executed in model
-processes.
-
-The third level "intra-process" is more domain specific. Users are
-free to develop xarray-simlab compatible models with custom code (in
+The third level "user-specific" is not part the xarray-simlab framework. Users
+are free to develop xarray-simlab compatible models with custom code (in
 processes) that is executed either sequentially or in parallel.
 
 Is it possible to use xarray-simlab without xarray?

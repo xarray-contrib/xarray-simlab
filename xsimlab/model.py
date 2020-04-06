@@ -777,7 +777,7 @@ class Model(AttrMapping):
           to see a gain in performance.
         - Multi-process or distributed schedulers are not supported, as
           currently the model state (shared between the process classes)
-          is saved in memory using a simple Python dictionary.
+          is stored using a simple Python dictionary.
 
         """
         if hooks is None:

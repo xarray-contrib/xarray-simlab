@@ -80,6 +80,8 @@ supported by xarray, e.g.,
 
    out_ds.to_netcdf("advect_model_run.nc")
 
+.. _io_storage_zarr:
+
 Using zarr
 ----------
 
@@ -201,6 +203,8 @@ to the xarray Dataset or DataArray :meth:`~xarray.Dataset.stack`,
    In [7]: (out_ds.stack(particles=('steps', 'pt'))
       ...:        .dropna('particles')
       ...:        .to_dataframe())
+
+.. _io_storage_encoding:
 
 Encoding options
 ~~~~~~~~~~~~~~~~
