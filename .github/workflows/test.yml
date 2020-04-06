@@ -48,6 +48,8 @@ jobs:
         shell: bash -l {0}
         run: pytest xsimlab --cov=xsimlab --cov-report term-missing --cov-report xml --verbose --color=yes
         continue-on-error: ${{ matrix.cfg.allow-failure }}
+        env:
+          DASK_SINGLE_THREADED: true
       - name: Codecov
         if: matrix.cfg.codecov
         uses: codecov/codecov-action@v1

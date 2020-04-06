@@ -1,6 +1,7 @@
 import pytest
 import xarray as xr
 import numpy as np
+import zarr
 
 import xsimlab as xs
 from xsimlab import xr_accessor, create_setup
@@ -11,7 +12,18 @@ from xsimlab.xr_accessor import (
     _maybe_get_model_from_context,
 )
 
+from . import use_dask_schedulers
 from .fixture_model import Roll
+
+
+@pytest.fixture(params=[True, False])
+def parallel(request):
+    return request.param
+
+
+@pytest.fixture(params=use_dask_schedulers)
+def scheduler(request):
+    return request.param
 
 
 def test_filter_accessor():
@@ -25,16 +37,14 @@ def test_filter_accessor():
 
 
 def test_get_model_from_context(model):
-    with pytest.raises(TypeError) as excinfo:
+    with pytest.raises(ValueError, match="No model found in context"):
         _maybe_get_model_from_context(None)
-    assert "No model found in context" in str(excinfo.value)
 
     with model as m:
         assert _maybe_get_model_from_context(None) is m
 
-    with pytest.raises(TypeError) as excinfo:
+    with pytest.raises(TypeError, match=r".*is not an instance of.*"):
         _maybe_get_model_from_context("not a model")
-    assert "is not an instance of xsimlab.Model" in str(excinfo.value)
 
 
 def test_as_variable_key():
@@ -364,6 +374,16 @@ class TestSimlabAccessor:
 
         assert ds.xsimlab.output_vars_by_clock == expected
 
+    def test_run(self, model, in_dataset, out_dataset, parallel, scheduler):
+        if parallel and scheduler == "processes":
+            pytest.skip("multi-processes scheduler not supported for one run")
+
+        out_ds = in_dataset.xsimlab.run(
+            model=model, parallel=parallel, scheduler=scheduler
+        )
+
+        xr.testing.assert_equal(out_ds, out_dataset)
+
     def test_run_safe_mode(self, model, in_dataset):
         # safe mode True: ensure model is cloned (empty state)
         _ = in_dataset.xsimlab.run(model=model, safe_mode=True)
@@ -452,7 +472,7 @@ class TestSimlabAccessor:
             (("batch", "x"), [[1, 1], [2, 2]], None),
         ],
     )
-    def test_run_batch_dim(self, dims, data, clock):
+    def test_run_batch_dim(self, dims, data, clock, parallel, scheduler):
         @xs.process
         class P:
             in_var = xs.variable(dims=[(), "x"])
@@ -470,7 +490,13 @@ class TestSimlabAccessor:
             output_vars={"p__out_var": clock},
         )
 
-        out_ds = in_ds.xsimlab.run(model=m, batch_dim="batch")
+        out_ds = in_ds.xsimlab.run(
+            model=m,
+            batch_dim="batch",
+            parallel=parallel,
+            scheduler=scheduler,
+            store=zarr.TempStore(),
+        )
 
         if clock is None:
             coords = {}

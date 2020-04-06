@@ -1,8 +1,7 @@
-import copy
 from enum import Enum
 from typing import Any, Iterator, Mapping
 
-import attr
+import dask
 import pandas as pd
 
 from .hook import flatten_hooks, group_hooks, RuntimeHook
@@ -200,6 +199,8 @@ class XarraySimulationDriver(BaseSimulationDriver):
         check_dims=CheckDimsOption.STRICT,
         validate=ValidateOption.INPUTS,
         hooks=None,
+        parallel=False,
+        scheduler=None,
     ):
         # these are not yet supported with zarr
         self.dataset, self.multi_indexes = _reset_multi_indexes(dataset)
@@ -228,8 +229,21 @@ class XarraySimulationDriver(BaseSimulationDriver):
             hooks = []
         self.hooks = _get_all_active_hooks(hooks)
 
+        self.parallel = parallel
+        self.scheduler = scheduler
+
+        if parallel:
+            lock = dask.utils.get_scheduler_lock(scheduler=scheduler)
+        else:
+            lock = None
+
         self.store = ZarrSimulationStore(
-            self.dataset, model, zobject=store, encoding=encoding, batch_dim=batch_dim
+            self.dataset,
+            model,
+            zobject=store,
+            encoding=encoding,
+            batch_dim=batch_dim,
+            lock=lock,
         )
 
     def _maybe_transpose(self, xr_var, p_name, var_name):
@@ -321,18 +335,28 @@ class XarraySimulationDriver(BaseSimulationDriver):
 
         if self.batch_dim is None:
             model = self.model
-            self._run_one_model(self.dataset, model)
+            self._run_one_model(self.dataset, model, parallel=self.parallel)
 
         else:
             ds_gby_batch = self.dataset.groupby(self.batch_dim)
+            futures = []
 
             for batch, (_, ds_batch) in enumerate(ds_gby_batch):
                 model = self.model.clone()
-                self._run_one_model(ds_batch, model, batch=batch)
+
+                if self.parallel:
+                    futures.append(
+                        dask.delayed(self._run_one_model)(ds_batch, model, batch=batch)
+                    )
+                else:
+                    self._run_one_model(ds_batch, model, batch=batch)
+
+            if self.parallel:
+                dask.compute(futures, scheduler=self.scheduler)
 
         self.store.write_index_vars(model=model)
 
-    def _run_one_model(self, dataset, model, batch=-1):
+    def _run_one_model(self, dataset, model, batch=-1, parallel=False):
         """Run one simulation.
 
         - Set model inputs from the input Dataset (update
@@ -345,7 +369,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
 
         validate_all = self._validate_option is ValidateOption.ALL
 
-        runtime_context = RuntimeContext(
+        rt_context = RuntimeContext(
             batch_size=self.batch_size,
             batch=batch,
             sim_start=ds_init["_sim_start"].values,
@@ -357,13 +381,18 @@ class XarraySimulationDriver(BaseSimulationDriver):
         model.set_inputs(in_vars, ignore_static=True)
         self._maybe_validate_inputs(model, in_vars)
 
-        model.execute(
-            "initialize", runtime_context, hooks=self.hooks, validate=validate_all,
-        )
+        execute_kwargs = {
+            "hooks": self.hooks,
+            "validate": validate_all,
+            "parallel": parallel,
+            "scheduler": self.scheduler,
+        }
+
+        model.execute("initialize", rt_context, **execute_kwargs)
 
         for step, (_, ds_step) in enumerate(ds_gby_steps):
 
-            runtime_context.update(
+            rt_context.update(
                 step=step,
                 step_start=ds_step["_clock_start"].values,
                 step_end=ds_step["_clock_end"].values,
@@ -374,19 +403,12 @@ class XarraySimulationDriver(BaseSimulationDriver):
             model.set_inputs(in_vars, ignore_static=False)
             self._maybe_validate_inputs(model, in_vars)
 
-            model.execute(
-                "run_step", runtime_context, hooks=self.hooks, validate=validate_all,
-            )
+            model.execute("run_step", rt_context, **execute_kwargs)
 
             self.store.write_output_vars(batch, step, model=model)
 
-            model.execute(
-                "finalize_step",
-                runtime_context,
-                hooks=self.hooks,
-                validate=validate_all,
-            )
+            model.execute("finalize_step", rt_context, **execute_kwargs)
 
         self.store.write_output_vars(batch, -1, model=model)
 
-        model.execute("finalize", runtime_context, hooks=self.hooks)
+        model.execute("finalize", rt_context, **execute_kwargs)

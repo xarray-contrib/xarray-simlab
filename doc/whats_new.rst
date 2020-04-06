@@ -78,6 +78,7 @@ Enhancements
   parameter of :func:`xarray.Dataset.xsimlab.run` (:issue:`115`).
 - Added 'object' variables :func:`~xsimlab.any_object` for sharing arbitrary
   Python objects between processes (:issue:`118`).
+- Run one or multiple simulations in parallel using Dask (:issue:`119`).
 
 Bug fixes
 ~~~~~~~~~

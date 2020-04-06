@@ -2,7 +2,6 @@
 Internal utilties; not for external use.
 
 """
-import threading
 from collections import OrderedDict
 from collections.abc import KeysView, ItemsView, ValuesView
 from contextlib import suppress
@@ -197,41 +196,3 @@ class Frozen(Mapping[K, V]):
 
     def __repr__(self) -> str:
         return f"{type(self).__name__}({self.mapping!r})"
-
-
-class ContextMixin:
-    """Functionality for objects that put themselves in a context using
-    the `with` statement.
-
-    Part of the code below is copied and modified from:
-
-    - pymc3 3.1 (Copyright (c) 2009-2013 The PyMC developers)
-      Licensed under the Apache License, Version 2.0
-      https://github.com/pymc-devs/pymc3
-
-    """
-
-    contexts = threading.local()
-
-    def __enter__(self):
-        type(self).get_contexts().append(self)
-        return self
-
-    def __exit__(self, typ, value, traceback):
-        type(self).get_contexts().pop()
-
-    @classmethod
-    def get_contexts(cls):
-        # no race-condition here, cls.contexts is a thread-local object
-        # be sure not to override contexts in a subclass however!
-        if not hasattr(cls.contexts, "stack"):
-            cls.contexts.stack = []
-        return cls.contexts.stack
-
-    @classmethod
-    def get_context(cls):
-        """Return the deepest context on the stack."""
-        try:
-            return cls.get_contexts()[-1]
-        except IndexError:
-            raise TypeError("No context on context stack")

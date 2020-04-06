@@ -2,6 +2,7 @@ from collections import OrderedDict, defaultdict
 import copy
 
 import attr
+import dask
 
 from .variable import VarIntent, VarType
 from .process import (
@@ -10,7 +11,7 @@ from .process import (
     get_target_variable,
     SimulationStage,
 )
-from .utils import AttrMapping, ContextMixin, Frozen, variables_dict
+from .utils import AttrMapping, Frozen, variables_dict
 from .formatting import repr_model
 
 
@@ -437,7 +438,7 @@ class _ModelBuilder:
         return self._sorted_processes
 
 
-class Model(AttrMapping, ContextMixin):
+class Model(AttrMapping):
     """An immutable collection of process units that together form a
     computational model.
 
@@ -452,6 +453,8 @@ class Model(AttrMapping, ContextMixin):
     value before running the model.
 
     """
+
+    active = []
 
     def __init__(self, processes):
         """
@@ -700,7 +703,40 @@ class Model(AttrMapping, ContextMixin):
         for h in event_hooks:
             h(self, Frozen(runtime_context), Frozen(self.state))
 
-    def execute(self, stage, runtime_context, hooks=None, validate=False):
+    def _execute_process(self, p_obj, stage, runtime_context, hooks, validate):
+        executor = p_obj.__xsimlab_executor__
+        p_name = p_obj.__xsimlab_name__
+
+        self._call_hooks(hooks, runtime_context, stage, "process", "pre")
+        executor.execute(p_obj, stage, runtime_context)
+        self._call_hooks(hooks, runtime_context, stage, "process", "post")
+
+        if validate:
+            self.validate(self._processes_to_validate[p_name])
+
+    def _build_dask_graph(self, extra_args):
+        def exec_process(p_obj, deps):
+            self._execute_process(p_obj, *extra_args)
+
+        dsk = {
+            p_name: (exec_process, self._processes[p_name], p_deps)
+            for p_name, p_deps in self._dep_processes.items()
+        }
+
+        # add a dummy node so that we properly call the get func of dask scheduler
+        dsk["_end"] = (lambda deps: None, list(self._processes))
+
+        return dsk
+
+    def execute(
+        self,
+        stage,
+        runtime_context,
+        hooks=None,
+        validate=False,
+        parallel=False,
+        scheduler=None,
+    ):
         """Run one stage of a simulation.
 
         Parameters
@@ -718,24 +754,51 @@ class Model(AttrMapping, ContextMixin):
             processes after a process (maybe) sets values through its foreign
             variables (default: False). This is useful for debugging but
             it may significantly impact performance.
+        parallel : bool, optional
+            If True, run the simulation stage in parallel using Dask
+            (default: False).
+        scheduler : str, optional
+            Dask's scheduler used to run the stage in parallel
+            (Dask's threads scheduler is used as failback).
+
+        Notes
+        -----
+        Even when run in parallel, xarray-simlab ensures that processes will
+        not be executed before their dependent processes. However, race
+        conditions or perfomance issues may still occur under certain
+        circumstances that require extra care. In particular:
+
+        - The gain in perfomance when running the processes in parallel
+          highly depends on the graph structure. It might not be worth the
+          extra complexity and overhead.
+        - If a multi-threaded scheduler is used, then the code implemented
+          in the process classes must be thread-safe. Also, it should release
+          the Python Global Interpreted Lock (GIL) as much as possible in order
+          to see a gain in performance.
+        - Multi-process or distributed schedulers are not supported, as
+          currently the model state (shared between the process classes)
+          is stored using a simple Python dictionary.
 
         """
         if hooks is None:
             hooks = {}
 
+        dsk_get = dask.base.get_scheduler(scheduler=scheduler)
+        if dsk_get is None:
+            dsk_get = dask.threaded.get
+
         stage = SimulationStage(stage)
+        extra_args = (stage, runtime_context, hooks, validate)
 
         self._call_hooks(hooks, runtime_context, stage, "model", "pre")
 
-        for p_name, p_obj in self._processes.items():
-            executor = p_obj.__xsimlab_executor__
+        if parallel:
+            dsk = self._build_dask_graph(extra_args)
+            dsk_get(dsk, "_end", scheduler=scheduler)
 
-            self._call_hooks(hooks, runtime_context, stage, "process", "pre")
-            executor.execute(p_obj, stage, runtime_context)
-            self._call_hooks(hooks, runtime_context, stage, "process", "post")
-
-            if validate:
-                self.validate(self._processes_to_validate[p_name])
+        else:
+            for p_name, p_obj in self._processes.items():
+                self._execute_process(p_obj, *extra_args)
 
         self._call_hooks(hooks, runtime_context, stage, "model", "post")
 
@@ -795,14 +858,24 @@ class Model(AttrMapping, ContextMixin):
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
             return NotImplemented
-        return all(
-            [
-                k1 == k2 and type(v1) is type(v2)
-                for (k1, v1), (k2, v2) in zip(
-                    self._processes.items(), other._processes.items()
-                )
-            ]
-        )
+
+        for (k1, v1), (k2, v2) in zip(
+            self._processes.items(), other._processes.items()
+        ):
+            if k1 != k2 or type(v1) is not type(v2):
+                return False
+
+        return True
+
+    def __enter__(self):
+        if len(Model.active):
+            raise ValueError("There is already a model object in context")
+
+        Model.active.append(self)
+        return self
+
+    def __exit__(self, *args):
+        Model.active.pop(0)
 
     def __repr__(self):
         return repr_model(self)

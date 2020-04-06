@@ -214,6 +214,7 @@ intersphinx_mapping = {
     "pandas": ("https://pandas.pydata.org/pandas-docs/stable/", None),
     "xarray": ("https://xarray.pydata.org/en/stable/", None),
     "zarr": ("https://zarr.readthedocs.io/en/stable/", None),
+    "dask": ("https://docs.dask.org/en/latest/", None),
 }
 
 

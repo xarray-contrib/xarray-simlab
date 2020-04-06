@@ -11,14 +11,12 @@ Required dependencies
 - `numpy <http://www.numpy.org/>`__
 - `xarray <http://xarray.pydata.org>`__ (0.10.0 or later)
 - `zarr <https://zarr.readthedocs.io>`__ (2.3.0 or later)
+- `dask <https://docs.dask.org>`__
 
 Optional dependencies
 ---------------------
 
-For model visualization
-~~~~~~~~~~~~~~~~~~~~~~~
-
-- `graphviz <http://graphviz.readthedocs.io>`__
+- `graphviz <http://graphviz.readthedocs.io>`__ (for model visualization)
 
 Install using conda
 -------------------

@@ -5,7 +5,7 @@ import xarray as xr
 import zarr
 
 import xsimlab as xs
-from xsimlab.stores import ZarrSimulationStore
+from xsimlab.stores import DummyLock, ZarrSimulationStore
 
 
 @pytest.fixture(params=["directory", zarr.MemoryStore])
@@ -52,6 +52,17 @@ def model_batch2(model):
 @pytest.fixture
 def store_batch(in_ds_batch, model, zobject):
     return ZarrSimulationStore(in_ds_batch, model, zobject=zobject, batch_dim="batch")
+
+
+def test_dummy_lock():
+    lock = DummyLock()
+
+    lock.acquire()
+    assert not lock.locked()
+    lock.release()
+
+    with lock:
+        assert not lock.locked()
 
 
 class TestZarrSimulationStore:

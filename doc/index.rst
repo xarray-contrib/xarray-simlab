@@ -36,6 +36,7 @@ Documentation index
 * :doc:`inspect_model`
 * :doc:`run_model`
 * :doc:`io_storage`
+* :doc:`run_parallel`
 * :doc:`monitor`
 * :doc:`testing`
 
@@ -49,6 +50,7 @@ Documentation index
    inspect_model
    run_model
    io_storage
+   run_parallel
    monitor
    testing
 
