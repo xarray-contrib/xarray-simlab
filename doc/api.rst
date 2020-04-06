@@ -112,8 +112,8 @@ e.g., for debugging or for using ``Model`` objects with other interfaces.
    :toctree: _api_generated/
 
    Model.state
+   Model.update_state
    Model.cache_state
-   Model.set_inputs
    Model.execute
    Model.validate
 
