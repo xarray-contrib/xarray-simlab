@@ -615,29 +615,34 @@ class Model(AttrMapping):
         """
         return self._state
 
-    def set_inputs(self, input_data, ignore_static=False, ignore_invalid_keys=True):
-        """Set or update input variable values in the model's state.
+    def update_state(
+        self, input_vars, validate=True, ignore_static=False, ignore_invalid_keys=True
+    ):
+        """Update the model's state (only input variables) with new values.
 
         Prior to update the model's state, first convert the values for model
         variables that have a converter, otherwise copy the values.
 
         Parameters
         ----------
-        input_data : dict_like
-            A mapping where keys are in the form of a
-            ``('process_name', 'var_name')`` tuple and values are
+        input_vars : dict_like
+            A mapping where keys are in the form of
+            ``('process_name', 'var_name')`` tuples and values are
             the input values to set in the model state.
+        validate : bool, optional
+            If True (default), run the variable validators after setting the
+            new values.
         ignore_static : bool, optional
             If True, sets the values even for static variables. Otherwise
             (default), raises a ``ValueError`` in order to prevent updating
             values of static variables.
         ignore_invalid_keys : bool, optional
-            If True (default), ignores keys in ``input_data`` that do not
+            If True (default), ignores keys in ``input_vars`` that do not
             correspond to input variables in the model. Otherwise, raises
             a ``KeyError``.
 
         """
-        for key, value in input_data.items():
+        for key, value in input_vars.items():
 
             if key not in self.input_vars:
                 if ignore_invalid_keys:
@@ -655,12 +660,15 @@ class Model(AttrMapping):
             else:
                 self._state[key] = copy.copy(value)
 
-    def cache_state(self, var_key):
-        """Explicitly cache the current value in state for a given model
-        variable.
+        if validate:
+            p_names = set([pn for pn, _ in input_vars if pn in self._processes])
+            self.validate(p_names)
+
+    def update_cache(self, var_key):
+        """Update the model's cache for a given model variable.
 
         This is generally not really needed, except for on demand variables
-        where this may optimize multiple accesses to the variable value between
+        where this might optimize multiple accesses to the variable value between
         two simulation stages.
 
         No copy is performed.

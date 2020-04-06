@@ -91,6 +91,12 @@ For a full list of customization options, refer to the `Tqdm documentation`_.
 
 .. _Tqdm documentation: https://tqdm.github.io
 
+.. note::
+
+   Currently this progress bar doesn't support tracking the progress of batches
+   of simulations. If those batches are run in parallel you can
+   use Dask's diagnostics instead.
+
 .. _custom_runtime_hooks:
 
 Custom runtime hooks

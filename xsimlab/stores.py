@@ -283,7 +283,7 @@ class ZarrSimulationStore:
             clock_inc = self.clock_incs[clock][batch]
 
             for vk in var_keys:
-                model.cache_state(vk)
+                model.update_cache(vk)
 
             if clock_inc == 0:
                 for vk in var_keys:
@@ -322,7 +322,7 @@ class ZarrSimulationStore:
 
         for var_key in model.index_vars:
             _, vname = var_key
-            model.cache_state(var_key)
+            model.update_cache(var_key)
 
             self._create_zarr_dataset(model, var_key, name=vname)
             self.zgroup[vname][:] = model._var_cache[var_key]["value"]

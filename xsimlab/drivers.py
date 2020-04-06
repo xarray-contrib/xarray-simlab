@@ -291,12 +291,6 @@ class XarraySimulationDriver(BaseSimulationDriver):
 
         return input_vars
 
-    def _maybe_validate_inputs(self, model, input_vars):
-        p_names = set([v[0] for v in input_vars])
-
-        if self._validate_option is not None:
-            model.validate(p_names)
-
     def get_results(self):
         """Get simulation results as a xarray.Dataset loaded from
         the zarr store.
@@ -368,6 +362,14 @@ class XarraySimulationDriver(BaseSimulationDriver):
         ds_init, ds_gby_steps = _generate_runtime_datasets(dataset)
 
         validate_all = self._validate_option is ValidateOption.ALL
+        validate_inputs = validate_all or self._validate_option is ValidateOption.INPUTS
+
+        execute_kwargs = {
+            "hooks": self.hooks,
+            "validate": validate_all,
+            "parallel": parallel,
+            "scheduler": self.scheduler,
+        }
 
         rt_context = RuntimeContext(
             batch_size=self.batch_size,
@@ -377,17 +379,9 @@ class XarraySimulationDriver(BaseSimulationDriver):
             sim_end=ds_init["_sim_end"].values,
         )
 
-        in_vars = self._get_input_vars(ds_init)
-        model.set_inputs(in_vars, ignore_static=True)
-        self._maybe_validate_inputs(model, in_vars)
-
-        execute_kwargs = {
-            "hooks": self.hooks,
-            "validate": validate_all,
-            "parallel": parallel,
-            "scheduler": self.scheduler,
-        }
-
+        model.update_state(
+            self._get_input_vars(ds_init), validate=validate_inputs, ignore_static=True
+        )
         model.execute("initialize", rt_context, **execute_kwargs)
 
         for step, (_, ds_step) in enumerate(ds_gby_steps):
@@ -398,11 +392,11 @@ class XarraySimulationDriver(BaseSimulationDriver):
                 step_end=ds_step["_clock_end"].values,
                 step_delta=ds_step["_clock_diff"].values,
             )
-
-            in_vars = self._get_input_vars(ds_step)
-            model.set_inputs(in_vars, ignore_static=False)
-            self._maybe_validate_inputs(model, in_vars)
-
+            model.update_state(
+                self._get_input_vars(ds_step),
+                validate=validate_inputs,
+                ignore_static=False,
+            )
             model.execute("run_step", rt_context, **execute_kwargs)
 
             self.store.write_output_vars(batch, step, model=model)
