@@ -245,10 +245,14 @@ class TestModel:
 
         # test errors
         with pytest.raises(ValueError, match=r".* static variable .*"):
-            model.update_state(input_vars, ignore_static=False, ignore_invalid_keys=True)
+            model.update_state(
+                input_vars, ignore_static=False, ignore_invalid_keys=True
+            )
 
         with pytest.raises(KeyError, match=r".* not a valid input variable .*"):
-            model.update_state(input_vars, ignore_static=True, ignore_invalid_keys=False)
+            model.update_state(
+                input_vars, ignore_static=True, ignore_invalid_keys=False
+            )
 
     def test_update_cache(self, model):
         model.state[("init_profile", "n_points")] = 10
