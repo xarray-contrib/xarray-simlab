@@ -328,8 +328,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
         self.store.write_input_xr_dataset()
 
         if self.batch_dim is None:
-            model = self.model
-            self._run_one_model(self.dataset, model, parallel=self.parallel)
+            self._run_one_model(self.dataset, self.model, parallel=self.parallel)
 
         else:
             ds_gby_batch = self.dataset.groupby(self.batch_dim)
