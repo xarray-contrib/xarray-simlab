@@ -39,6 +39,18 @@ try:
     print(f"xarray: {xarray.__version__}, {xarray.__file__}")
 except ImportError:
     print("no xarray")
+try:
+    import dask
+
+    print(f"dask: {dask.__version__}, {dask.__file__}")
+except ImportError:
+    print("no dask")
+try:
+    import zarr
+
+    print(f"zarr: {zarr.__version__}, {zarr.__file__}")
+except ImportError:
+    print("no zarr")
 
 import xsimlab
 

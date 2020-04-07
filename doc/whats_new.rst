@@ -3,8 +3,16 @@
 Release Notes
 =============
 
-v0.4.0 (Unreleased)
--------------------
+v0.4.0 (7 April 2020)
+---------------------
+
+This is a big release which includes many exciting new features built on top of
+great Python libraries. It is now possible to set default, validate or convert
+model input values just like regular attributes in `attrs
+<https://www.attrs.org>`_, save model input/outputs with `zarr
+<https://zarr.readthedocs.io>`_, run model(s) in parallel using `dask
+<https://docs.dask.org>`_, monitor model runs with a `tqdm
+<https://tqdm.github.io/>`_ progress bar, and much more!
 
 Breaking changes
 ~~~~~~~~~~~~~~~~
@@ -160,8 +168,6 @@ attrs_ (:issue:`33`).
 Also, Python 3.4 support has been dropped. It may still work with that
 version but it is not actively tested anymore and it is not packaged
 with conda.
-
-.. _attrs: http://www.attrs.org
 
 Breaking changes
 ~~~~~~~~~~~~~~~~

@@ -9,6 +9,10 @@ xarray_ extension for setting and running simulations using the
 xarray's ``Dataset`` structure. It is designed for fast, interactive
 and exploratory modeling.
 
+xarray-simlab is well integrated with other libraries of the PyData
+ecosystem such as `dask <https://docs.dask.org>`_ and `zarr
+<https://zarr.readthedocs.io>`_.
+
 .. _xarray: http://xarray.pydata.org
 .. |Build Status| image:: https://github.com/benbovy/xarray-simlab/workflows/test/badge.svg?branch=master
    :target: https://github.com/benbovy/xarray-simlab/actions?workflow=test
@@ -143,7 +147,6 @@ dask_ libraries. Their licenses are reproduced in the "licenses"
 directory.
 
 .. _pandas: http://pandas.pydata.org/
-.. _dask: http://dask.pydata.org
 
 Acknowledgment
 --------------

@@ -7,10 +7,13 @@ xarray-simlab provides a framework to easily build custom
 computational models from a collection of modular components, called
 processes.
 
-It also provides an extension to `xarray <https://xarray.pydata.org>`_
-(i.e., labeled arrays and datasets), that connects it to a wide range
-of libraries of the SciPy / PyData stack for processing, analysis,
-visualization, etc.
+It also provides an extension to `xarray <https://xarray.pydata.org>`_ (i.e.,
+labeled arrays and datasets), that connects it to a wide range of Python
+libraries for processing, analysis, visualization, etc.
+
+xarray-simlab is well integrated with other libraries of the PyData
+ecosystem such as `dask <https://docs.dask.org>`_ and `zarr
+<https://zarr.readthedocs.io>`_.
 
 In a nutshell
 -------------
@@ -161,7 +164,6 @@ great sources of inspiration for this project.
   processes. In this project we actually borrow some code from dask
   for resolving process dependencies and for model visualization.
 
-.. _dask: https://github.com/dask/dask
 .. _luigi: https://github.com/spotify/luigi
 .. _django: https://github.com/django/django
 .. _param: https://github.com/ioam/param
