@@ -477,6 +477,10 @@ class TestSimlabAccessor:
         class P:
             in_var = xs.variable(dims=[(), "x"])
             out_var = xs.variable(dims=[(), "x"], intent="out")
+            idx_var = xs.index(dims="x")
+
+            def initialize(self):
+                self.idx_var = [0, 1]
 
             def run_step(self):
                 self.out_var = self.in_var * 2
