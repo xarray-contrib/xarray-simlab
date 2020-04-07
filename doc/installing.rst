@@ -49,12 +49,12 @@ To install xarray-simlab from source, be sure you have the required
 dependencies (numpy and xarray) installed first. You might consider
 using conda_ to install them::
 
-    $ conda install attrs xarray numpy pip -c conda-forge
+    $ conda install attrs xarray dask zarr numpy pip -c conda-forge
 
 A good practice (especially for development purpose) is to install the
 packages in a separate environment, e.g. using conda::
 
-    $ conda create -n xsimlab python attrs xarray numpy pip -c conda-forge
+    $ conda create -n xsimlab python attrs xarray dask zarr numpy pip -c conda-forge
     $ source activate xsimlab
 
 Then you can clone the xarray-simlab git repository and install it
