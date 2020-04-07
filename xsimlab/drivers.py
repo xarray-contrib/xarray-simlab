@@ -348,8 +348,6 @@ class XarraySimulationDriver(BaseSimulationDriver):
             if self.parallel:
                 dask.compute(futures, scheduler=self.scheduler)
 
-        self.store.write_index_vars(model=model)
-
     def _run_one_model(self, dataset, model, batch=-1, parallel=False):
         """Run one simulation.
 
@@ -406,3 +404,5 @@ class XarraySimulationDriver(BaseSimulationDriver):
         self.store.write_output_vars(batch, -1, model=model)
 
         model.execute("finalize", rt_context, **execute_kwargs)
+
+        self.store.write_index_vars(model=model)
