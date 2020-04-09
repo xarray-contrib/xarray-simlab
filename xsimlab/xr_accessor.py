@@ -296,16 +296,24 @@ class SimlabAccessor:
                 + f" is/are not valid key(s) for input variables in model {model}",
             )
 
-        for (p_name, var_name), data in input_vars.items():
-            p_obj = model[p_name]
-            var = variables_dict(type(p_obj))[var_name]
+        for var_key, data in input_vars.items():
+            var_metadata = model.cache[var_key]["metadata"]
+            xr_var_name = model.cache[var_key]["name"]
 
-            xr_var_name = p_name + "__" + var_name
-            xr_var = as_variable(data)
+            try:
+                xr_var = as_variable(data)
+            except TypeError:
+                # try retrieve dimension labels from model variable's
+                # dimension labels that match the number of dimensions
+                ndims = len(np.shape(data))
+                dim_labels = {len(d): d for d in var_metadata["dims"]}
+                dims = dim_labels[ndims]
 
-            if var.metadata["description"]:
-                xr_var.attrs["description"] = var.metadata["description"]
-            xr_var.attrs.update(var.metadata["attrs"])
+                xr_var = as_variable((dims, data))
+
+            if var_metadata["description"]:
+                xr_var.attrs["description"] = var_metadata["description"]
+            xr_var.attrs.update(var_metadata["attrs"])
 
             # maybe delete first to avoid merge conflicts
             # (we just want to replace here)
@@ -851,6 +859,9 @@ def create_setup(
         Values are anything that can be easily converted to
         :class:`xarray.Variable` objects, e.g., single values, array-like,
         ``(dims, data, attrs)`` tuples or xarray objects.
+        For array-like values with no dimension labels, xarray-simlab will look
+        in ``model`` variables metadata for labels matching the number
+        of dimensions of those arrays.
     output_vars : dict, optional
         Dictionary with model variable names to save as simulation output
         (time-dependent or time-independent). Entries of the dictionary look
