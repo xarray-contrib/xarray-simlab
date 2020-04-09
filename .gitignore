@@ -25,6 +25,9 @@ wheels/
 .installed.cfg
 *.egg
 
+# dask
+dask-worker-space
+
 # Installer logs
 pip-log.txt
 
