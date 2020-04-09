@@ -1,4 +1,5 @@
 import pytest
+from dask.distributed import Client
 import xarray as xr
 import numpy as np
 import zarr
@@ -21,9 +22,20 @@ def parallel(request):
     return request.param
 
 
-@pytest.fixture(params=use_dask_schedulers)
+@pytest.yield_fixture(scope="module", params=use_dask_schedulers)
 def scheduler(request):
-    return request.param
+    if request.param.startswith("distributed"):
+        kw = {"dashboard_address": None}
+
+        if request.param == "distributed-threads":
+            kw["processes"] = False
+
+        client = Client(**kw)
+        yield client
+        client.close()
+
+    else:
+        yield request.param
 
 
 def test_filter_accessor():
@@ -375,7 +387,13 @@ class TestSimlabAccessor:
         assert ds.xsimlab.output_vars_by_clock == expected
 
     def test_run(self, model, in_dataset, out_dataset, parallel, scheduler):
-        if parallel and scheduler == "processes":
+        is_proc_scheduler = (
+            scheduler == "processes"
+            or isinstance(scheduler, Client)
+            and scheduler.cluster.processes
+        )
+
+        if parallel and is_proc_scheduler:
             pytest.skip("multi-processes scheduler not supported for one run")
 
         out_ds = in_dataset.xsimlab.run(

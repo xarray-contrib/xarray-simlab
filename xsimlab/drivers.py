@@ -6,7 +6,7 @@ import pandas as pd
 
 from .hook import flatten_hooks, group_hooks, RuntimeHook
 from .stores import ZarrSimulationStore
-from .utils import get_batch_size, variables_dict
+from .utils import get_batch_size
 
 
 class ValidateOption(Enum):
@@ -89,6 +89,26 @@ class BaseSimulationDriver:
         raise NotImplementedError()
 
 
+def _reset_multi_indexes(dataset):
+    """Reset all multi-indexes and return them so that they can be rebuilt later.
+
+    Currently multi-index coordinates can't be serialized by zarr.
+    Also, Multi-index levels may correspond to model input variables.
+
+    """
+    multi_indexes = {}
+    dims = []
+
+    for cname in dataset.coords:
+        idx = dataset.indexes.get(cname)
+
+        if isinstance(idx, pd.MultiIndex):
+            multi_indexes[cname] = idx.names
+            dims.append(cname)
+
+    return dataset.reset_index(dims), multi_indexes
+
+
 def _check_missing_master_clock(dataset):
     if dataset.xsimlab.master_clock_dim is None:
         raise ValueError("Missing master clock dimension / coordinate")
@@ -108,20 +128,6 @@ def _check_missing_inputs(dataset, model):
 
     if missing_xr_vars:
         raise KeyError(f"Missing variables {missing_xr_vars} in Dataset")
-
-
-def _reset_multi_indexes(dataset):
-    multi_indexes = {}
-    dims = []
-
-    for cname in dataset.coords:
-        idx = dataset.indexes.get(cname)
-
-        if isinstance(idx, pd.MultiIndex):
-            multi_indexes[cname] = idx.names
-            dims.append(cname)
-
-    return dataset.reset_index(dims), multi_indexes
 
 
 def _get_all_active_hooks(hooks):
@@ -176,6 +182,180 @@ def _generate_runtime_datasets(dataset):
     return ds_init, ds_gby_steps
 
 
+def _maybe_transpose(dataset, model, check_dims, batch_dim):
+    """Check and maybe re-order the dimensions of model input variables in the input
+    dataset.
+
+    Dimensions are re-ordered like this: (<batch dim>, <master clock dim>, *model var dims)
+
+    Raise an error if dimensions found in the dataset are not valid or could not
+    be transposed.
+
+    """
+    strict = check_dims is CheckDimsOption.STRICT
+    transpose = check_dims is CheckDimsOption.TRANSPOSE
+
+    ds_transposed = dataset.copy()
+
+    for var_key in model.input_vars:
+        xr_var_name = model._var_cache[var_key]["name"]
+        xr_var = dataset.get(xr_var_name)
+
+        if xr_var is None:
+            continue
+
+        # all valid dimensions in the right order
+        dims = [list(d) for d in model._var_cache[var_key]["metadata"]["dims"]]
+        dims += [[dataset.xsimlab.master_clock_dim] + d for d in dims]
+        if batch_dim is not None:
+            dims += [[batch_dim] + d for d in dims]
+
+        dims = [tuple(d) for d in dims]
+
+        # unordered -> ordered mapping for all valid dimensions
+        valid_dims = {frozenset(d): d for d in dims}
+
+        # actual dimensions (not ordered)
+        actual_dims = frozenset(xr_var.dims)
+
+        if transpose and actual_dims in valid_dims:
+            reordered_dims = valid_dims[actual_dims]
+            ds_transposed[xr_var_name] = xr_var.transpose(*reordered_dims)
+
+        if (strict or transpose) and ds_transposed[xr_var_name].dims not in dims:
+            raise ValueError(
+                f"Invalid dimension(s) for variable '{xr_var_name}': "
+                f"found {xr_var.dims!r}, "
+                f"must be one of {','.join([str(d) for d in dims])}"
+            )
+
+    return ds_transposed
+
+
+def _maybe_transpose_back(dataset_out, dataset_in, check_dims):
+    """Maybe re-order the dimensions of variables in the output dataset so that it
+    matches the order in the input dataset.
+
+    Additional dimensions in the output dataset (e.g., batch and/or clock
+    dimensions) are moved upfront.
+
+    """
+    if check_dims is not CheckDimsOption.TRANSPOSE:
+        return dataset_out
+
+    ds_transposed = dataset_out.copy()
+
+    for xr_var_name, xr_var_out in dataset_out.variables.items():
+        xr_var_in = dataset_in.variables.get(xr_var_name)
+
+        if xr_var_in is None:
+            continue
+
+        dims_in = xr_var_in.dims
+        dims_out = xr_var_out.dims
+
+        dims_reordered = [d for d in dims_out if d not in dims_in]
+        dims_reordered += dims_in
+
+        if not xr_var_out.chunks:
+            # TODO: transpose does not work on lazily loaded zarr datasets with no chunks
+            xr_var_out.load()
+
+        if dims_reordered != dims_out:
+            ds_transposed[xr_var_name] = xr_var_out.transpose(*dims_reordered)
+
+    return ds_transposed
+
+
+def _get_input_vars(dataset, model):
+    input_vars = {}
+
+    for p_name, var_name in model.input_vars:
+        xr_var_name = p_name + "__" + var_name
+        xr_var = dataset.get(xr_var_name)
+
+        if xr_var is None:
+            continue
+
+        data = xr_var.data
+
+        if data.ndim == 0:
+            # convert array to scalar
+            data = data.item()
+
+        input_vars[(p_name, var_name)] = data
+
+    return input_vars
+
+
+def _run(
+    dataset,
+    model,
+    store,
+    hooks,
+    validate,
+    batch=-1,
+    batch_size=-1,
+    parallel=False,
+    scheduler=None,
+):
+    """Run one simulation.
+
+    - initialize and update runtime context
+    - Set model inputs from the input Dataset (update
+      time-dependent model inputs -- if any -- before each time step).
+    - Save outputs (snapshots) between the 'run_step' and the
+      'finalize_step' stages or at the end of the simulation.
+
+    """
+    ds_init, ds_gby_steps = _generate_runtime_datasets(dataset)
+
+    validate_all = validate is ValidateOption.ALL
+    validate_inputs = validate_all or validate is ValidateOption.INPUTS
+
+    execute_kwargs = {
+        "hooks": hooks,
+        "validate": validate_all,
+        "parallel": parallel,
+        "scheduler": scheduler,
+    }
+
+    rt_context = RuntimeContext(
+        batch_size=batch_size,
+        batch=batch,
+        sim_start=ds_init["_sim_start"].values,
+        nsteps=ds_init["_nsteps"].values,
+        sim_end=ds_init["_sim_end"].values,
+    )
+
+    in_vars = _get_input_vars(ds_init, model)
+    model.update_state(in_vars, validate=validate_inputs, ignore_static=True)
+    model.execute("initialize", rt_context, **execute_kwargs)
+
+    for step, (_, ds_step) in enumerate(ds_gby_steps):
+
+        rt_context.update(
+            step=step,
+            step_start=ds_step["_clock_start"].values,
+            step_end=ds_step["_clock_end"].values,
+            step_delta=ds_step["_clock_diff"].values,
+        )
+
+        in_vars = _get_input_vars(ds_step, model)
+        model.update_state(in_vars, validate=validate_inputs, ignore_static=False)
+        model.execute("run_step", rt_context, **execute_kwargs)
+
+        store.write_output_vars(batch, step, model=model)
+
+        model.execute("finalize_step", rt_context, **execute_kwargs)
+
+    store.write_output_vars(batch, -1, model=model)
+
+    model.execute("finalize", rt_context, **execute_kwargs)
+
+    store.write_index_vars(model=model)
+
+
 class XarraySimulationDriver(BaseSimulationDriver):
     """Simulation driver using xarray.Dataset objects as I/O.
 
@@ -202,15 +382,14 @@ class XarraySimulationDriver(BaseSimulationDriver):
         parallel=False,
         scheduler=None,
     ):
-        # these are not yet supported with zarr
+        self.model = model
+
+        super(XarraySimulationDriver, self).__init__(model)
+
         self.dataset, self.multi_indexes = _reset_multi_indexes(dataset)
 
         _check_missing_master_clock(self.dataset)
         _check_missing_inputs(self.dataset, model)
-
-        self.model = model
-
-        super(XarraySimulationDriver, self).__init__(model)
 
         self.batch_dim = batch_dim
         self.batch_size = get_batch_size(dataset, batch_dim)
@@ -218,8 +397,6 @@ class XarraySimulationDriver(BaseSimulationDriver):
         if check_dims is not None:
             check_dims = CheckDimsOption(check_dims)
         self._check_dims_option = check_dims
-
-        self._original_dims = {}
 
         if validate is not None:
             validate = ValidateOption(validate)
@@ -246,92 +423,45 @@ class XarraySimulationDriver(BaseSimulationDriver):
             lock=lock,
         )
 
-    def _maybe_transpose(self, xr_var, p_name, var_name):
-        var = variables_dict(self.model[p_name].__class__)[var_name]
-
-        dims = var.metadata["dims"]
-        dims_set = {frozenset(d): d for d in dims}
-        xr_dims_set = frozenset(xr_var.dims)
-
-        strict = self._check_dims_option is CheckDimsOption.STRICT
-        transpose = self._check_dims_option is CheckDimsOption.TRANSPOSE
-
-        if transpose and xr_dims_set in dims_set:
-            self._original_dims[xr_var.name] = xr_var.dims
-            xr_var = xr_var.transpose(*dims_set[xr_dims_set])
-
-        if (strict or transpose) and xr_var.dims not in dims:
-            raise ValueError(
-                f"Invalid dimension(s) for variable '{p_name}__{var_name}': "
-                f"found {xr_var.dims!r}, "
-                f"must be one of {','.join([str(d) for d in dims])}"
-            )
-
-        return xr_var
-
-    def _get_input_vars(self, dataset):
-        input_vars = {}
-
-        for p_name, var_name in self.model.input_vars:
-            xr_var_name = p_name + "__" + var_name
-            xr_var = dataset.get(xr_var_name)
-
-            if xr_var is None:
-                continue
-
-            xr_var = self._maybe_transpose(xr_var, p_name, var_name)
-
-            data = xr_var.data
-
-            if data.ndim == 0:
-                # convert array to scalar
-                data = data.item()
-
-            input_vars[(p_name, var_name)] = data
-
-        return input_vars
-
     def get_results(self):
         """Get simulation results as a xarray.Dataset loaded from
         the zarr store.
         """
         self.store.consolidate()
 
-        out_ds = self.store.open_as_xr_dataset()
-
         # TODO: replace index variables data with simulation data
         # (could be advanced Index objects that don't support serialization)
-        # for key in self.model.index_vars:
-        #     _, var_name = key
-        #     out_ds[var_name] = (out_ds[var_name].dims, self.model.state[key])
 
-        # rebuild multi-indexes
-        out_ds = out_ds.set_index(self.multi_indexes)
+        ds_out = (
+            self.store.open_as_xr_dataset()
+            # rebuild multi-indexes
+            .set_index(self.multi_indexes)
+            # transpose back
+            .pipe(_maybe_transpose_back, self.dataset, self._check_dims_option)
+        )
 
-        # transpose back
-        for xr_var_name, dims in self._original_dims.items():
-            xr_var = out_ds[xr_var_name]
-
-            reordered_dims = [d for d in xr_var.dims if d not in dims]
-            reordered_dims += dims
-
-            if not xr_var.chunks:
-                # TODO: transpose does not work on lazily loaded zarr datasets with no chunks
-                xr_var.load()
-
-            out_ds[xr_var_name] = xr_var.transpose(*reordered_dims)
-
-        return out_ds
+        return ds_out
 
     def run_model(self):
         """Run one or multiple simulation(s)."""
         self.store.write_input_xr_dataset()
 
+        ds_in = _maybe_transpose(
+            self.dataset, self.model, self._check_dims_option, self.batch_dim
+        )
+        args = (self.store, self.hooks, self._validate_option)
+
         if self.batch_dim is None:
-            self._run_one_model(self.dataset, self.model, parallel=self.parallel)
+            _run(
+                ds_in,
+                self.model,
+                *args,
+                parallel=self.parallel,
+                scheduler=self.scheduler,
+            )
 
         else:
-            ds_gby_batch = self.dataset.groupby(self.batch_dim)
+            ds_gby_batch = ds_in.groupby(self.batch_dim)
             futures = []
 
             for batch, (_, ds_batch) in enumerate(ds_gby_batch):
@@ -339,69 +469,16 @@ class XarraySimulationDriver(BaseSimulationDriver):
 
                 if self.parallel:
                     futures.append(
-                        dask.delayed(self._run_one_model)(ds_batch, model, batch=batch)
+                        dask.delayed(_run)(
+                            ds_batch,
+                            model,
+                            *args,
+                            batch=batch,
+                            batch_size=self.batch_size,
+                        )
                     )
                 else:
-                    self._run_one_model(ds_batch, model, batch=batch)
+                    _run(ds_batch, model, *args, batch=batch)
 
             if self.parallel:
                 dask.compute(futures, scheduler=self.scheduler)
-
-    def _run_one_model(self, dataset, model, batch=-1, parallel=False):
-        """Run one simulation.
-
-        - Set model inputs from the input Dataset (update
-          time-dependent model inputs -- if any -- before each time step).
-        - Save outputs (snapshots) between the 'run_step' and the
-          'finalize_step' stages or at the end of the simulation.
-
-        """
-        ds_init, ds_gby_steps = _generate_runtime_datasets(dataset)
-
-        validate_all = self._validate_option is ValidateOption.ALL
-        validate_inputs = validate_all or self._validate_option is ValidateOption.INPUTS
-
-        execute_kwargs = {
-            "hooks": self.hooks,
-            "validate": validate_all,
-            "parallel": parallel,
-            "scheduler": self.scheduler,
-        }
-
-        rt_context = RuntimeContext(
-            batch_size=self.batch_size,
-            batch=batch,
-            sim_start=ds_init["_sim_start"].values,
-            nsteps=ds_init["_nsteps"].values,
-            sim_end=ds_init["_sim_end"].values,
-        )
-
-        model.update_state(
-            self._get_input_vars(ds_init), validate=validate_inputs, ignore_static=True
-        )
-        model.execute("initialize", rt_context, **execute_kwargs)
-
-        for step, (_, ds_step) in enumerate(ds_gby_steps):
-
-            rt_context.update(
-                step=step,
-                step_start=ds_step["_clock_start"].values,
-                step_end=ds_step["_clock_end"].values,
-                step_delta=ds_step["_clock_diff"].values,
-            )
-            model.update_state(
-                self._get_input_vars(ds_step),
-                validate=validate_inputs,
-                ignore_static=False,
-            )
-            model.execute("run_step", rt_context, **execute_kwargs)
-
-            self.store.write_output_vars(batch, step, model=model)
-
-            model.execute("finalize_step", rt_context, **execute_kwargs)
-
-        self.store.write_output_vars(batch, -1, model=model)
-
-        model.execute("finalize", rt_context, **execute_kwargs)
-
-        self.store.write_index_vars(model=model)

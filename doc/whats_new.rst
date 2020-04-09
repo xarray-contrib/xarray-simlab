@@ -6,6 +6,11 @@ Release Notes
 v0.5.0 (Unreleased)
 -------------------
 
+Bug fixes
+~~~~~~~~~
+
+- Fix running batches of simulations using ``dask.distributed`` (:issue:`124`).
+
 v0.4.0 (7 April 2020)
 ---------------------
 

@@ -1,5 +1,4 @@
 import numpy as np
-from numpy.testing import assert_array_equal
 import pytest
 import xarray as xr
 import zarr
@@ -112,22 +111,28 @@ class TestZarrSimulationStore:
         ztest = zarr.open_group(store.zgroup.store, mode="r")
 
         assert ztest.profile__u.shape == (in_ds.clock.size, 3)
-        assert_array_equal(ztest.profile__u[0], np.array([1.0, 2.0, 3.0]))
+        np.testing.assert_array_equal(ztest.profile__u[0], np.array([1.0, 2.0, 3.0]))
 
         assert ztest.roll__u_diff.shape == (in_ds.out.size, 3)
-        assert_array_equal(ztest.roll__u_diff[0], np.array([-1.0, 1.0, 0.0]))
+        np.testing.assert_array_equal(ztest.roll__u_diff[0], np.array([-1.0, 1.0, 0.0]))
 
         assert ztest.add__u_diff.shape == (in_ds.out.size,)
-        assert_array_equal(ztest.add__u_diff, np.array([2.0, np.nan, np.nan]))
+        np.testing.assert_array_equal(
+            ztest.add__u_diff, np.array([2.0, np.nan, np.nan])
+        )
 
         # test save master clock but not out clock
         store.write_output_vars(-1, 1)
-        assert_array_equal(ztest.profile__u[1], np.array([1.0, 2.0, 3.0]))
-        assert_array_equal(ztest.roll__u_diff[1], np.array([np.nan, np.nan, np.nan]))
+        np.testing.assert_array_equal(ztest.profile__u[1], np.array([1.0, 2.0, 3.0]))
+        np.testing.assert_array_equal(
+            ztest.roll__u_diff[1], np.array([np.nan, np.nan, np.nan])
+        )
 
         # test save no-clock outputs
         store.write_output_vars(-1, -1)
-        assert_array_equal(ztest.profile__u_opp, np.array([-1.0, -2.0, -3.0]))
+        np.testing.assert_array_equal(
+            ztest.profile__u_opp, np.array([-1.0, -2.0, -3.0])
+        )
         assert ztest.add__offset[()] == 2.0
 
     def test_write_output_vars_error(self, store):
@@ -155,14 +160,14 @@ class TestZarrSimulationStore:
         ztest = zarr.open_group(store_batch.zgroup.store, mode="r")
 
         assert ztest.profile__u.ndim == 3
-        assert_array_equal(
+        np.testing.assert_array_equal(
             ztest.profile__u[:, 0, :], np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
         )
 
         store_batch.write_output_vars(0, -1, model=model_batch1)
         store_batch.write_output_vars(1, -1, model=model_batch2)
 
-        assert_array_equal(ztest.add__offset[:], np.array([2.0, 3.0]))
+        np.testing.assert_array_equal(ztest.add__offset[:], np.array([2.0, 3.0]))
 
         # test default chunk size along batch dim
         assert ztest.profile__u.chunks[0] == 1
@@ -173,7 +178,7 @@ class TestZarrSimulationStore:
         store.write_index_vars()
         ztest = zarr.open_group(store.zgroup.store, mode="r")
 
-        assert_array_equal(ztest.x, np.array([1.0, 2.0, 3.0]))
+        np.testing.assert_array_equal(ztest.x, np.array([1.0, 2.0, 3.0]))
 
     def test_write_index_vars_batch(self, store_batch, model_batch1):
         # ensure that no batch dim is created
@@ -182,7 +187,7 @@ class TestZarrSimulationStore:
         store_batch.write_index_vars(model=model_batch1)
         ztest = zarr.open_group(store_batch.zgroup.store, mode="r")
 
-        assert_array_equal(ztest.x, np.array([1.0, 2.0, 3.0]))
+        np.testing.assert_array_equal(ztest.x, np.array([1.0, 2.0, 3.0]))
 
     def test_resize_zarr_dataset(self):
         @xs.process
@@ -206,7 +211,7 @@ class TestZarrSimulationStore:
         expected = np.array(
             [[1.0, np.nan, np.nan], [1.0, 1.0, 1.0], [1.0, 1.0, np.nan]]
         )
-        assert_array_equal(ztest.p__arr, expected)
+        np.testing.assert_array_equal(ztest.p__arr, expected)
 
     def test_encoding(self):
         @xs.process

@@ -1,5 +1,5 @@
 from collections.abc import MutableMapping
-from typing import Any, Callable, Dict, Optional, Tuple, Union
+from typing import Any, Dict, Optional, Tuple, Union
 
 import numpy as np
 import xarray as xr
