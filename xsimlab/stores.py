@@ -1,7 +1,8 @@
 from collections.abc import MutableMapping
-from typing import Any, Callable, Dict, Optional, Tuple, Union
+from typing import Any, Dict, Optional, Tuple, Union
 
 import numpy as np
+import pandas as pd
 import xarray as xr
 import zarr
 
@@ -77,6 +78,25 @@ def get_auto_chunks(shape, dtype):
     return arr.chunks
 
 
+def _reset_multi_indexes(dataset):
+    """Reset all multi-indexes and return them so that they can be rebuilt later.
+
+    Currently multi-index coordinates can't be serialized by zarr.
+
+    """
+    multi_indexes = {}
+    dims = []
+
+    for cname in dataset.coords:
+        idx = dataset.indexes.get(cname)
+
+        if isinstance(idx, pd.MultiIndex):
+            multi_indexes[cname] = idx.names
+            dims.append(cname)
+
+    return dataset.reset_index(dims), multi_indexes
+
+
 class DummyLock:
     """DummyLock provides the lock API without any actual locking."""
 
@@ -111,6 +131,8 @@ class ZarrSimulationStore:
 
         self.in_memory = False
         self.consolidated = False
+
+        self.multi_indexes = {}
 
         if isinstance(zobject, zarr.Group):
             self.zgroup = zobject
@@ -162,9 +184,12 @@ class ZarrSimulationStore:
         return clock_incs
 
     def write_input_xr_dataset(self):
+        # multi-indexes not supported by xarray.Dataset.to_zarr()
+        ds, self.multi_indexes = _reset_multi_indexes(self.dataset)
+
         # remove output/index variables already present (if any)
         drop_vars = [vi["name"] for vi in self.var_info.values()]
-        ds = self.dataset.drop(drop_vars, errors="ignore")
+        ds = ds.drop(drop_vars, errors="ignore")
 
         # remove xarray-simlab reserved attributes for output variables
         ds.xsimlab._reset_output_vars(self.model, {})
@@ -354,5 +379,8 @@ class ZarrSimulationStore:
             for da in ds.data_vars.values():
                 if not da.dims:
                     da.load()
+
+        # rebuild multi-indexes
+        ds = ds.set_index(self.multi_indexes)
 
         return ds

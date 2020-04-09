@@ -1,5 +1,4 @@
 import numpy as np
-import pandas as pd
 import pytest
 import xarray as xr
 
@@ -103,18 +102,6 @@ class TestXarraySimulationDriver:
 
         assert out_ds_actual is not out_dataset
         xr.testing.assert_identical(out_ds_actual.load(), out_dataset)
-
-    def test_multi_index(self, in_dataset, model):
-        # just check that multi-index pass through model run (reset -> zarr -> rebuilt)
-        midx = pd.MultiIndex.from_tuples([(0, 1), (0, 2)], names=["a", "b"])
-
-        in_dataset["dummy"] = ("dummy", midx)
-
-        driver = XarraySimulationDriver(in_dataset, model)
-        driver.run_model()
-        out_dataset = driver.get_results()
-
-        pd.testing.assert_index_equal(out_dataset.indexes["dummy"], midx)
 
     def test_static_var_as_scalar_coord(self, in_dataset, out_dataset, model):
         # test that a model input (static variable) given as a scalar coordinate

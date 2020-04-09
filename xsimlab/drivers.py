@@ -2,11 +2,10 @@ from enum import Enum
 from typing import Any, Iterator, Mapping
 
 import dask
-import pandas as pd
 
 from .hook import flatten_hooks, group_hooks, RuntimeHook
 from .stores import ZarrSimulationStore
-from .utils import get_batch_size, variables_dict
+from .utils import get_batch_size
 
 
 class ValidateOption(Enum):
@@ -108,25 +107,6 @@ def _check_missing_inputs(dataset, model):
 
     if missing_xr_vars:
         raise KeyError(f"Missing variables {missing_xr_vars} in Dataset")
-
-
-def _reset_multi_indexes(dataset):
-    """Reset all multi-indexes and return them so that they can be rebuilt later.
-
-    Currently multi-index coordinates can't be serialized by zarr.
-
-    """
-    multi_indexes = {}
-    dims = []
-
-    for cname in dataset.coords:
-        idx = dataset.indexes.get(cname)
-
-        if isinstance(idx, pd.MultiIndex):
-            multi_indexes[cname] = idx.names
-            dims.append(cname)
-
-    return dataset.reset_index(dims), multi_indexes
 
 
 def _get_all_active_hooks(hooks):
@@ -385,14 +365,10 @@ class XarraySimulationDriver(BaseSimulationDriver):
 
         super(XarraySimulationDriver, self).__init__(model)
 
-        self.dataset, self.multi_indexes = _reset_multi_indexes(dataset)
+        self.dataset = dataset
 
         _check_missing_master_clock(self.dataset)
         _check_missing_inputs(self.dataset, model)
-
-        self.dataset_transposed = _maybe_transpose(
-            self.dataset, model, check_dims, batch_dim
-        )
 
         self.batch_dim = batch_dim
         self.batch_size = get_batch_size(dataset, batch_dim)
@@ -400,8 +376,6 @@ class XarraySimulationDriver(BaseSimulationDriver):
         if check_dims is not None:
             check_dims = CheckDimsOption(check_dims)
         self._check_dims_option = check_dims
-
-        self._original_dims = {}
 
         if validate is not None:
             validate = ValidateOption(validate)
@@ -439,8 +413,6 @@ class XarraySimulationDriver(BaseSimulationDriver):
 
         ds_out = (
             self.store.open_as_xr_dataset()
-            # rebuild multi-indexes
-            .set_index(self.multi_indexes)
             # transpose back
             .pipe(_maybe_transpose_back, self.dataset, self._check_dims_option)
         )
