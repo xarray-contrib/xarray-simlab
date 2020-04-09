@@ -258,13 +258,13 @@ class TestModel:
         model.state[("init_profile", "n_points")] = 10
         model.update_cache(("init_profile", "n_points"))
 
-        assert model._var_cache[("init_profile", "n_points")]["value"] == 10
+        assert model.cache[("init_profile", "n_points")]["value"] == 10
 
         # test on demand variables
         model.state[("add", "offset")] = 1
         model.update_cache(("add", "u_diff"))
 
-        assert model._var_cache[("add", "u_diff")]["value"] == 1
+        assert model.cache[("add", "u_diff")]["value"] == 1
 
     def test_validate(self, model):
         model.state[("roll", "shift")] = 2.5

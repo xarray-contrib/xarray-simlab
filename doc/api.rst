@@ -115,6 +115,7 @@ e.g., for using ``Model`` objects with other interfaces.
 
    Model.state
    Model.update_state
+   Model.cache
    Model.update_cache
    Model.execute
    Model.validate

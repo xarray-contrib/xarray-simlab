@@ -198,14 +198,14 @@ def _maybe_transpose(dataset, model, check_dims, batch_dim):
     ds_transposed = dataset.copy()
 
     for var_key in model.input_vars:
-        xr_var_name = model._var_cache[var_key]["name"]
+        xr_var_name = model.cache[var_key]["name"]
         xr_var = dataset.get(xr_var_name)
 
         if xr_var is None:
             continue
 
         # all valid dimensions in the right order
-        dims = [list(d) for d in model._var_cache[var_key]["metadata"]["dims"]]
+        dims = [list(d) for d in model.cache[var_key]["metadata"]["dims"]]
         dims += [[dataset.xsimlab.master_clock_dim] + d for d in dims]
         if batch_dim is not None:
             dims += [[batch_dim] + d for d in dims]

@@ -664,6 +664,16 @@ class Model(AttrMapping):
             p_names = set([pn for pn, _ in input_vars if pn in self._processes])
             self.validate(p_names)
 
+    @property
+    def cache(self):
+        """Returns a mapping of model variables and some of their (meta)data cached for
+        fastpath access.
+
+        Mapping keys are in the form of ``('process_name', 'var_name')`` tuples.
+
+        """
+        return self._var_cache
+
     def update_cache(self, var_key):
         """Update the model's cache for a given model variable.
 

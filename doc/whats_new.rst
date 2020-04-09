@@ -6,6 +6,11 @@ Release Notes
 v0.5.0 (Unreleased)
 -------------------
 
+Enhancements
+~~~~~~~~~~~~
+
+- Added :attr:`xsimlab.Model.cache` public property (:issue:`125`).
+
 Bug fixes
 ~~~~~~~~~
 

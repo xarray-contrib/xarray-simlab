@@ -26,7 +26,7 @@ def _get_var_info(
     var_clocks.update({vk: None for vk in model.index_vars})
 
     for var_key, clock in var_clocks.items():
-        var_cache = model._var_cache[var_key]
+        var_cache = model.cache[var_key]
 
         # encoding defined at model run
         run_encoding = normalize_encoding(
@@ -179,7 +179,7 @@ class ZarrSimulationStore:
         if name is None:
             name = var_info["name"]
 
-        value = model._var_cache[var_key]["value"]
+        value = model.cache[var_key]["value"]
         clock = var_info["clock"]
 
         dtype = getattr(value, "dtype", np.asarray(value).dtype)
@@ -251,7 +251,7 @@ class ZarrSimulationStore:
 
         zkey = var_info["name"]
         zshape = self.zgroup[zkey].shape
-        value = model._var_cache[var_key]["value"]
+        value = model.cache[var_key]["value"]
         value_shape = list(np.shape(value))
 
         # maybe prepend clock dim (do not resize this dim)
@@ -292,7 +292,7 @@ class ZarrSimulationStore:
 
             for vk in var_keys:
                 zkey = self.var_info[vk]["name"]
-                value = model._var_cache[vk]["value"]
+                value = model.cache[vk]["value"]
 
                 self._maybe_resize_zarr_dataset(model, vk)
 
@@ -325,7 +325,7 @@ class ZarrSimulationStore:
             model.update_cache(var_key)
 
             self._create_zarr_dataset(model, var_key, name=vname)
-            self.zgroup[vname][:] = model._var_cache[var_key]["value"]
+            self.zgroup[vname][:] = model.cache[var_key]["value"]
 
     def consolidate(self):
         zarr.consolidate_metadata(self.zgroup.store)
