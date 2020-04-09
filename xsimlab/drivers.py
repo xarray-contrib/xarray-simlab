@@ -288,15 +288,15 @@ def _get_input_vars(dataset, model):
 
 
 def _run(
-        dataset,
-        model,
-        store,
-        hooks,
-        validate,
-        batch=-1,
-        batch_size=-1,
-        parallel=False,
-        scheduler=None,
+    dataset,
+    model,
+    store,
+    hooks,
+    validate,
+    batch=-1,
+    batch_size=-1,
+    parallel=False,
+    scheduler=None,
 ):
     """Run one simulation.
 
@@ -390,7 +390,9 @@ class XarraySimulationDriver(BaseSimulationDriver):
         _check_missing_master_clock(self.dataset)
         _check_missing_inputs(self.dataset, model)
 
-        self.dataset_transposed = _maybe_transpose(self.dataset, model, check_dims, batch_dim)
+        self.dataset_transposed = _maybe_transpose(
+            self.dataset, model, check_dims, batch_dim
+        )
 
         self.batch_dim = batch_dim
         self.batch_size = get_batch_size(dataset, batch_dim)
@@ -449,11 +451,19 @@ class XarraySimulationDriver(BaseSimulationDriver):
         """Run one or multiple simulation(s)."""
         self.store.write_input_xr_dataset()
 
-        ds_in = _maybe_transpose(self.dataset, self.model, self._check_dims_option, self.batch_dim)
+        ds_in = _maybe_transpose(
+            self.dataset, self.model, self._check_dims_option, self.batch_dim
+        )
         args = (self.store, self.hooks, self._validate_option)
 
         if self.batch_dim is None:
-            _run(ds_in, self.model, *args, parallel=self.parallel, scheduler=self.scheduler)
+            _run(
+                ds_in,
+                self.model,
+                *args,
+                parallel=self.parallel,
+                scheduler=self.scheduler,
+            )
 
         else:
             ds_gby_batch = ds_in.groupby(self.batch_dim)
