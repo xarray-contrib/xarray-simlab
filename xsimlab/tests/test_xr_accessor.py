@@ -207,7 +207,7 @@ class TestSimlabAccessor:
         in_vars = {("add", "offset"): [1, 2, 3, 4, 5]}
         ds.xsimlab._set_input_vars(model, in_vars)
 
-        assert ds["add__offset"].dims == ('x',)
+        assert ds["add__offset"].dims == ("x",)
 
     def test_update_clocks(self, model):
         ds = xr.Dataset()
