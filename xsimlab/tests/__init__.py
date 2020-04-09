@@ -22,4 +22,4 @@ if os.environ.get("DASK_SINGLE_THREADED"):
     use_dask_schedulers = ["single-threaded"]
 else:
     # Still useful to test threads/processes (pickle issues) locally
-    use_dask_schedulers = ["threads", "processes"]
+    use_dask_schedulers = ["threads", "processes", "distributed"]

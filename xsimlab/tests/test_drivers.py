@@ -128,4 +128,3 @@ class TestXarraySimulationDriver:
         out_ds = driver.get_results()
 
         xr.testing.assert_equal(out_ds.reset_coords(), out_dataset)
-
