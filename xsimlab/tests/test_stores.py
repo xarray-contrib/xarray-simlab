@@ -1,5 +1,4 @@
 import numpy as np
-import pandas as pd
 import pytest
 import xarray as xr
 import zarr
@@ -268,16 +267,3 @@ class TestZarrSimulationStore:
 
             # test scalars still loaded in memory
             assert isinstance(ds.variables["add__offset"]._data, np.ndarray)
-
-    def test_multi_index(self, in_dataset, model):
-        # just check that multi-index pass through (reset -> zarr -> rebuilt)
-        midx = pd.MultiIndex.from_tuples([(0, 1), (0, 2)], names=["a", "b"])
-
-        in_dataset["dummy"] = ("dummy", midx)
-
-        store = ZarrSimulationStore(in_dataset, model)
-
-        store.write_input_xr_dataset()
-        out_dataset = store.open_as_xr_dataset()
-
-        pd.testing.assert_index_equal(out_dataset.indexes["dummy"], midx)
