@@ -196,11 +196,18 @@ class TestSimlabAccessor:
             xr.testing.assert_equal(ds[vname], in_dataset[vname])
             assert ds[vname].attrs == in_dataset[vname].attrs
 
+        # test errors
         in_vars[("not_an", "input_var")] = None
 
         with pytest.raises(KeyError) as excinfo:
             ds.xsimlab._set_input_vars(model, in_vars)
         assert "not valid key(s)" in str(excinfo.value)
+
+        # test implicit dimension label
+        in_vars = {("add", "offset"): [1, 2, 3, 4, 5]}
+        ds.xsimlab._set_input_vars(model, in_vars)
+
+        assert ds["add__offset"].dims == ("x",)
 
     def test_update_clocks(self, model):
         ds = xr.Dataset()

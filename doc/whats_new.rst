@@ -10,6 +10,10 @@ Enhancements
 ~~~~~~~~~~~~
 
 - Added :attr:`xsimlab.Model.cache` public property (:issue:`125`).
+- Parameter ``input_vars`` of :func:`~xsimlab.create_setup` and
+  :func:`xarray.Dataset.xsimlab.update_vars` now accepts array-like values
+  with no explicit dimension label(s), in this case those labels are inferred
+  from model variables' metadata (:issue:`126`).
 
 Bug fixes
 ~~~~~~~~~
