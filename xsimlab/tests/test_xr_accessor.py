@@ -209,6 +209,12 @@ class TestSimlabAccessor:
 
         assert ds["add__offset"].dims == ("x",)
 
+        # test implicit dimension label error
+        in_vars = {("roll", "shift"): [1, 2]}
+
+        with pytest.raises(TypeError, match=r"Could not get dimension labels.*"):
+            ds.xsimlab._set_input_vars(model, in_vars)
+
     def test_update_clocks(self, model):
         ds = xr.Dataset()
         with pytest.raises(ValueError) as excinfo:

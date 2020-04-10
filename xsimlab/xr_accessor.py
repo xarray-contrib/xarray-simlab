@@ -290,6 +290,7 @@ class SimlabAccessor:
 
     def _set_input_vars(self, model, input_vars):
         invalid_inputs = set(input_vars) - set(model.input_vars)
+
         if invalid_inputs:
             raise KeyError(
                 ", ".join([str(k) for k in invalid_inputs])
@@ -307,7 +308,13 @@ class SimlabAccessor:
                 # dimension labels that match the number of dimensions
                 ndims = len(np.shape(data))
                 dim_labels = {len(d): d for d in var_metadata["dims"]}
-                dims = dim_labels[ndims]
+                dims = dim_labels.get(ndims)
+
+                if dims is None:
+                    raise TypeError(
+                        "Could not get dimension labels from model "
+                        f"for variable {xr_var_name!r} with value {data}"
+                    )
 
                 xr_var = as_variable((dims, data))
 
