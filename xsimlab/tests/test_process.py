@@ -204,22 +204,39 @@ def test_process_properties_converter(processes_with_state):
 
 
 def test_runtime_decorator_noargs():
-    @xs.runtime
-    def meth(self):
-        return 1
 
-    assert meth.__xsimlab_executor__.execute(None, {}) == 1
+    class P:
+        @xs.runtime
+        def meth(self):
+            self.v = 1
+            return 1
+
+    p = P()
+
+    assert p.meth() == 1
+    p.meth.__xsimlab_executor__.execute(p, {})
+    assert p.v == 1
 
 
 @pytest.mark.parametrize("args", ["p1,p2", ["p1", "p2"], ("p1", "p2")])
 def test_runtime_decorator(args):
-    @xs.runtime(args=args)
-    def meth(self, a, b):
-        return a + b
+
+    class P:
+        @xs.runtime(args=args)
+        def meth(self, a, b):
+            self.v = a
+            self.v2 = b
 
     d = {"p1": 1, "p2": 2, "other": 3}
 
-    assert meth.__xsimlab_executor__.execute(None, d) == 3
+    p = P()
+    p.meth.__xsimlab_executor__.execute(p, d)
+    assert p.v == 1
+    assert p.v2 == 2
+
+    p.meth(3, 4)
+    assert p.v == 3
+    assert p.v2 == 4
 
 
 def test_runtime_decorator_raise():
@@ -231,12 +248,19 @@ def test_runtime_decorator_raise():
 
 
 def test_runtime_function():
-    def meth(self):
-        return 1
 
-    rmeth = xs.runtime(meth)
+    class P:
+        def meth(self):
+            self.v = 1
+            return 1
 
-    assert rmeth.__xsimlab_executor__.execute(None, {}) == 1
+    P.meth = xs.runtime(P.meth)
+
+    p = P()
+
+    assert p.meth() == 1
+    p.meth.__xsimlab_executor__.execute(p, {})
+    assert p.v == 1
 
 
 def test_process_executor_raise():

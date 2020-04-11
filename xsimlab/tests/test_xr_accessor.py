@@ -14,7 +14,7 @@ from xsimlab.xr_accessor import (
 )
 
 from . import use_dask_schedulers
-from .fixture_model import Roll
+from .fixture_model import Profile, Roll
 
 
 @pytest.fixture(params=[True, False])
@@ -406,14 +406,23 @@ class TestSimlabAccessor:
             and scheduler.cluster.processes
         )
 
-        if parallel and is_proc_scheduler:
-            pytest.skip("multi-processes scheduler not supported for one run")
+        #if parallel and is_proc_scheduler:
+        #    pytest.skip("multi-processes schedulers not supported for one run")
+
+        @xs.process
+        class ProfileFix(Profile):
+            # limitation of using distributed for single-model parallelism
+            # internal instance attributes created and used in multiple stage
+            # methods are not supported.
+            u_change = xs.any_object()
+
+        m = model.update_processes({"profile": ProfileFix})
 
         out_ds = in_dataset.xsimlab.run(
-            model=model, parallel=parallel, scheduler=scheduler
+            model=m, parallel=parallel, scheduler=scheduler
         )
 
-        xr.testing.assert_equal(out_ds, out_dataset)
+        xr.testing.assert_equal(out_ds.load(), out_dataset)
 
     def test_run_safe_mode(self, model, in_dataset):
         # safe mode True: ensure model is cloned (empty state)

@@ -276,10 +276,13 @@ class _RuntimeMethodExecutor:
 
         self.args = tuple(args)
 
-    def execute(self, obj, runtime_context):
+    def execute(self, obj, runtime_context, state=None):
+        if state is not None:
+            obj.__xsimlab_state__ = state
+
         args = [runtime_context[k] for k in self.args]
 
-        return self.meth(obj, *args)
+        self.meth(obj, *args)
 
 
 def runtime(meth=None, args=None):
@@ -330,61 +333,84 @@ class SimulationStage(Enum):
     FINALIZE = "finalize"
 
 
+def _create_runtime_executors(cls):
+    runtime_executors = OrderedDict()
+
+    for stage in SimulationStage:
+        if not has_method(cls, stage.value):
+            continue
+
+        meth = getattr(cls, stage.value)
+        executor = getattr(meth, "__xsimlab_executor__", None)
+
+        if executor is None:
+            nparams = len(inspect.signature(meth).parameters)
+
+            if stage == SimulationStage.RUN_STEP and nparams == 2:
+                # TODO: remove (depreciated)
+                warnings.warn(
+                    "`run_step(self, dt)` accepting by default "
+                    "one positional argument is depreciated and "
+                    "will be removed in a future version of "
+                    "xarray-simlab. Use the `@runtime` "
+                    "decorator.",
+                    FutureWarning,
+                )
+                args = ["step_delta"]
+
+            elif nparams > 1:
+                raise TypeError(
+                    "Process runtime methods with positional "
+                    "parameters should be decorated with "
+                    "`@runtime`"
+                )
+
+            else:
+                args = None
+
+            executor = _RuntimeMethodExecutor(meth, args=args)
+
+        runtime_executors[stage] = executor
+
+    return runtime_executors
+
+
+def _get_out_variables(cls):
+    def filter_out(var):
+        var_type = var.metadata["var_type"]
+        var_intent = var.metadata["intent"]
+
+        if var_type != VarType.ON_DEMAND and var_intent != VarIntent.IN:
+            return True
+        else:
+            return False
+
+    return filter_variables(cls, func=filter_out)
+
+
 class _ProcessExecutor:
     """Used to execute a process during simulation runtime."""
 
     def __init__(self, cls):
         self.cls = cls
-
-        self.runtime_methods = OrderedDict()
-
-        for stage in SimulationStage:
-            if not has_method(self.cls, stage.value):
-                continue
-
-            meth = getattr(self.cls, stage.value)
-            executor = getattr(meth, "__xsimlab_executor__", None)
-
-            if executor is None:
-                nparams = len(inspect.signature(meth).parameters)
-
-                if stage == SimulationStage.RUN_STEP and nparams == 2:
-                    # TODO: remove (depreciated)
-                    warnings.warn(
-                        "`run_step(self, dt)` accepting by default "
-                        "one positional argument is depreciated and "
-                        "will be removed in a future version of "
-                        "xarray-simlab. Use the `@runtime` "
-                        "decorator.",
-                        FutureWarning,
-                    )
-                    args = ["step_delta"]
-
-                elif nparams > 1:
-                    raise TypeError(
-                        "Process runtime methods with positional "
-                        "parameters should be decorated with "
-                        "`@runtime`"
-                    )
-
-                else:
-                    args = None
-
-                executor = _RuntimeMethodExecutor(meth, args=args)
-
-            self.runtime_methods[stage] = executor
+        self.runtime_executors = _create_runtime_executors(cls)
+        self.out_vars = _get_out_variables(cls)
 
     @property
     def stages(self):
-        return [k.value for k in self.runtime_methods]
+        return [k.value for k in self.runtime_executors]
 
-    def execute(self, obj, stage, runtime_context):
-        executor = self.runtime_methods.get(stage)
+    def execute(self, obj, stage, runtime_context, state=None):
+        executor = self.runtime_executors.get(stage)
 
         if executor is None:
-            return None
+            return {}
         else:
-            return executor.execute(obj, runtime_context)
+            executor.execute(obj, runtime_context, state=state)
+
+            skeys = [obj.__xsimlab_state_keys__[k] for k in self.out_vars]
+            sobj = obj.__xsimlab_state__
+            return {k: sobj[k] for k in skeys if k in sobj}
 
 
 def _process_cls_init(obj):
