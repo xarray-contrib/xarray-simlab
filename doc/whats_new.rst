@@ -14,9 +14,8 @@ Enhancements
   :func:`xarray.Dataset.xsimlab.update_vars` now accepts array-like values
   with no explicit dimension label(s), in this case those labels are inferred
   from model variables' metadata (:issue:`126`).
-- It is now possible to use Dask's multi-processes or distributed schedulers
-  for single-model parallelism, although this is not often optimal and
-  still has limitations (:issue:`127`).
+- Single-model parallelism now supports Dask's multi-processes or distributed
+  schedulers, although this is still limited and rarely optimal (:issue:`127`).
 
 Bug fixes
 ~~~~~~~~~
