@@ -105,7 +105,7 @@ def var_details(var, max_line_length=70):
 
 
 def add_attribute_section(process, placeholder="{{attributes}}"):
-    data_type = "object"  # placeholder until issue #34 is solved
+    data_type = ":class:`attr.Attribute`"
 
     fmt_vars = []
 
@@ -124,7 +124,7 @@ def add_attribute_section(process, placeholder="{{attributes}}"):
     if placeholder in current_doc:
         new_doc = current_doc.replace(placeholder, fmt_section[4:])
     else:
-        new_doc = f"{current_doc}\n{fmt_section}\n"
+        new_doc = f"{current_doc.rstrip()}\n\n{fmt_section}\n"
 
     return new_doc
 

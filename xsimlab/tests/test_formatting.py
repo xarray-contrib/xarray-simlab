@@ -43,35 +43,33 @@ def test_var_details(example_process_obj):
     assert "- dims : (('x',),)" in var_details_str
 
 
-def test_add_attribute_section():
-    """For testing, autodoc is set to False to avoid redundancy"""
+@xs.process(autodoc=False)
+class WithoutPlaceHolder:
+    """My process"""
 
-    @xs.process(autodoc=False)
-    class Dummy:
-        """This is a Dummy class
-    to test `add_attribute_section()`
-        """
+    var1 = xs.variable(dims="x", description="a variable")
+    var2 = xs.variable()
 
-        var1 = xs.variable(dims="x", description="a variable")
-        var2 = xs.variable()
 
-    @xs.process(autodoc=False)
-    class Dummy_placeholder:
-        """This is a Dummy class
-    to test `add_attribute_section()`
-        
+@xs.process(autodoc=False)
+class WithPlaceholder:
+    """My process
+
     {{attributes}}
-"""
 
-        var1 = xs.variable(dims="x", description="a variable")
-        var2 = xs.variable()
+    """
 
-    expected = """This is a Dummy class
-    to test `add_attribute_section()`
-        
+    var1 = xs.variable(dims="x", description="a variable")
+    var2 = xs.variable()
+
+
+def test_add_attribute_section():
+    # For testing, autodoc is set to False to avoid redundancy
+    expected = """My process
+
     Attributes
     ----------
-    var1 : object
+    var1 : :class:`attr.Attribute`
         A variable
 
         - type : variable
@@ -82,7 +80,7 @@ def test_add_attribute_section():
         - attrs : {}
         - encoding : {}
 
-    var2 : object
+    var2 : :class:`attr.Attribute`
         (no description given)
 
         - type : variable
@@ -92,11 +90,10 @@ def test_add_attribute_section():
         - static : False
         - attrs : {}
         - encoding : {}
+    """
 
-"""
-
-    assert add_attribute_section(Dummy) == expected
-    assert add_attribute_section(Dummy_placeholder) == expected
+    assert add_attribute_section(WithoutPlaceHolder).strip() == expected.strip()
+    assert add_attribute_section(WithPlaceholder).strip() == expected.strip()
 
 
 def test_process_repr(
