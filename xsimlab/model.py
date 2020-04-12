@@ -4,7 +4,7 @@ import time
 
 import attr
 import dask
-import distributed
+from dask.distributed import Client
 
 from .variable import VarIntent, VarType
 from .process import (
@@ -841,7 +841,7 @@ class Model(AttrMapping):
 
             # TODO: without this -> flaky tests (don't know why)
             # state is not well updated -> error when writing output vars in store
-            if isinstance(scheduler, distributed.Client):
+            if isinstance(scheduler, Client):
                 time.sleep(0.001)
 
             self._gather_and_update_state(out_states)
