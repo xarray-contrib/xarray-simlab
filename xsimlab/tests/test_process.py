@@ -11,6 +11,7 @@ from xsimlab.process import (
     get_process_obj,
     get_target_variable,
     NotAProcessClassError,
+    SimulationStage,
     process_info,
     variable_info,
 )
@@ -204,22 +205,37 @@ def test_process_properties_converter(processes_with_state):
 
 
 def test_runtime_decorator_noargs():
-    @xs.runtime
-    def meth(self):
-        return 1
+    class P:
+        @xs.runtime
+        def meth(self):
+            self.v = 1
+            return 1
 
-    assert meth.__xsimlab_executor__.execute(None, {}) == 1
+    p = P()
+
+    assert p.meth() == 1
+    p.meth.__xsimlab_executor__.execute(p, {})
+    assert p.v == 1
 
 
 @pytest.mark.parametrize("args", ["p1,p2", ["p1", "p2"], ("p1", "p2")])
 def test_runtime_decorator(args):
-    @xs.runtime(args=args)
-    def meth(self, a, b):
-        return a + b
+    class P:
+        @xs.runtime(args=args)
+        def meth(self, a, b):
+            self.v = a
+            self.v2 = b
 
     d = {"p1": 1, "p2": 2, "other": 3}
 
-    assert meth.__xsimlab_executor__.execute(None, d) == 3
+    p = P()
+    p.meth.__xsimlab_executor__.execute(p, d)
+    assert p.v == 1
+    assert p.v2 == 2
+
+    p.meth(3, 4)
+    assert p.v == 3
+    assert p.v2 == 4
 
 
 def test_runtime_decorator_raise():
@@ -231,12 +247,43 @@ def test_runtime_decorator_raise():
 
 
 def test_runtime_function():
-    def meth(self):
-        return 1
+    class P:
+        def meth(self):
+            self.v = 1
+            return 1
 
-    rmeth = xs.runtime(meth)
+    P.meth = xs.runtime(P.meth)
 
-    assert rmeth.__xsimlab_executor__.execute(None, {}) == 1
+    p = P()
+
+    assert p.meth() == 1
+    p.meth.__xsimlab_executor__.execute(p, {})
+    assert p.v == 1
+
+
+def test_process_executor():
+    @xs.process
+    class P:
+        in_var = xs.variable()
+        out_var = xs.variable(intent="out")
+        od_var = xs.on_demand()
+
+        def run_step(self):
+            self.out_var = self.in_var * 2
+
+        @od_var.compute
+        def _dummy(self):
+            return None
+
+    m = xs.Model({"p": P})
+    executor = m.p.__xsimlab_executor__
+    state = {("p", "in_var"): 1}
+
+    expected = {("p", "out_var"): 2}
+    actual = executor.execute(m.p, SimulationStage.RUN_STEP, {}, state=state)
+    assert actual == expected
+
+    assert executor.execute(m.p, SimulationStage.INITIALIZE, {}, state=state) == {}
 
 
 def test_process_executor_raise():

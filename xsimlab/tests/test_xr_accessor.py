@@ -14,7 +14,7 @@ from xsimlab.xr_accessor import (
 )
 
 from . import use_dask_schedulers
-from .fixture_model import Roll
+from .fixture_model import Profile, Roll
 
 
 @pytest.fixture(params=[True, False])
@@ -400,20 +400,18 @@ class TestSimlabAccessor:
         assert ds.xsimlab.output_vars_by_clock == expected
 
     def test_run(self, model, in_dataset, out_dataset, parallel, scheduler):
-        is_proc_scheduler = (
-            scheduler == "processes"
-            or isinstance(scheduler, Client)
-            and scheduler.cluster.processes
-        )
+        @xs.process
+        class ProfileFix(Profile):
+            # limitation of using distributed for single-model parallelism
+            # internal instance attributes created and used in multiple stage
+            # methods are not supported.
+            u_change = xs.any_object()
 
-        if parallel and is_proc_scheduler:
-            pytest.skip("multi-processes scheduler not supported for one run")
+        m = model.update_processes({"profile": ProfileFix})
 
-        out_ds = in_dataset.xsimlab.run(
-            model=model, parallel=parallel, scheduler=scheduler
-        )
+        out_ds = in_dataset.xsimlab.run(model=m, parallel=parallel, scheduler=scheduler)
 
-        xr.testing.assert_equal(out_ds, out_dataset)
+        xr.testing.assert_equal(out_ds.load(), out_dataset)
 
     def test_run_safe_mode(self, model, in_dataset):
         # safe mode True: ensure model is cloned (empty state)

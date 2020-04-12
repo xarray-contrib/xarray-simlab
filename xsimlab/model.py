@@ -1,8 +1,10 @@
 from collections import OrderedDict, defaultdict
 import copy
+import time
 
 import attr
 import dask
+from dask.distributed import Client
 
 from .variable import VarIntent, VarType
 from .process import (
@@ -721,30 +723,62 @@ class Model(AttrMapping):
         for h in event_hooks:
             h(self, Frozen(runtime_context), Frozen(self.state))
 
-    def _execute_process(self, p_obj, stage, runtime_context, hooks, validate):
+    def _execute_process(
+        self, p_obj, stage, runtime_context, hooks, validate, state=None
+    ):
         executor = p_obj.__xsimlab_executor__
         p_name = p_obj.__xsimlab_name__
 
         self._call_hooks(hooks, runtime_context, stage, "process", "pre")
-        executor.execute(p_obj, stage, runtime_context)
+        out_state = executor.execute(p_obj, stage, runtime_context, state=state)
         self._call_hooks(hooks, runtime_context, stage, "process", "post")
 
         if validate:
             self.validate(self._processes_to_validate[p_name])
 
-    def _build_dask_graph(self, extra_args):
-        def exec_process(p_obj, deps):
-            self._execute_process(p_obj, *extra_args)
+        return p_name, out_state
 
-        dsk = {
-            p_name: (exec_process, self._processes[p_name], p_deps)
-            for p_name, p_deps in self._dep_processes.items()
-        }
+    def _build_dask_graph(self, execute_args):
+        """Build a custom, 'stateless' graph of tasks (process execution) that will
+        be passed to a Dask scheduler.
 
-        # add a dummy node so that we properly call the get func of dask scheduler
-        dsk["_end"] = (lambda deps: None, list(self._processes))
+        """
+
+        def exec_process(p_obj, model_state, out_states):
+            # update model state with output state from all dependent processes
+            state = {}
+            state.update(model_state)
+            for _, s in out_states:
+                state.update(s)
+
+            return self._execute_process(p_obj, *execute_args, state=state)
+
+        dsk = {}
+        for p_name, p_deps in self._dep_processes.items():
+            dsk[p_name] = (exec_process, self._processes[p_name], self._state, p_deps)
+
+        # add a node to gather output state from all executed processes
+        dsk["_gather"] = (lambda out_states: dict(out_states), list(self._processes))
 
         return dsk
+
+    def _merge_and_update_state(self, out_states):
+        """Collect, merge together and update model state from the output
+        states returned by all executed processes (dask graph).
+
+        """
+        new_state = {}
+
+        # process order matters!
+        for p_name in self._processes:
+            new_state.update(out_states[p_name])
+
+        self._state.update(new_state)
+
+        # need to re-assign the updated state to all processes
+        # for access between simulation stages (e.g., save snapshots)
+        for p_obj in self._processes.values():
+            p_obj.__xsimlab_state__ = self._state
 
     def execute(
         self,
@@ -793,11 +827,18 @@ class Model(AttrMapping):
           in the process classes must be thread-safe. Also, it should release
           the Python Global Interpreted Lock (GIL) as much as possible in order
           to see a gain in performance.
-        - Multi-process or distributed schedulers are not supported, as
-          currently the model state (shared between the process classes)
-          is stored using a simple Python dictionary.
+        - Multi-process or distributed schedulers may have very poor performance,
+          especially when a lot of data (model state) is shared between the model
+          processes. The way xarray-simlab scatters/gathers this data between the
+          scheduler and the workers is not optimized at all. Addtionally, those
+          schedulers may not work well with the given ``hooks`` and/or when the
+          processes runtime methods rely on instance attributes that are not
+          explicitly declared as model variables.
 
         """
+        # TODO: issue warning if validate is True and "processes" or distributed scheduler
+        # is used (not supported)
+
         if hooks is None:
             hooks = {}
 
@@ -806,17 +847,24 @@ class Model(AttrMapping):
             dsk_get = dask.threaded.get
 
         stage = SimulationStage(stage)
-        extra_args = (stage, runtime_context, hooks, validate)
+        execute_args = (stage, runtime_context, hooks, validate)
 
         self._call_hooks(hooks, runtime_context, stage, "model", "pre")
 
         if parallel:
-            dsk = self._build_dask_graph(extra_args)
-            dsk_get(dsk, "_end", scheduler=scheduler)
+            dsk = self._build_dask_graph(execute_args)
+            out_states = dsk_get(dsk, "_gather", scheduler=scheduler)
+
+            # TODO: without this -> flaky tests (don't know why)
+            # state is not well updated -> error when writing output vars in store
+            if isinstance(scheduler, Client):
+                time.sleep(0.001)
+
+            self._merge_and_update_state(out_states)
 
         else:
             for p_name, p_obj in self._processes.items():
-                self._execute_process(p_obj, *extra_args)
+                self._execute_process(p_obj, *execute_args)
 
         self._call_hooks(hooks, runtime_context, stage, "model", "post")
 
