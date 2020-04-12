@@ -723,7 +723,9 @@ class Model(AttrMapping):
         for h in event_hooks:
             h(self, Frozen(runtime_context), Frozen(self.state))
 
-    def _execute_process(self, p_obj, stage, runtime_context, hooks, validate, state=None):
+    def _execute_process(
+        self, p_obj, stage, runtime_context, hooks, validate, state=None
+    ):
         executor = p_obj.__xsimlab_executor__
         p_name = p_obj.__xsimlab_name__
 
@@ -812,9 +814,13 @@ class Model(AttrMapping):
           in the process classes must be thread-safe. Also, it should release
           the Python Global Interpreted Lock (GIL) as much as possible in order
           to see a gain in performance.
-        - Multi-process or distributed schedulers are not supported, as
-          currently the model state (shared between the process classes)
-          is stored using a simple Python dictionary.
+        - Multi-process or distributed schedulers may have very poor performance,
+          especially when a lot of data (model state) is shared between the model
+          processes. The way xarray-simlab scatters/gathers this data between the
+          scheduler and the workers is not optimized at all. Addtionally, those
+          schedulers may not work well with the given ``hooks`` and/or when the
+          processes runtime methods rely on instance attributes that are not
+          explicitly declared as model variables.
 
         """
         if hooks is None:

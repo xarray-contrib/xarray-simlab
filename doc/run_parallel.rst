@@ -17,7 +17,7 @@ library. There are two parallel modes:
 
    Dask is a versatile library that provides many ways of executing tasks in
    parallel (i.e., threads vs. processes, single machine vs. distributed
-   environments). xarray-simlab lets you choose which alternative best suits
+   infrastructure). xarray-simlab lets you choose which alternative best suits
    your needs. Beware, however, that not all alternatives are optimal or
    supported depending on your case. More details below.
 
@@ -32,7 +32,7 @@ This mode runs the processes in a model in parallel.
 
 A :class:`~xsimlab.Model` object can be viewed as a Directed Acyclic Graph (DAG)
 built from a collection of processes (i.e., process-decorated classes) as nodes
-and their inter-dependencies as directed edges. At each simulation stage, a task
+and their inter-dependencies as oriented edges. At each simulation stage, a task
 graph is built from this DAG, which is then executed by one of the schedulers
 available in Dask.
 
@@ -43,19 +43,25 @@ To activate this parallel mode, simply set ``parallel=True`` when calling
 
    >>> in_ds.xsimlab.run(model=my_model, parallel=True)
 
-The default Dask scheduler used here is ``"threads"`` (this is the one used by
-``dask.delayed``). Other schedulers may be selected via the ``scheduler``
-argument of :func:`~xarray.Dataset.xsimlab.run`. Dask also provides other ways to
-select a scheduler, see `here
+The default Dask scheduler used here is ``"threads"``. The code in the
+process-decorated classes must thus be thread-safe. It should also release
+CPython's Global Interpreter Lock (GIL) as much as possible in order to see a
+gain in performance. For example, most Numpy functions release the GIL.
+
+Other schedulers may be selected via the ``scheduler`` argument of
+:func:`~xarray.Dataset.xsimlab.run`.
+
+.. code:: python
+
+   >>> in_ds.xsimlab.run(model=my_model, parallel=True, scheduler="processes")
+
+Dask also provides other ways to select a scheduler, see `here
 <https://docs.dask.org/en/latest/setup/single-machine.html>`_.
 
-Multi-processes schedulers are not supported for this mode since simulation
-active data, shared between all model components, is stored using a simple
-Python dictionary.
-
-The code in the process-decorated classes must be thread-safe and should release
-CPython's Global Interpreter Lock (GIL) as much as possible in order to see
-a gain in performance. For example, most Numpy functions release the GIL.
+Note, however, that multi-processes or distributed schedulers are not well
+supported and may have very poor performance for this mode, depending on how
+much simulation active data needs to be shared between the model components. See
+:meth:`xsimlab.Model.execute` for more information.
 
 The gain in performance compared to sequential execution of the model processes
 will also depend on how the DAG is structured, i.e., how many processes can be
@@ -87,8 +93,9 @@ while calling :func:`xarray.Dataset.xsimlab.run` (see Section
 
    >>> in_ds.xsimlab.run(model=my_model, batch_dim="batch", parallel=True, store="output.zarr")
 
-As opposed to single-model parallelism, both multi-threads and multi-processes
-Dask schedulers are supported for this embarrassingly parallel problem.
+Both multi-threads and multi-processes Dask schedulers are well supported for
+this embarrassingly parallel problem. Like for single-model parallelism, the
+default scheduler used here is ``"threads"``.
 
 If you use a multi-threads scheduler, the same precautions apply regarding
 thread-safety and CPython's GIL.
