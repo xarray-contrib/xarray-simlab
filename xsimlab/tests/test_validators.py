@@ -5,22 +5,16 @@ import pytest
 from xsimlab.validators import in_bounds, is_subdtype
 
 
-def simple_attr(name):
+@pytest.fixture
+def simple_attr():
     """
     Return an attribute with a name just for testing purpose.
     """
-    return attr.Attribute(
-        name=name,
-        default=attr.NOTHING,
-        validator=None,
-        repr=True,
-        eq=True,
-        cmp=None,
-        hash=None,
-        init=True,
-        converter=None,
-        kw_only=False,
-    )
+    @attr.attrs
+    class C:
+        test = attr.attrib()
+
+    return attr.fields_dict(C)["test"]
 
 
 def test_in_bounds_init():
@@ -40,11 +34,11 @@ def test_in_bounds_init():
         ((None, None), 1000),
     ],
 )
-def test_in_bounds_success(bounds, value):
+def test_in_bounds_success(simple_attr, bounds, value):
     v = in_bounds(bounds)
 
     # nothing happens
-    v(None, simple_attr("test"), value)
+    v(None, simple_attr, value)
 
 
 @pytest.mark.parametrize(
@@ -56,11 +50,11 @@ def test_in_bounds_success(bounds, value):
         ((0, 5), (False, False), np.array([0, 1, 2, 3, 4, 5])),
     ],
 )
-def test_in_bounds_fail(bounds, closed, value):
+def test_in_bounds_fail(simple_attr, bounds, closed, value):
     v = in_bounds(bounds, closed=closed)
 
     with pytest.raises(ValueError, match=r".*out of bounds.*"):
-        v(None, simple_attr("test"), value)
+        v(None, simple_attr, value)
 
 
 @pytest.mark.parametrize(
@@ -79,19 +73,19 @@ def test_in_bounds_repr(closed, interval_str):
     assert repr(v) == expected
 
 
-def test_is_subdtype_success():
+def test_is_subdtype_success(simple_attr):
     v = is_subdtype(np.number)
 
     # nothing happends
-    v(None, simple_attr("test"), np.array([1, 2, 3]))
-    v(None, simple_attr("test"), np.array([1.0, 2.0, 3.0]))
+    v(None, simple_attr, np.array([1, 2, 3]))
+    v(None, simple_attr, np.array([1.0, 2.0, 3.0]))
 
 
-def test_is_subdtype_fail():
+def test_is_subdtype_fail(simple_attr):
     v = is_subdtype(np.number)
 
     with pytest.raises(TypeError, match=r".*not a sub-dtype of.*"):
-        v(None, simple_attr("test"), np.array(["1", "2", "3"]))
+        v(None, simple_attr, np.array(["1", "2", "3"]))
 
 
 def test_is_subdtype_repr():
