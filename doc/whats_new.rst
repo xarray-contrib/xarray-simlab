@@ -22,6 +22,7 @@ Bug fixes
 
 - Fix running batches of simulations using ``dask.distributed`` (:issue:`124`).
 - Fix rendering of auto-generated docstrings of process classes (:issue:`128`).
+- Fix tests with ``attr`` v20.1.0 (:issue:`129`).
 
 v0.4.0 (7 April 2020)
 ---------------------
