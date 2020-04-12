@@ -10,6 +10,7 @@ def simple_attr():
     """
     Return an attribute with a name just for testing purpose.
     """
+
     @attr.attrs
     class C:
         test = attr.attrib()
