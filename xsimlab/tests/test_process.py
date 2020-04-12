@@ -204,7 +204,6 @@ def test_process_properties_converter(processes_with_state):
 
 
 def test_runtime_decorator_noargs():
-
     class P:
         @xs.runtime
         def meth(self):
@@ -220,7 +219,6 @@ def test_runtime_decorator_noargs():
 
 @pytest.mark.parametrize("args", ["p1,p2", ["p1", "p2"], ("p1", "p2")])
 def test_runtime_decorator(args):
-
     class P:
         @xs.runtime(args=args)
         def meth(self, a, b):
@@ -248,7 +246,6 @@ def test_runtime_decorator_raise():
 
 
 def test_runtime_function():
-
     class P:
         def meth(self):
             self.v = 1

@@ -1,8 +1,10 @@
 from collections import OrderedDict, defaultdict
 import copy
+import time
 
 import attr
 import dask
+import distributed
 
 from .variable import VarIntent, VarType
 from .process import (
@@ -830,9 +832,13 @@ class Model(AttrMapping):
         if parallel:
             dsk = self._build_dask_graph(execute_args)
             out_states = dsk_get(dsk, "_gather", scheduler=scheduler)
+
+            # TODO: without this -> flaky tests (don't know why)
+            # state is not well updated -> error when writing output vars in store
+            if isinstance(scheduler, distributed.Client):
+                time.sleep(0.001)
+
             self._gather_and_update_state(out_states)
-            import time
-            time.sleep(0.001)
 
         else:
             for p_name, p_obj in self._processes.items():
