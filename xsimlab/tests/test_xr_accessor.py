@@ -400,15 +400,6 @@ class TestSimlabAccessor:
         assert ds.xsimlab.output_vars_by_clock == expected
 
     def test_run(self, model, in_dataset, out_dataset, parallel, scheduler):
-        is_proc_scheduler = (
-            scheduler == "processes"
-            or isinstance(scheduler, Client)
-            and scheduler.cluster.processes
-        )
-
-        #if parallel and is_proc_scheduler:
-        #    pytest.skip("multi-processes schedulers not supported for one run")
-
         @xs.process
         class ProfileFix(Profile):
             # limitation of using distributed for single-model parallelism
@@ -418,9 +409,7 @@ class TestSimlabAccessor:
 
         m = model.update_processes({"profile": ProfileFix})
 
-        out_ds = in_dataset.xsimlab.run(
-            model=m, parallel=parallel, scheduler=scheduler
-        )
+        out_ds = in_dataset.xsimlab.run(model=m, parallel=parallel, scheduler=scheduler)
 
         xr.testing.assert_equal(out_ds.load(), out_dataset)
 

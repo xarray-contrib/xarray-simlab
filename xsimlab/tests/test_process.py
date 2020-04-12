@@ -11,6 +11,7 @@ from xsimlab.process import (
     get_process_obj,
     get_target_variable,
     NotAProcessClassError,
+    SimulationStage,
     process_info,
     variable_info,
 )
@@ -258,6 +259,31 @@ def test_runtime_function():
     assert p.meth() == 1
     p.meth.__xsimlab_executor__.execute(p, {})
     assert p.v == 1
+
+
+def test_process_executor():
+    @xs.process
+    class P:
+        in_var = xs.variable()
+        out_var = xs.variable(intent="out")
+        od_var = xs.on_demand()
+
+        def run_step(self):
+            self.out_var = self.in_var * 2
+
+        @od_var.compute
+        def _dummy(self):
+            return None
+
+    m = xs.Model({"p": P})
+    executor = m.p.__xsimlab_executor__
+    state = {("p", "in_var"): 1}
+
+    expected = {("p", "out_var"): 2}
+    actual = executor.execute(m.p, SimulationStage.RUN_STEP, {}, state=state)
+    assert actual == expected
+
+    assert executor.execute(m.p, SimulationStage.INITIALIZE, {}, state=state) == {}
 
 
 def test_process_executor_raise():
