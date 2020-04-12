@@ -58,6 +58,7 @@ class WithPlaceholder:
     {{attributes}}
 
     """
+
     var1 = xs.variable(dims="x", description="a variable")
     var2 = xs.variable()
 
