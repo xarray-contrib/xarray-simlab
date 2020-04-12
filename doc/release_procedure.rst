@@ -23,7 +23,7 @@ How to issue a xarray-simlab release in a few steps:
 
 6. Tag the release::
 
-     $ git tag -a v0.X.Y -m '0.X.Y'
+     $ git tag -a 0.X.Y -m 'release v0.X.Y'
 
 7. Push to GitHub::
 
