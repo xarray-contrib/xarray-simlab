@@ -16,6 +16,8 @@ Enhancements
   from model variables' metadata (:issue:`126`).
 - Single-model parallelism now supports Dask's multi-processes or distributed
   schedulers, although this is still limited and rarely optimal (:issue:`127`).
+- Improved auto-generated docstrings of variables declared in process classes
+  (:issue:`130`).
 
 Bug fixes
 ~~~~~~~~~
