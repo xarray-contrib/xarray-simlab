@@ -407,10 +407,12 @@ def foreign(other_process_cls, var_name, intent="in"):
         "other_process_cls": other_process_cls,
         "var_name": var_name,
         "intent": VarIntent(intent),
-        "description": ref_var.metadata["description"],
-        "attrs": ref_var.metadata.get("attrs", {}),
-        "encoding": ref_var.metadata.get("encoding", {}),
     }
+
+    for meta_key in ["description", "dims", "attrs", "encoding"]:
+        ref_value = ref_var.metadata.get(meta_key)
+        if ref_value is not None:
+            metadata[meta_key] = ref_value
 
     if VarIntent(intent) == VarIntent.OUT:
         _init = False

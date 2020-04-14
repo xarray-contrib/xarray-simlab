@@ -1,5 +1,7 @@
 from textwrap import dedent
 
+import attr
+
 import xsimlab as xs
 from xsimlab.formatting import (
     add_attribute_section,
@@ -32,15 +34,67 @@ def test_wrap_indent():
     assert wrap_indent(text, length=1) == expected
 
 
-def test_var_details(example_process_obj):
-    var = xs.variable(dims="x", description="a variable")
+def test_var_details():
+    @xs.process
+    class P:
+        var = xs.variable(
+            dims=[(), "x"],
+            description="a variable",
+            default=0,
+            groups=["g1", "g2"],
+            static=True,
+            attrs={"units": "m"},
+            encoding={"fill_value": -1},
+        )
+        var2 = xs.variable()
 
-    var_details_str = var_details(var)
+    var_details_str = var_details(attr.fields(P).var)
 
-    assert var_details_str.strip().startswith("A variable")
-    assert "- type : variable" in var_details_str
-    assert "- intent : in" in var_details_str
-    assert "- dims : (('x',),)" in var_details_str
+    expected = dedent(
+        """\
+        A variable
+
+        Variable properties:
+
+        - type : ``variable``
+        - intent : ``in``
+        - dimensions : () or ('x',)
+        - groups : g1, g2
+        - default value : 0
+        - static : ``True``
+
+        Other attributes:
+
+        - units : m
+
+        Encoding options:
+
+        - fill_value : -1
+        """
+    )
+
+    assert var_details_str == expected
+
+    @xs.process
+    class PP:
+        var = xs.foreign(P, "var2")
+
+    var_details_str = var_details(attr.fields(PP).var)
+
+    expected = dedent(
+        """\
+        No description given
+
+        Variable properties:
+
+        - type : ``foreign``
+        - reference variable : :attr:`test_var_details.<locals>.P.var2`
+        - intent : ``in``
+        - dimensions : ()
+        """
+    )
+
+    assert var_details_str == expected
 
 
 @xs.process(autodoc=False)
@@ -72,24 +126,20 @@ def test_add_attribute_section():
     var1 : :class:`attr.Attribute`
         A variable
 
-        - type : variable
-        - intent : in
-        - dims : (('x',),)
-        - groups : ()
-        - static : False
-        - attrs : {}
-        - encoding : {}
+        Variable properties:
+
+        - type : ``variable``
+        - intent : ``in``
+        - dimensions : ('x',)
 
     var2 : :class:`attr.Attribute`
-        (no description given)
+        No description given
 
-        - type : variable
-        - intent : in
-        - dims : ((),)
-        - groups : ()
-        - static : False
-        - attrs : {}
-        - encoding : {}
+        Variable properties:
+
+        - type : ``variable``
+        - intent : ``in``
+        - dimensions : ()
     """
 
     assert add_attribute_section(WithoutPlaceHolder).strip() == expected.strip()
