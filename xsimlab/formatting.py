@@ -1,6 +1,8 @@
 """Formatting utils and functions."""
 import textwrap
 
+import attr
+
 from .utils import variables_dict
 from .variable import VarIntent, VarType
 
@@ -85,23 +87,53 @@ def _summarize_var(var, process, col_width):
 
 
 def var_details(var, max_line_length=70):
-    var_metadata = var.metadata.copy()
+    meta = var.metadata
+    subsections = []
 
-    description = textwrap.fill(
-        var_metadata.pop("description").capitalize(), width=max_line_length
-    )
-    if not description:
-        description = "(no description given)"
+    if meta["description"]:
+        wrapped_descr = textwrap.fill(
+            meta["description"].capitalize(), width=max_line_length
+        )
+        subsections.append(wrapped_descr)
+    else:
+        subsections.append("No description given")
 
-    detail_items = [
-        ("type", var_metadata.pop("var_type").value),
-        ("intent", var_metadata.pop("intent").value),
-    ]
-    detail_items += list(var_metadata.items())
+    info = [f"- type : ``{meta['var_type'].value}``"]
 
-    details = "\n".join([f"- {k} : {v}" for k, v in detail_items])
+    if meta["var_type"] is VarType.FOREIGN:
+        ref_cls = meta["other_process_cls"]
+        ref_var = meta["var_name"]
+        info.append(f"- reference variable : :attr:`{ref_cls.__qualname__}.{ref_var}`")
 
-    return description + "\n\n" + details + "\n"
+    info.append(f"- intent : ``{meta['intent'].value}``")
+
+    if meta.get("dims", False):
+        info.append("- dimensions : " + " or ".join(f"{d!r}" for d in meta["dims"]))
+
+    if meta.get("groups", False):
+        info.append("- groups : " + ", ".join(meta["groups"]))
+
+    if var.default != attr.NOTHING:
+        info.append(f"- default value : {var.default}")
+
+    if meta.get("static", False):
+        info.append("- static : ``True``")
+
+    subsections.append("Variable properties:\n\n" + "\n".join(info))
+
+    if meta.get("attrs", False):
+        subsections.append(
+            "Other attributes:\n\n"
+            + "\n".join(f"- {k} : {v}" for k, v in meta["attrs"].items())
+        )
+
+    if meta.get("encoding", False):
+        subsections.append(
+            "Encoding options:\n\n"
+            + "\n".join(f"- {k} : {v}" for k, v in meta["encoding"].items())
+        )
+
+    return "\n\n".join(subsections) + "\n"
 
 
 def add_attribute_section(process, placeholder="{{attributes}}"):

@@ -85,13 +85,11 @@ def in_var_details():
         """\
     Input variable
 
-    - type : variable
-    - intent : in
-    - dims : (('x',), ('x', 'y'))
-    - groups : ()
-    - static : False
-    - attrs : {}
-    - encoding : {}
+    Variable properties:
+
+    - type : ``variable``
+    - intent : ``in``
+    - dimensions : ('x',) or ('x', 'y')
     """
     )
 
