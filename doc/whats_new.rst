@@ -6,6 +6,11 @@ Release Notes
 v0.5.0 (Unreleased)
 -------------------
 
+Bug fixes
+~~~~~~~~~
+
+- Fix saving output variables with dtype=object (:issue:`145`).
+
 v0.4.1 (17 April 2020)
 ----------------------
 
