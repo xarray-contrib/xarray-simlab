@@ -5,6 +5,7 @@ import zarr
 
 import xsimlab as xs
 from xsimlab.stores import DummyLock, ZarrSimulationStore
+from zarr.util import object_codecs
 
 
 @pytest.fixture(params=["directory", zarr.MemoryStore])
@@ -219,6 +220,11 @@ class TestZarrSimulationStore:
             v1 = xs.variable(dims="x", intent="out", encoding={"dtype": np.int32})
             v2 = xs.on_demand(dims="x", encoding={"fill_value": 0})
             v3 = xs.index(dims="x")
+            v4 = xs.variable(
+                dims="x",
+                intent="out",
+                encoding={"dtype": object, "object_codec": zarr.codecs.Pickle()},
+            )
 
             @v2.compute
             def _get_v2(self):
@@ -229,7 +235,7 @@ class TestZarrSimulationStore:
         in_ds = xs.create_setup(
             model=model,
             clocks={"clock": [0]},
-            output_vars={"p__v1": None, "p__v2": None, "p__v3": None},
+            output_vars={"p__v1": None, "p__v2": None, "p__v3": None, "p__v4": None},
         )
 
         store = ZarrSimulationStore(
@@ -240,6 +246,7 @@ class TestZarrSimulationStore:
 
         model.state[("p", "v1")] = [0]
         model.state[("p", "v3")] = [0]
+        model.state[("p", "v4")] = [{"foo": "bar"}]
         store.write_output_vars(-1, -1)
 
         ztest = zarr.open_group(store.zgroup.store, mode="r")
@@ -248,6 +255,7 @@ class TestZarrSimulationStore:
         # test encoding precedence ZarrSimulationStore > model variable
         assert ztest.p__v2.fill_value == -1
         assert ztest.p__v3.chunks == (10,)
+        assert ztest.p__v4[0] == {"foo": "bar"}
 
     def test_open_as_xr_dataset(self, store):
         model = store.model

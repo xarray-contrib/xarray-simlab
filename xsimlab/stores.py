@@ -73,7 +73,10 @@ def default_fill_value_from_dtype(dtype=None):
 
 def get_auto_chunks(shape, dtype):
     # A hack to get chunks guessed by zarr
-    arr = zarr.create(shape, dtype=dtype)
+    if dtype == object:
+        arr = zarr.create(shape, dtype=dtype, object_codec=zarr.codecs.Pickle())
+    else:
+        arr = zarr.create(shape, dtype=dtype)
     return arr.chunks
 
 
