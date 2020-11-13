@@ -12,6 +12,4 @@ dependencies:
   - graphviz
   - python-graphviz
   - ipython
-  - codecov
   - zarr
-  - tqdm
