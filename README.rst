@@ -44,7 +44,9 @@ by Jake VanderPlas.
 
     @xs.process
     class GameOfLife:
-        world = xs.variable(dims=('x', 'y'), intent='inout')
+        world = xs.variable(
+            dims=('x', 'y'), intent='inout', encoding={'fill_value': None}
+        )
 
         def run_step(self):
             nbrs_count = sum(
