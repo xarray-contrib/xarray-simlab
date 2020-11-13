@@ -213,10 +213,14 @@ class ZarrSimulationStore:
         zkwargs.update(var_info["encoding"])
 
         try:
+            # TODO: race condition? use lock?
             zdataset = self.zgroup.create_dataset(name, **zkwargs)
-        except ValueError:
+        except ValueError as e:
             # return early if already existing dataset (batches of simulations)
-            return
+            if name in self.zgroup.keys():
+                return
+            else:
+                raise e
 
         # add dimension labels and variable attributes as metadata
         dim_labels = None
