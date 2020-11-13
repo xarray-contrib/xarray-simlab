@@ -347,8 +347,6 @@ class ZarrSimulationStore:
             group=self.zgroup.path,
             chunks=chunks,
             consolidated=self.consolidated,
-            # disable mask (not nice with zarr default fill_value=0)
-            mask_and_scale=False,
         )
 
         if self.in_memory:

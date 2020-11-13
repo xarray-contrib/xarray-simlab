@@ -12,7 +12,7 @@ from xsimlab.xr_accessor import SimlabAccessor
 
 @xs.process
 class Profile:
-    u = xs.variable(dims="x", description="quantity u", intent="inout")
+    u = xs.variable(dims="x", description="quantity u", intent="inout", encoding={"fill_value": np.nan})
     u_diffs = xs.group("diff")
     u_opp = xs.on_demand(dims="x")
 
@@ -43,7 +43,7 @@ class InitProfile:
     u = xs.foreign(Profile, "u", intent="out")
 
     def initialize(self):
-        self.x = np.arange(self.n_points)
+        self.x = np.arange(self.n_points).astype('double')
 
         self.u = np.zeros(self.n_points)
         self.u[0] = 1.0
@@ -58,7 +58,7 @@ class Roll:
         attrs={"units": "unitless"},
     )
     u = xs.foreign(Profile, "u")
-    u_diff = xs.variable(dims="x", groups="diff", intent="out")
+    u_diff = xs.variable(dims="x", groups="diff", intent="out", encoding={"fill_value": np.nan})
 
     def run_step(self):
         self.u_diff = np.roll(self.u, self.shift) - self.u
@@ -69,21 +69,21 @@ class Add:
     offset = xs.variable(
         description=("offset * dt added every time step " "to profile u")
     )
-    u_diff = xs.variable(groups="diff", intent="out")
+    u_diff = xs.variable(groups="diff", intent="out", encoding={"fill_value": np.nan})
 
     @xs.runtime(args="step_delta")
     def run_step(self, dt):
-        self.u_diff = self.offset * dt
+        self.u_diff = self.offset * dt * 1.0
 
 
 @xs.process
 class AddOnDemand:
     offset = xs.variable(dims=[(), "x"], description="offset added to profile u")
-    u_diff = xs.on_demand(dims=[(), "x"], groups="diff")
+    u_diff = xs.on_demand(dims=[(), "x"], groups="diff", encoding={"fill_value": np.nan})
 
     @u_diff.compute
     def _compute_u_diff(self):
-        return self.offset
+        return self.offset * 1.0
 
 
 @pytest.fixture

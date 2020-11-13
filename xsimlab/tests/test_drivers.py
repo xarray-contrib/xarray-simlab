@@ -97,10 +97,6 @@ class TestXarraySimulationDriver:
         xarray_driver.run_model()
         out_ds_actual = xarray_driver.get_results()
 
-        # skip attributes added by xr.open_zarr from check
-        for xr_var in out_ds_actual.variables.values():
-            xr_var.attrs.pop("_FillValue", None)
-
         assert out_ds_actual is not out_dataset
         xr.testing.assert_identical(out_ds_actual.load(), out_dataset)
 
