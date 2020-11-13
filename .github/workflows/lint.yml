@@ -28,4 +28,4 @@ jobs:
     - name: Check formatting with black
       run: |
         pip install black
-        black --check xsimlab/
+        black --check --diff .
