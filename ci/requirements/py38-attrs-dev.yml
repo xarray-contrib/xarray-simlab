@@ -1,8 +1,8 @@
-name: test_env_py37-attrs-dev
+name: test_env_py38-attrs-dev
 channels:
   - conda-forge
 dependencies:
-  - python=3.7
+  - python=3.8
   - pytest
   - pytest-cov
   - numpy

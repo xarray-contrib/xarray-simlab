@@ -11,4 +11,7 @@ dependencies:
   - dask
   - graphviz
   - python-graphviz
+  - ipython
+  - codecov
   - zarr
+  - tqdm

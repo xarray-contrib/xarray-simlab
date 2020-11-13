@@ -16,13 +16,13 @@ jobs:
       fail-fast: false
       matrix:
         cfg:
-          - {os: ubuntu-latest,  env-name: py36}
-          - {os: ubuntu-latest,  env-name: py37, codecov: true}
-          - {os: ubuntu-latest,  env-name: py38}
-          - {os: macos-latest,   env-name: py37}
-          - {os: windows-latest, env-name: py37}
-          - {os: ubuntu-latest,  env-name: py37-xarray-dev, allow-failure: true}
-          - {os: ubuntu-latest,  env-name: py37-attrs-dev,  allow-failure: true}
+          - {os: ubuntu-latest,  env-name: py37}
+          - {os: ubuntu-latest,  env-name: py38, codecov: true}
+          - {os: ubuntu-latest,  env-name: py39}
+          - {os: macos-latest,   env-name: py38}
+          - {os: windows-latest, env-name: py38}
+          - {os: ubuntu-latest,  env-name: py38-xarray-dev, allow-failure: true}
+          - {os: ubuntu-latest,  env-name: py38-attrs-dev,  allow-failure: true}
     steps:
       - name: Checkout
         uses: actions/checkout@v2

@@ -1,9 +1,9 @@
-name: test_env_py36
+name: test_env_py39
 channels:
   - conda-forge
 dependencies:
   - attrs>=19.2.0
-  - python=3.6
+  - python=3.9
   - pytest
   - pytest-cov
   - numpy
@@ -11,5 +11,4 @@ dependencies:
   - dask
   - graphviz
   - python-graphviz
-  - ipython
   - zarr
