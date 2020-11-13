@@ -10,7 +10,7 @@ from . import has_tqdm
 @pytest.mark.parametrize(
     "frontend,tqdm_module",
     [
-        ("auto", "tqdm"),  # assume tests are run in a terminal evironment
+        ("auto", "tqdm.auto"),
         ("console", "tqdm"),
         ("gui", "tqdm.gui"),
         ("notebook", "tqdm.notebook"),
