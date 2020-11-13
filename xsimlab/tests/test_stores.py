@@ -198,7 +198,9 @@ class TestZarrSimulationStore:
         model = xs.Model({"p": P})
 
         in_ds = xs.create_setup(
-            model=model, clocks={"clock": [0, 1, 2]}, output_vars={"p__arr": "clock"},
+            model=model,
+            clocks={"clock": [0, 1, 2]},
+            output_vars={"p__arr": "clock"},
         )
 
         store = ZarrSimulationStore(in_ds, model)

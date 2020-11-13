@@ -240,7 +240,8 @@ class TestSimlabAccessor:
         ds = xr.Dataset()
         with pytest.raises(ValueError) as excinfo:
             ds.xsimlab.update_clocks(
-                model=model, clocks={"clock": ("x", [0, 1, 2])},
+                model=model,
+                clocks={"clock": ("x", [0, 1, 2])},
             )
         assert "Invalid dimension" in str(excinfo.value)
 
@@ -274,7 +275,9 @@ class TestSimlabAccessor:
         assert ds.clock.attrs[self._output_vars_key] == "profile__u"
 
         new_ds = ds.xsimlab.update_clocks(
-            model=model, clocks={"clock2": [0, 0.5, 1, 1.5, 2]}, master_clock="clock2",
+            model=model,
+            clocks={"clock2": [0, 0.5, 1, 1.5, 2]},
+            master_clock="clock2",
         )
         assert new_ds.xsimlab.master_clock_dim == "clock2"
 
@@ -296,7 +299,8 @@ class TestSimlabAccessor:
         # label that cooresponds to its name (turned into a coordinate). This
         # should not raise any merge conflict error
         ds = in_dataset.xsimlab.update_vars(
-            model=model, input_vars={"roll__shift": ("roll__shift", [1, 2])},
+            model=model,
+            input_vars={"roll__shift": ("roll__shift", [1, 2])},
         )
 
         assert "roll__shift" in ds.coords
@@ -392,7 +396,9 @@ class TestSimlabAccessor:
         o_vars = {("roll", "u_diff"): "clock", ("add", "u_diff"): None}
 
         ds = xs.create_setup(
-            model=model, clocks={"clock": [0, 2, 4, 6, 8]}, output_vars=o_vars,
+            model=model,
+            clocks={"clock": [0, 2, 4, 6, 8]},
+            output_vars=o_vars,
         )
 
         expected = {"clock": [("roll", "u_diff")], None: [("add", "u_diff")]}

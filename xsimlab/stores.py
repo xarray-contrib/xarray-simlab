@@ -246,7 +246,9 @@ class ZarrSimulationStore:
         self.consolidated = False
 
     def _maybe_resize_zarr_dataset(
-        self, model: Model, var_key: VarKey,
+        self,
+        model: Model,
+        var_key: VarKey,
     ):
         # Maybe increases the length of one or more dimensions of
         # the zarr array (only increases, never shrinks dimensions).

@@ -62,7 +62,11 @@ class TestModelBuilder:
                 },
                 {},
             ),
-            ("add", {"offset": ("add", "offset")}, {"u_diff": ("add", "u_diff")},),
+            (
+                "add",
+                {"offset": ("add", "offset")},
+                {"u_diff": ("add", "u_diff")},
+            ),
         ],
     )
     def test_set_process_keys(
