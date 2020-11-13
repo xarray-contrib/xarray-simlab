@@ -254,3 +254,11 @@ Encoding options may also be set or overridden when calling
       ...:
 
    In [9]: out_ds.pt__position
+
+.. warning::
+
+   Zarr uses ``0`` as the default fill value for numeric value types. This may
+   badly affect the results, as array elements with the fill value are replaced
+   by NA in the output xarray Dataset. For variables which accept ``0`` as valid
+   values, it is recommended to explicitly provide an alternative ``fill_value``
+   encoding.
