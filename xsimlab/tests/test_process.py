@@ -1,6 +1,7 @@
 from io import StringIO
 import inspect
 
+import attr
 import pytest
 
 import xsimlab as xs
@@ -312,17 +313,26 @@ def test_process_executor_raise():
                 pass
 
 
-def test_process_decorator():
+def test_process_decorator_autodoc():
     @xs.process(autodoc=True)
-    class Dummy_t:
+    class P1:
         pass
 
     @xs.process(autodoc=False)
-    class Dummy_f:
+    class P2:
         pass
 
-    assert "Attributes" in Dummy_t.__doc__
-    assert Dummy_f.__doc__ is None
+    assert "Attributes" in P1.__doc__
+    assert P2.__doc__ is None
+
+
+def test_process_decorator_dont_apply_attrs():
+    @xs.process(apply_attrs=False)
+    @attr.attrs
+    class P:
+        var = xs.variable()
+
+    assert "var" in attr.fields_dict(P)
 
 
 def test_process_no_model():
