@@ -7,7 +7,7 @@ v0.5.0 (Unreleased)
 -------------------
 
 Breaking changes
-----------------
+~~~~~~~~~~~~~~~~
 
 - Fill values are now masked (NA) when when loading the simulation output store
   as a xarray Dataset (:issue:`148`). As Zarr sets the fill value ``0`` by default
