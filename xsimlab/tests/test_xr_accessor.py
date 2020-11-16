@@ -218,42 +218,37 @@ class TestSimlabAccessor:
 
     def test_update_clocks(self, model):
         ds = xr.Dataset()
-        with pytest.raises(ValueError) as excinfo:
+        with pytest.raises(ValueError, match="Cannot determine which clock.*"):
             ds.xsimlab.update_clocks(model=model, clocks={})
-        assert "Cannot determine which clock" in str(excinfo.value)
 
         ds = xr.Dataset()
-        with pytest.raises(ValueError) as excinfo:
+        with pytest.raises(ValueError, match="Cannot determine which clock.*"):
             ds.xsimlab.update_clocks(
                 model=model, clocks={"clock": [0, 1, 2], "out": [0, 2]}
             )
-        assert "Cannot determine which clock" in str(excinfo.value)
 
         ds = xr.Dataset()
-        with pytest.raises(KeyError) as excinfo:
+        with pytest.raises(KeyError, match="Master clock dimension name.*"):
             ds.xsimlab.update_clocks(
                 model=model,
                 clocks={"clock": [0, 1, 2]},
                 master_clock="non_existing_clock_dim",
             )
-        assert "Master clock dimension name" in str(excinfo.value)
 
         ds = xr.Dataset()
-        with pytest.raises(ValueError) as excinfo:
+        with pytest.raises(ValueError, match="Invalid dimension.*"):
             ds.xsimlab.update_clocks(
                 model=model,
                 clocks={"clock": ("x", [0, 1, 2])},
             )
-        assert "Invalid dimension" in str(excinfo.value)
 
         ds = xr.Dataset()
-        with pytest.raises(ValueError) as excinfo:
+        with pytest.raises(ValueError, match=".*not synchronized.*"):
             ds.xsimlab.update_clocks(
                 model=model,
                 clocks={"clock": [0, 1, 2], "out": [0, 0.5, 2]},
                 master_clock="clock",
             )
-        assert "not synchronized" in str(excinfo.value)
 
         ds = xr.Dataset()
         ds = ds.xsimlab.update_clocks(model=model, clocks={"clock": [0, 1, 2]})
@@ -284,6 +279,10 @@ class TestSimlabAccessor:
 
         new_ds = ds.xsimlab.update_clocks(model=model, clocks={"out2": [0, 2]})
         assert new_ds.xsimlab.master_clock_dim == "clock"
+
+        new_ds = ds.xsimlab.update_clocks(model=model, clocks={"clock": [0, 2, 4]})
+        assert new_ds.xsimlab.master_clock_dim == "clock"
+        np.testing.assert_array_equal(new_ds.clock.values, [0, 2, 4])
 
     def test_update_vars(self, model, in_dataset):
         ds = in_dataset.xsimlab.update_vars(

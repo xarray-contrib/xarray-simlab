@@ -31,6 +31,8 @@ Bug fixes
   ``_FillValue`` attribute (:issue:`148`).
 - Ensure that classes given in a Model are all process-decorated, even those
   which inherit from process-decorated classes (:issue:`149`).
+- Fix :func:`~xarray.Dataset.xsimlab.update_clocks` when only the master clock is
+  updated implicitly (:issue:`151`).
 
 v0.4.1 (17 April 2020)
 ----------------------
