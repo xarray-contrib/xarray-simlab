@@ -15,7 +15,7 @@ Breaking changes
   explicitly define another fill value in model variable encodings if ``0`` is
   expected to be a valid (non-missing) data value, or alternatively use
   ``mask_and_scale=False`` in the ``decoding`` options passed to
-  :func:`xarray.Dataset.simlab.run`.
+  :func:`xarray.Dataset.xsimlab.run`.
 
 Bug fixes
 ~~~~~~~~~

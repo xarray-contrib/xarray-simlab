@@ -210,12 +210,9 @@ Encoding options
 ~~~~~~~~~~~~~~~~
 
 It is possible to control via some encoding options how Zarr stores simulation
-data.
-
-Those options can be set for variables declared in process classes. See the
-``encoding`` parameter of :func:`~xsimlab.variable` for all available options.
-
-Encoding options may also be set or overridden when calling
+data. Those options can be set for variables declared in process classes. See
+the ``encoding`` parameter of :func:`~xsimlab.variable` for all available
+options. Encoding options may also be set or overridden when calling
 :func:`~xarray.Dataset.xsimlab.run`.
 
 .. warning::
