@@ -21,7 +21,7 @@ Enhancements
 ~~~~~~~~~~~~
 
 - The :func:`~xsimlab.process` decorator can now be applied on a class already
-  decorated with :func:`attr.attrs` (:issue:`150`), using ``apply_attrs=False``.
+  decorated with :func:`attr.s` (:issue:`150`), using ``apply_attrs=False``.
 
 Bug fixes
 ~~~~~~~~~

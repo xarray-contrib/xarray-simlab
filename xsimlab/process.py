@@ -563,8 +563,8 @@ def process(maybe_cls=None, autodoc=True, apply_attrs=True) -> Type[Process]:
         docstring of the class to which the decorator is applied, using the
         metadata of each variable declared in the class.
     apply_attrs : bool, optional
-        If True (default), applies the :func:`attr.attrs` decorator to the
-        class. Set it to False if the class is already decorated by ``attrs``.
+        If True (default), applies the :func:`attr.s` decorator to the class.
+        Set it to False if the class is already decorated by ``attr.s``.
 
     """
 
