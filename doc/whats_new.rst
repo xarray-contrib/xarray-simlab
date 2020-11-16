@@ -17,6 +17,12 @@ Breaking changes
   ``mask_and_scale=False`` in the ``decoding`` options passed to
   :func:`xarray.Dataset.xsimlab.run`.
 
+Enhancements
+~~~~~~~~~~~~
+
+- The :func:`~xsimlab.process` decorator can now be applied on a class already
+  decorated with :func:`attr.s` (:issue:`150`), using ``apply_attrs=False``.
+
 Bug fixes
 ~~~~~~~~~
 

@@ -532,7 +532,7 @@ class _ProcessBuilder:
         return p_cls
 
 
-def process(maybe_cls=None, autodoc=True) -> Type[Process]:
+def process(maybe_cls=None, autodoc=True, apply_attrs=True) -> Type[Process]:
     """A class decorator that adds everything needed to use the class
     as a process.
 
@@ -559,14 +559,20 @@ def process(maybe_cls=None, autodoc=True) -> Type[Process]:
         Allows to apply this decorator to a class either as ``@process`` or
         ``@process(*args)``.
     autodoc : bool, optional
-        (default: True) Automatically adds an attributes section to the
+        If True (default), automatically adds an attributes section to the
         docstring of the class to which the decorator is applied, using the
         metadata of each variable declared in the class.
+    apply_attrs : bool, optional
+        If True (default), applies the :func:`attr.s` decorator to the class.
+        Set it to False if the class is already decorated by ``attr.s``.
 
     """
 
     def wrap(cls):
-        attr_cls = attr.attrs(cls, repr=False)
+        if apply_attrs:
+            attr_cls = attr.attrs(cls, repr=False)
+        else:
+            attr_cls = cls
 
         builder = _ProcessBuilder(attr_cls)
 
