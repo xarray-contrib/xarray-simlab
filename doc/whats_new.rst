@@ -23,6 +23,8 @@ Bug fixes
 - Fix saving output variables with dtype=object (:issue:`145`).
 - Fix issues when saving output datasets to disk that were caused by the
   ``_FillValue`` attribute (:issue:`148`).
+- Ensure that classes given in a Model are all process-decorated, even those
+  which inherit from process-decorated classes (:issue:`149`).
 
 v0.4.1 (17 April 2020)
 ----------------------
