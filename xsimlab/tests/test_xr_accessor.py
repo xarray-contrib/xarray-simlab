@@ -1,3 +1,4 @@
+from math import nan
 import pytest
 from dask.distributed import Client
 import xarray as xr
@@ -544,6 +545,33 @@ class TestSimlabAccessor:
 
         expected = xr.DataArray(data, dims=dims, coords=coords) * 2
         xr.testing.assert_equal(out_ds["p__out_var"], expected)
+
+    @pytest.mark.parametrize(
+        "decoding,expected",
+        [
+            (None, [nan, nan]),  # mask_and_scale=True by default
+            ({"mask_and_scale": False}, [-1, -1]),
+        ],
+    )
+    def test_run_decoding(self, decoding, expected):
+        @xs.process
+        class P:
+            var = xs.variable(dims="x", intent="out", encoding={"fill_value": -1})
+
+            def initialize(self):
+                self.var = [-1, -1]
+
+        m = xs.Model({"p": P})
+
+        in_ds = xs.create_setup(
+            model=m,
+            clocks={"clock": [0, 1]},
+            output_vars={"p__var": None},
+        )
+
+        out_ds = in_ds.xsimlab.run(model=m, decoding=decoding)
+
+        np.testing.assert_array_equal(out_ds.p__var, expected)
 
 
 def test_create_setup(model, in_dataset):

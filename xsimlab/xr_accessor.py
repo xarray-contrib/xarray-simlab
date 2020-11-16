@@ -677,6 +677,7 @@ class SimlabAccessor:
         validate="inputs",
         store=None,
         encoding=None,
+        decoding=None,
         hooks=None,
         parallel=False,
         scheduler=None,
@@ -730,6 +731,9 @@ class SimlabAccessor:
             model variables (see :func:`~xsimlab.variable` for a full list of
             of options available). Additionally, 'chunks' and 'synchronizer'
             options are supported here.
+        decoding : dict, optional
+            Options passed as keyword arguments to :func:`xarray.open_zarr` to load
+            the simulation outputs from the zarr store as a new xarray dataset.
         hooks : list, optional
             One or more runtime hooks, i.e., functions decorated with
             :func:`~xsimlab.runtime_hook` or instances of
@@ -754,7 +758,7 @@ class SimlabAccessor:
         Returns
         -------
         output : Dataset
-            Another Dataset with both model inputs and outputs. The data is lazily
+            Another Dataset with both model inputs and outputs. The data is (lazily)
             loaded from the zarr store used to save inputs and outputs.
 
         Notes
@@ -806,6 +810,7 @@ class SimlabAccessor:
             batch_dim=batch_dim,
             store=store,
             encoding=encoding,
+            decoding=decoding,
             check_dims=check_dims,
             validate=validate,
             hooks=hooks,

@@ -106,6 +106,7 @@ class ZarrSimulationStore:
         model: Model,
         zobject: Optional[Union[zarr.Group, MutableMapping, str]] = None,
         encoding: Optional[EncodingDict] = None,
+        decoding: Optional[Dict] = None,
         batch_dim: Optional[str] = None,
         lock: Optional[Any] = None,
     ):
@@ -128,6 +129,10 @@ class ZarrSimulationStore:
 
         if encoding is None:
             encoding = {}
+        if decoding is None:
+            decoding = {}
+
+        self.decoding = decoding
 
         self.var_info = _get_var_info(dataset, model, encoding)
 
@@ -213,10 +218,14 @@ class ZarrSimulationStore:
         zkwargs.update(var_info["encoding"])
 
         try:
+            # TODO: race condition? use lock?
             zdataset = self.zgroup.create_dataset(name, **zkwargs)
-        except ValueError:
+        except ValueError as e:
             # return early if already existing dataset (batches of simulations)
-            return
+            if name in self.zgroup.keys():
+                return
+            else:
+                raise e
 
         # add dimension labels and variable attributes as metadata
         dim_labels = None
@@ -342,14 +351,17 @@ class ZarrSimulationStore:
         else:
             chunks = "auto"
 
-        ds = xr.open_zarr(
-            self.zgroup.store,
-            group=self.zgroup.path,
-            chunks=chunks,
-            consolidated=self.consolidated,
-            # disable mask (not nice with zarr default fill_value=0)
-            mask_and_scale=False,
+        # overwrite decoding options
+        open_kwargs = self.decoding.copy()
+        open_kwargs.update(
+            {
+                "chunks": chunks,
+                "group": self.zgroup.path,
+                "consolidated": self.consolidated,
+            }
         )
+
+        ds = xr.open_zarr(self.zgroup.store, **open_kwargs)
 
         if self.in_memory:
             # lazy loading may be confusing for the default, in-memory option

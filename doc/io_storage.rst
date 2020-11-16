@@ -214,43 +214,17 @@ data.
 
 Those options can be set for variables declared in process classes. See the
 ``encoding`` parameter of :func:`~xsimlab.variable` for all available options.
-In the example below we specify a custom fill value for the ``position``
-variable, which will be used to replace missing values:
-
-.. ipython::
-
-   In [4]: @xs.process
-      ...: class Particles:
-      ...:     position = xs.variable(dims='pt', intent='out',
-      ...:                            encoding={'fill_value': -1.0})
-      ...:
-      ...:     def initialize(self):
-      ...:         self._rng = np.random.default_rng(123)
-      ...:
-      ...:     def run_step(self):
-      ...:         nparticles = self._rng.integers(1, 4)
-      ...:         self.position = self._rng.uniform(0, 10, size=nparticles)
-      ...:
-
-   In [5]: model = xs.Model({'pt': Particles})
-
-   In [6]: with model:
-      ...:     in_ds = xs.create_setup(clocks={'steps': range(4)},
-      ...:                             output_vars={'pt__position': 'steps'})
-      ...:     out_ds = in_ds.xsimlab.run()
-      ...:
-
-   In [7]: out_ds.pt__position
 
 Encoding options may also be set or overridden when calling
-:func:`~xarray.Dataset.xsimlab.run`, e.g.,
+:func:`~xarray.Dataset.xsimlab.run`.
 
-.. ipython::
+.. warning::
 
-   In [8]: out_ds = in_ds.xsimlab.run(
-      ...:     model=model,
-      ...:     encoding={'pt__position': {'fill_value': -10.0}}
-      ...: )
-      ...:
-
-   In [9]: out_ds.pt__position
+   Zarr uses ``0`` as the default fill value for numeric value types. This may
+   badly affect the results, as array elements with the fill value are replaced
+   by NA in the output xarray Dataset. For variables which accept ``0`` as a
+   possible (non-missing) value, it is highly recommended to explicitly provide
+   another ``fill_value``. Alternatively, it is possible to deactivate this
+   value masking behavior by setting the ``mask_and_scale=False`` option and
+   pass it via the ``decoding`` parameter of
+   :func:`~xarray.Dataset.xsimlab.run`.

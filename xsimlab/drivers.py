@@ -376,6 +376,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
         batch_dim=None,
         store=None,
         encoding=None,
+        decoding=None,
         check_dims=CheckDimsOption.STRICT,
         validate=ValidateOption.INPUTS,
         hooks=None,
@@ -419,6 +420,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
             model,
             zobject=store,
             encoding=encoding,
+            decoding=decoding,
             batch_dim=batch_dim,
             lock=lock,
         )

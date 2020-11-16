@@ -6,10 +6,23 @@ Release Notes
 v0.5.0 (Unreleased)
 -------------------
 
+Breaking changes
+~~~~~~~~~~~~~~~~
+
+- Fill values are now masked (NA) when when loading the simulation output store
+  as a xarray Dataset (:issue:`148`). Note that Zarr sets the fill value to
+  ``0`` by default for numeric data types, so it is highly recommended to
+  explicitly define another fill value in model variable encodings if ``0`` is
+  expected to be a valid (non-missing) data value, or alternatively use
+  ``mask_and_scale=False`` in the ``decoding`` options passed to
+  :func:`xarray.Dataset.simlab.run`.
+
 Bug fixes
 ~~~~~~~~~
 
 - Fix saving output variables with dtype=object (:issue:`145`).
+- Fix issues when saving output datasets to disk that were caused by the
+  ``_FillValue`` attribute (:issue:`148`).
 
 v0.4.1 (17 April 2020)
 ----------------------
