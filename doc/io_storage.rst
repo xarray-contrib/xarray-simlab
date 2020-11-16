@@ -223,5 +223,8 @@ Encoding options may also be set or overridden when calling
    Zarr uses ``0`` as the default fill value for numeric value types. This may
    badly affect the results, as array elements with the fill value are replaced
    by NA in the output xarray Dataset. For variables which accept ``0`` as a
-   possible (non-missing) value, it is recommended to explicitly provide an
-   alternative ``fill_value`` encoding.
+   possible (non-missing) value, it is highly recommended to explicitly provide
+   another ``fill_value``. Alternatively, it is possible to deactivate this
+   value masking behavior by setting the ``mask_and_scale=False`` option and
+   pass it via the ``decoding`` parameter of
+   :func:`~xarray.Dataset.xsimlab.run`.

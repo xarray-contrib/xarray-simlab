@@ -106,6 +106,7 @@ class ZarrSimulationStore:
         model: Model,
         zobject: Optional[Union[zarr.Group, MutableMapping, str]] = None,
         encoding: Optional[EncodingDict] = None,
+        decoding: Optional[Dict] = None,
         batch_dim: Optional[str] = None,
         lock: Optional[Any] = None,
     ):
@@ -128,6 +129,10 @@ class ZarrSimulationStore:
 
         if encoding is None:
             encoding = {}
+        if decoding is None:
+            decoding = {}
+
+        self.decoding = decoding
 
         self.var_info = _get_var_info(dataset, model, encoding)
 
@@ -346,12 +351,17 @@ class ZarrSimulationStore:
         else:
             chunks = "auto"
 
-        ds = xr.open_zarr(
-            self.zgroup.store,
-            group=self.zgroup.path,
-            chunks=chunks,
-            consolidated=self.consolidated,
+        # overwrite decoding options
+        open_kwargs = self.decoding.copy()
+        open_kwargs.update(
+            {
+                'chunks': chunks,
+                'group': self.zgroup.path,
+                'consolidated': self.consolidated
+            }
         )
+
+        ds = xr.open_zarr(self.zgroup.store, **open_kwargs)
 
         if self.in_memory:
             # lazy loading may be confusing for the default, in-memory option
