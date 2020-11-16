@@ -509,7 +509,7 @@ class SimlabAccessor:
             ):
                 master_clock_dict = {"dim": list(clocks.keys())[0]}
             else:
-                master_clock_dict = {}
+                master_clock_dict = {"dim": self.master_clock_dim}
 
         else:
             master_clock_dict = master_clock
