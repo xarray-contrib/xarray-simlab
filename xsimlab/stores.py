@@ -355,9 +355,9 @@ class ZarrSimulationStore:
         open_kwargs = self.decoding.copy()
         open_kwargs.update(
             {
-                'chunks': chunks,
-                'group': self.zgroup.path,
-                'consolidated': self.consolidated
+                "chunks": chunks,
+                "group": self.zgroup.path,
+                "consolidated": self.consolidated,
             }
         )
 
