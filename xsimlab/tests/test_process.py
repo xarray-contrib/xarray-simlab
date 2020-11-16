@@ -36,13 +36,22 @@ def test_get_process_raise():
     class NotAProcess:
         pass
 
-    with pytest.raises(NotAProcessClassError) as excinfo:
+    with pytest.raises(
+        NotAProcessClassError, match=".*is not a process-decorated class."
+    ):
         get_process_cls(NotAProcess)
-    assert "is not a process-decorated class" in str(excinfo.value)
 
-    with pytest.raises(NotAProcessClassError) as excinfo:
-        get_process_obj(NotAProcess)
-    assert "is not a process-decorated class" in str(excinfo.value)
+    @xs.process
+    class A:
+        pass
+
+    class B(A):
+        pass
+
+    with pytest.raises(
+        NotAProcessClassError, match=".*inherits.*not itself process-decorated.*"
+    ):
+        get_process_cls(B)
 
 
 @pytest.mark.parametrize(

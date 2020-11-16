@@ -1,5 +1,6 @@
 from collections import OrderedDict
 from enum import Enum
+from typing import TypeVar, Type
 import inspect
 import sys
 import warnings
@@ -9,6 +10,9 @@ import attr
 from .variable import VarIntent, VarType
 from .formatting import add_attribute_section, repr_process, var_details
 from .utils import has_method, variables_dict
+
+
+Process = TypeVar("Process")
 
 
 class NotAProcessClassError(ValueError):
@@ -26,10 +30,18 @@ def _get_embedded_process_cls(cls):
         return cls
 
     else:
-        try:
-            return cls.__xsimlab_cls__
-        except AttributeError:
+        embedded_cls = getattr(cls, "__xsimlab_cls__", None)
+
+        if embedded_cls is None:
             raise NotAProcessClassError(f"{cls!r} is not a process-decorated class.")
+
+        elif embedded_cls.__name__ != cls.__name__:
+            raise NotAProcessClassError(
+                f"{cls!r} inherits from a process-decorated class "
+                "but is not itself process-decorated."
+            )
+
+        return embedded_cls
 
 
 def get_process_cls(obj_or_cls):
@@ -520,7 +532,7 @@ class _ProcessBuilder:
         return p_cls
 
 
-def process(maybe_cls=None, autodoc=True):
+def process(maybe_cls=None, autodoc=True) -> Type[Process]:
     """A class decorator that adds everything needed to use the class
     as a process.
 
