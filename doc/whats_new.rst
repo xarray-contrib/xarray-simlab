@@ -10,9 +10,10 @@ Breaking changes
 ~~~~~~~~~~~~~~~~
 
 - Fill values are now masked (NA) when when loading the simulation output store
-  as a xarray Dataset (:issue:`148`). As Zarr sets the fill value ``0`` by default
-  for numeric data types, it is recommended to explicitly define the fill value in
-  model variable encodings if ``0`` is expected to be a valid data value.
+  as a xarray Dataset (:issue:`148`). Note that Zarr sets the fill value to
+  ``0`` by default for numeric data types, so it is highly recommended to
+  explicitly define the fill value in model variable encodings if ``0`` is
+  expected to be a valid (non-missing) data value.
 
 Bug fixes
 ~~~~~~~~~
