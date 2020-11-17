@@ -75,6 +75,7 @@ class _ModelBuilder:
 
         self._reverse_lookup = self._get_reverse_lookup(self._processes_cls)
 
+        self._all_vars = get_model_variables(self._processes_cls)
         self._input_vars = None
 
         self._dep_processes = None
@@ -262,7 +263,10 @@ class _ModelBuilder:
             raise ValueError(f"Conflict(s) found in given variable intents:\n{msg}")
 
     def get_variables(self, **kwargs):
-        return get_model_variables(self._processes_cls, **kwargs)
+        if not len(kwargs):
+            return self._all_vars
+        else:
+            return get_model_variables(self._processes_cls, **kwargs)
 
     def get_input_variables(self):
         """Get all input variables in the model as a list of
@@ -299,7 +303,10 @@ class _ModelBuilder:
                 for var in filter_variables(p_obj, func=filter_out).values()
             ]
 
-        self._input_vars = [k for k in set(in_keys) - set(out_keys) if k is not None]
+        input_vars = [k for k in set(in_keys) - set(out_keys) if k is not None]
+
+        # order consistent with variable and process declaration
+        self._input_vars = [k for k in self.get_variables() if k in input_vars]
 
         return self._input_vars
 
