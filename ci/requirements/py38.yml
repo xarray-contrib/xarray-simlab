@@ -6,6 +6,7 @@ dependencies:
   - python=3.8
   - pytest
   - pytest-cov
+  - pytest-mock
   - numpy
   - xarray
   - dask
