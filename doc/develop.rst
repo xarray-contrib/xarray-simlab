@@ -53,13 +53,13 @@ To install the dependencies, we recommend using the conda_ package manager with
 the conda-forge_ channel. For development purpose, you might consider installing
 the packages in a new conda environment::
 
-  $ conda create -n xarray-simlab_dev python attrs numpy xarray -c conda-forge
-  $ source activate xarray-simlab_dev
+  $ conda create -n xarray-simlab_dev python attrs numpy xarray zarr dask -c conda-forge
+  $ conda activate xarray-simlab_dev
 
 Then install xarray-simlab locally (in development mode) using ``pip``::
 
   $ cd xarray-simlab
-  $ pip install -e .
+  $ python -m pip install -e .
 
 .. _conda: http://conda.pydata.org/docs/
 .. _conda-forge: https://conda-forge.github.io/
@@ -71,7 +71,7 @@ To make sure everything behaves as expected, you may want to run
 xarray-simlab's unit tests locally using the `pytest`_ package. You
 can first install it with conda::
 
-  $ conda install pytest -c conda-forge
+  $ conda install pytest pytest-cov pytest-mock -c conda-forge
 
 Then you can run tests from the main xarray-simlab directory::
 
@@ -184,7 +184,7 @@ To build the documentation locally, first install requirements (for example here
 in a separate conda environment)::
 
    $ conda env create -n xarray-simlab_doc -f doc/environment.yml
-   $ source activate xarray-simlab_doc
+   $ conda activate xarray-simlab_doc
 
 Then build documentation with ``make``::
 

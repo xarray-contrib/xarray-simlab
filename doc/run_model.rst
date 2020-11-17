@@ -63,6 +63,11 @@ create a new setup in a very declarative way:
         }
     )
 
+.. note::
+
+    See below how the code cell here above can be automatically generated using
+    the ``%create_setup`` magic command.
+
 A setup consists in:
 
 - one or more time dimensions ("clocks") and their given coordinate
@@ -95,6 +100,33 @@ variables, e.g.,
 .. ipython:: python
 
     in_ds.advect__v
+
+IPython (Jupyter) magic commands
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Writing a new setup from scratch may be tedious, especially for big models with
+a lot of input variables. If you are using IPython (Jupyter), xarray-simlab
+provides convenient commands that can be activated with:
+
+.. ipython:: python
+
+   %load_ext xsimlab.ipython
+
+The ``%create_setup`` magic command auto-generates the
+:func:`~xsimlab.create_setup` code cell above from a given model:
+
+.. ipython:: python
+
+   %create_setup advect_model --default --comment
+
+The ``--default`` and ``--comment`` options respectively add default values found
+for input variables in the model and input variable description as line comments.
+
+Full command help:
+
+.. ipython:: python
+
+   %create_setup?
 
 Run a simulation
 ----------------
