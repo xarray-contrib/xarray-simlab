@@ -22,8 +22,8 @@ import xsimlab as xs
 
 @xs.process
 class Foo:
-    v1 = xs.variable(description="v1 description", default=1.2)
-    v2 = xs.variable(description="v2 description")
+    v1 = xs.variable(dims='x', description="v1 description", default=1.2, static=True)
+    v2 = xs.variable(description="v2 description", attrs={'units': 'm'})
 
 @xs.process
 class Bar:
@@ -65,18 +65,29 @@ ds_in = xs.create_setup(
 """
 
 
-cell_input_all = """
+cell_input_skip_default = """
 import xsimlab as xs
 
 ds_in = xs.create_setup(
     model=my_model,
     clocks={},
     input_vars={
-        # v1 description
-        'foo__v1': 1.2,
-        # v2 description
         'foo__v2': ,
-        # ---
+    },
+    output_vars={}
+)
+"""
+
+
+cell_input_default = """
+import xsimlab as xs
+
+ds_in = xs.create_setup(
+    model=my_model,
+    clocks={},
+    input_vars={
+        'foo__v1': 1.2,
+        'foo__v2': ,
         'bar__v1': 'z',
     },
     output_vars={}
@@ -84,7 +95,7 @@ ds_in = xs.create_setup(
 """
 
 
-cell_input_all_nested = """
+cell_input_nested = """
 import xsimlab as xs
 
 ds_in = xs.create_setup(
@@ -92,15 +103,74 @@ ds_in = xs.create_setup(
     clocks={},
     input_vars={
         'foo': {
-            # v1 description
-            'v1': 1.2,
-            # v2 description
+            'v1': ,
             'v2': ,
         },
         'bar': {
-            # ---
-            'v1': 'z',
+            'v1': ,
         },
+    },
+    output_vars={}
+)
+"""
+
+
+cell_input_verbose1 = """
+import xsimlab as xs
+
+ds_in = xs.create_setup(
+    model=my_model,
+    clocks={},
+    input_vars={
+        # v1 description
+        'foo__v1': ,
+        # v2 description
+        'foo__v2': ,
+        # ---
+        'bar__v1': ,
+    },
+    output_vars={}
+)
+"""
+
+
+cell_input_verbose2 = """
+import xsimlab as xs
+
+ds_in = xs.create_setup(
+    model=my_model,
+    clocks={},
+    input_vars={
+        # v1 description
+        #    dimensions: ('x',)
+        #    static variable: time/clock extra-dimension not allowed
+        'foo__v1': ,
+        # v2 description
+        'foo__v2': ,
+        # ---
+        'bar__v1': ,
+    },
+    output_vars={}
+)
+"""
+
+
+cell_input_verbose3 = """
+import xsimlab as xs
+
+ds_in = xs.create_setup(
+    model=my_model,
+    clocks={},
+    input_vars={
+        # v1 description
+        #    dimensions: ('x',)
+        #    static variable: time/clock extra-dimension not allowed
+        'foo__v1': ,
+        # v2 description
+        #    units: m
+        'foo__v2': ,
+        # ---
+        'bar__v1': ,
     },
     output_vars={}
 )
@@ -111,10 +181,12 @@ ds_in = xs.create_setup(
     "line,expected_cell_input",
     [
         ("my_model", cell_input),
-        ("my_model --default --comment", cell_input_all),
-        ("my_model -d -c", cell_input_all),
-        ("my_model --default --comment --nested", cell_input_all_nested),
-        ("my_model -d -c -n", cell_input_all_nested),
+        ("my_model --skip-default", cell_input_skip_default),
+        ("my_model --default", cell_input_default),
+        ("my_model --nested", cell_input_nested),
+        ("my_model --verbose", cell_input_verbose1),
+        ("my_model -vv", cell_input_verbose2),
+        ("my_model -vvv", cell_input_verbose3),
     ],
 )
 def test_create_setup_magic(model_ip, mocker, line, expected_cell_input):

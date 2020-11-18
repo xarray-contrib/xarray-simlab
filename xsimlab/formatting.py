@@ -35,6 +35,15 @@ def wrap_indent(text, start="", length=None):
     return start + indent.join(x for x in text.splitlines())
 
 
+def format_var_dims(var):
+    var_dims = " or ".join([str(d) for d in var.metadata["dims"]])
+
+    if var_dims == "()":
+        var_dims = ""
+
+    return var_dims
+
+
 def _summarize_var(var, process, col_width):
     max_line_length = 70
 
@@ -49,6 +58,7 @@ def _summarize_var(var, process, col_width):
         link_symbol = "--->"
         var_intent_str = "  [out]"
     else:
+        link_symbol = ""
         var_intent_str = "[inout]"
 
     if var_type == VarType.GROUP:
@@ -70,9 +80,9 @@ def _summarize_var(var, process, col_width):
         var_info = var.metadata["description"]
 
     else:
-        var_dims = " or ".join([str(d) for d in var.metadata["dims"]])
+        var_dims = format_var_dims(var)
 
-        if var_dims != "()":
+        if var_dims:
             var_info = " ".join([var_dims, var.metadata["description"]])
         else:
             var_info = var.metadata["description"]
