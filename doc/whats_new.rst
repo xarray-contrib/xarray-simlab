@@ -22,6 +22,9 @@ Enhancements
 
 - The :func:`~xsimlab.process` decorator can now be applied on a class already
   decorated with :func:`attr.s` (:issue:`150`), using ``apply_attrs=False``.
+- Added ``%create_setup`` IPython (Jupyter) magic command to auto-generate code
+  cells with a new simulation setup from a given model (:issue:`152`). The
+  command is available after executing ``%load_ext xsimlab.ipython``.
 
 Bug fixes
 ~~~~~~~~~

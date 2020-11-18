@@ -27,7 +27,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
       - name: Install miniconda
-        uses: conda-incubator/setup-miniconda@v1
+        uses: conda-incubator/setup-miniconda@v2
         with:
           auto-update-conda: true
           activate-environment: test_env_${{ matrix.cfg.env-name }}
