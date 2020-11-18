@@ -23,7 +23,9 @@ ds_in = xs.create_setup(
 """
 
 
-def format_input_vars(model, skip_default=False, default=False, verbose=0, nested=False):
+def format_input_vars(
+    model, skip_default=False, default=False, verbose=0, nested=False
+):
     lines = []
 
     for pn, vnames in model.input_vars_dict.items():
