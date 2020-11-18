@@ -23,6 +23,35 @@ ds_in = xs.create_setup(
 """
 
 
+def format_var_comment(var, verbose=0):
+    comment = ""
+
+    if verbose:
+        var_desc = var.metadata["description"]
+        if var_desc:
+            comment += textwrap.fill(
+                var_desc, width=86, initial_indent="# ", subsequent_indent="# "
+            )
+        else:
+            comment += "# ---"
+        comment += "\n"
+
+    if verbose > 1:
+        var_dims = format_var_dims(var)
+        if var_dims:
+            comment += f"#     dimensions: {var_dims}\n"
+        if var.metadata["static"]:
+            comment += f"#     static: master clock dimension not supported\n"
+
+    if verbose > 2:
+        var_attrs = var.metadata.get("attrs", False)
+        if var_attrs:
+            for k, v in var_attrs.items():
+                comment += f"#     {k}: {v}\n"
+
+    return comment
+
+
 def format_input_vars(
     model, skip_default=False, default=False, verbose=0, nested=False
 ):
@@ -42,21 +71,7 @@ def format_input_vars(
             else:
                 default_val = ""
 
-            comment = ""
-            if verbose:
-                var_desc = var.metadata["description"]
-                comment += f"# {var_desc}\n" if var_desc else "# ---\n"
-            if verbose > 1:
-                var_dims = format_var_dims(var)
-                if var_dims:
-                    comment += f"#    dimensions: {var_dims}\n"
-                if var.metadata["static"]:
-                    comment += f"#    static variable: time/clock extra-dimension not allowed\n"
-            if verbose > 2:
-                var_attrs = var.metadata.get("attrs", False)
-                if var_attrs:
-                    for k, v in var_attrs.items():
-                        comment += f"#    {k}: {v}\n"
+            comment = format_var_comment(var, verbose=verbose)
 
             if nested:
                 plines.append(comment + f"'{vn}': {default_val},")
