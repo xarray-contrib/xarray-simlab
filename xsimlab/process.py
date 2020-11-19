@@ -331,6 +331,7 @@ def runtime(meth=None, args=None):
         - ``batch`` : current simulation number in the batch
         - ``sim_start`` : simulation start (date)time
         - ``sim_end`` : simulation end (date)time
+        - ``nsteps``: total number of simulation steps
         - ``step`` : current step number
         - ``step_start`` : current step start (date)time
         - ``step_end``: current step end (date)time

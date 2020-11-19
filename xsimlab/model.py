@@ -873,14 +873,14 @@ class Model(AttrMapping):
             out_states = dsk_get(dsk, "_gather", scheduler=scheduler)
 
             # TODO: without this -> flaky tests (don't know why)
-            # state is not well updated -> error when writing output vars in store
+            # state is not properly updated -> error when writing output vars in store
             if isinstance(scheduler, Client):
                 time.sleep(0.001)
 
             self._merge_and_update_state(out_states)
 
         else:
-            for p_name, p_obj in self._processes.items():
+            for p_obj in self._processes.values():
                 self._execute_process(p_obj, *execute_args)
 
         self._call_hooks(hooks, runtime_context, stage, "model", "post")
