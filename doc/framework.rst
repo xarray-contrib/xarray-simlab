@@ -202,7 +202,8 @@ A model run is divided into four successive stages:
 4. finalization
 
 During a simulation, stages 1 and 4 are run only once while stages 2
-and 3 are repeated for a given number of (time) steps.
+and 3 are repeated for a given number of (time) steps. Stage 4 is run even if
+an exception is raised during stage 1, 2 or 3.
 
 Each process-ified class may provide its own computation instructions
 by implementing specific methods named ``.initialize()``,
