@@ -291,13 +291,8 @@ def on_demand(
     Like other variables, such variable should be declared in a
     process class. Additionally, it requires its own method to compute
     its value, which must be defined in the same class and decorated
-    (e.g., using `@myvar.compute` if the name of the variable is
-    `myvar`).
-
-    An on-demand variable is always an output variable (i.e., intent='out').
-
-    Its computation usually involves other variables, although this is
-    not required.
+    (e.g., using ``@myvar.compute`` if the name of the variable is
+    ``myvar``).
 
     These variables may be useful, e.g., for model diagnostics.
 
@@ -324,6 +319,17 @@ def on_demand(
         include 'dtype', 'compressor', 'fill_value', 'order', 'filters'
         and 'object_codec'. See :func:`zarr.creation.create` for details
         about these options. Other keys are ignored.
+
+    Notes
+    -----
+    An on-demand variable is always an output variable (i.e., intent='out').
+
+    Its computation usually involves other variables, although this is
+    not required.
+
+    It is possible to cache its value at each simulation stage, by applying
+    the compute decorator like this: ``@myvar.compute(cache=True)``. This is
+    useful if the variable is meant to be accessed many times in other processes.
 
     See Also
     --------
