@@ -36,6 +36,8 @@ Bug fixes
   which inherit from process-decorated classes (:issue:`149`).
 - Fix :func:`~xarray.Dataset.xsimlab.update_clocks` when only the master clock is
   updated implicitly (:issue:`151`).
+- Ensure that the ``finalize`` simulation stage is always run, even when an
+  exception is raised during the previous stages (:issue:`154`).
 
 v0.4.1 (17 April 2020)
 ----------------------
