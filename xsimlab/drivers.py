@@ -330,30 +330,33 @@ def _run(
 
     in_vars = _get_input_vars(ds_init, model)
     model.update_state(in_vars, validate=validate_inputs, ignore_static=True)
-    model.execute("initialize", rt_context, **execute_kwargs)
 
-    for step, (_, ds_step) in enumerate(ds_gby_steps):
+    try:
+        model.execute("initialize", rt_context, **execute_kwargs)
 
-        rt_context.update(
-            step=step,
-            step_start=ds_step["_clock_start"].values,
-            step_end=ds_step["_clock_end"].values,
-            step_delta=ds_step["_clock_diff"].values,
-        )
+        for step, (_, ds_step) in enumerate(ds_gby_steps):
 
-        in_vars = _get_input_vars(ds_step, model)
-        model.update_state(in_vars, validate=validate_inputs, ignore_static=False)
-        model.execute("run_step", rt_context, **execute_kwargs)
+            rt_context.update(
+                step=step,
+                step_start=ds_step["_clock_start"].values,
+                step_end=ds_step["_clock_end"].values,
+                step_delta=ds_step["_clock_diff"].values,
+            )
 
-        store.write_output_vars(batch, step, model=model)
+            in_vars = _get_input_vars(ds_step, model)
+            model.update_state(in_vars, validate=validate_inputs, ignore_static=False)
+            model.execute("run_step", rt_context, **execute_kwargs)
 
-        model.execute("finalize_step", rt_context, **execute_kwargs)
+            store.write_output_vars(batch, step, model=model)
 
-    store.write_output_vars(batch, -1, model=model)
+            model.execute("finalize_step", rt_context, **execute_kwargs)
 
-    model.execute("finalize", rt_context, **execute_kwargs)
-
-    store.write_index_vars(model=model)
+        store.write_output_vars(batch, -1, model=model)
+        store.write_index_vars(model=model)
+    except Exception as error:
+        raise(error)
+    finally:
+        model.execute("finalize", rt_context, **execute_kwargs)
 
 
 class XarraySimulationDriver(BaseSimulationDriver):
