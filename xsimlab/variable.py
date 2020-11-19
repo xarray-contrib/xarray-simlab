@@ -28,6 +28,7 @@ def compute(self, method=None, *, cache=False):
     value for that variable.
 
     """
+
     def attach_to_metadata(method):
         self.metadata["compute_method"] = method
         self.metadata["compute_cache"] = cache

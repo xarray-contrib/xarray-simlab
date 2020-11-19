@@ -119,7 +119,7 @@ def processes_with_state():
         model,
         state,
         state_keys={"some_var": ("some_process", "some_var")},
-        od_keys={"some_od_var": ("some_process", "some_od_var")}
+        od_keys={"some_od_var": ("some_process", "some_od_var")},
     )
     another_process = _init_process(
         AnotherProcess,
