@@ -39,7 +39,7 @@ def test_runtime_context_in_model(in_dataset, model):
     class P:
         @xs.runtime(args="not_a_runtime_arg")
         def run_step(self, arg):
-            pass
+            print(arg)
 
     m = model.update_processes({"p": P})
 
@@ -93,7 +93,7 @@ class TestXarraySimulationDriver:
         with pytest.raises(KeyError, match=r"Missing variables.*"):
             XarraySimulationDriver(invalid_ds, model)
 
-    def test_run_model_get_results(self, in_dataset, out_dataset, xarray_driver):
+    def test_run_model_get_results(self, out_dataset, xarray_driver):
         xarray_driver.run_model()
         out_ds_actual = xarray_driver.get_results()
 
@@ -124,3 +124,28 @@ class TestXarraySimulationDriver:
         out_dataset = driver.get_results()
 
         pd.testing.assert_index_equal(out_dataset.indexes["dummy"], midx)
+
+
+def test_finalize_always_called():
+
+    @xs.process
+    class P:
+        var = xs.variable(intent='out')
+
+        def initialize(self):
+            self.var = "initialized"
+            raise RuntimeError()
+
+        def finalize(self):
+            self.var = "finalized"
+
+    model = xs.Model({'p': P})
+    in_dataset = xs.create_setup(model=model, clocks={'clock': [0, 1]})
+    driver = XarraySimulationDriver(in_dataset, model)
+
+    try:
+        driver.run_model()
+    except RuntimeError:
+        pass
+
+    assert model.state[('p', 'var')] == "finalized"
