@@ -494,6 +494,8 @@ class Model(AttrMapping):
         self._index_vars = builder.get_variables(var_type=VarType.INDEX)
         self._index_vars_dict = None
 
+        self._od_vars = builder.get_variables(var_type=VarType.ON_DEMAND)
+
         builder.ensure_no_intent_conflict()
 
         self._input_vars = builder.get_input_variables()
@@ -787,6 +789,12 @@ class Model(AttrMapping):
         for p_obj in self._processes.values():
             p_obj.__xsimlab_state__ = self._state
 
+    def _clear_od_cache(self):
+        """Clear cached values of on-demand variables."""
+
+        for key in self._od_vars:
+            self._state.pop(key, None)
+
     def execute(
         self,
         stage,
@@ -855,6 +863,8 @@ class Model(AttrMapping):
 
         stage = SimulationStage(stage)
         execute_args = (stage, runtime_context, hooks, validate)
+
+        self._clear_od_cache()
 
         self._call_hooks(hooks, runtime_context, stage, "model", "pre")
 

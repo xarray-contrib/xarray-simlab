@@ -23,14 +23,21 @@ class VarIntent(Enum):
     INOUT = "inout"
 
 
-def compute(self, method):
+def compute(self, method=None, *, cache=False):
     """A decorator that, when applied to an on-demand variable, returns a
     value for that variable.
 
     """
-    self.metadata["compute"] = method
+    def attach_to_metadata(method):
+        self.metadata["compute_method"] = method
+        self.metadata["compute_cache"] = cache
 
-    return method
+        return method
+
+    if method is None:
+        return attach_to_metadata
+    else:
+        return attach_to_metadata(method)
 
 
 # monkey patch, waiting for cleaner solution:

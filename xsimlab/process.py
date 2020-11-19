@@ -180,9 +180,14 @@ def _make_property_variable(var):
         return self.__xsimlab_state__[key]
 
     def get_on_demand(self):
-        p_name, v_name = self.__xsimlab_od_keys__[var_name]
-        p_obj = self.__xsimlab_model__._processes[p_name]
-        return getattr(p_obj, v_name)
+        key = self.__xsimlab_od_keys__[var_name]
+        try:
+            # get from cache
+            return self.__xsimlab_state__[key]
+        except KeyError:
+            p_name, v_name = key
+            p_obj = self.__xsimlab_model__._processes[p_name]
+            return getattr(p_obj, v_name)
 
     def put_in_state(self, value):
         key = self.__xsimlab_state_keys__[var_name]
@@ -235,16 +240,27 @@ def _make_property_on_demand(var):
     This property is a simple wrapper around the variable's compute method.
 
     """
-    if "compute" not in var.metadata:
+    if "compute_method" not in var.metadata:
         raise KeyError(
             "No compute method found for on_demand variable "
             f"'{var.name}'. A method decorated with '@{var.name}.compute' "
             "is required in the class definition."
         )
 
-    get_method = var.metadata["compute"]
+    var_name = var.name
+    compute_method = var.metadata["compute_method"]
+    compute_cache = var.metadata["compute_cache"]
 
-    return property(fget=get_method, doc=var_details(var))
+    def compute_and_cache(self):
+        value = compute_method(self)
+
+        if compute_cache:
+            key = self.__xsimlab_od_keys__[var_name]
+            self.__xsimlab_state__[key] = value
+
+        return value
+
+    return property(fget=compute_and_cache, doc=var_details(var))
 
 
 def _make_property_group(var):
