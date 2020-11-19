@@ -354,7 +354,7 @@ def _run(
         store.write_output_vars(batch, -1, model=model)
         store.write_index_vars(model=model)
     except Exception as error:
-        raise(error)
+        raise error
     finally:
         model.execute("finalize", rt_context, **execute_kwargs)
 

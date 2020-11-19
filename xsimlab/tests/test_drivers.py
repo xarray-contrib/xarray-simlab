@@ -127,10 +127,9 @@ class TestXarraySimulationDriver:
 
 
 def test_finalize_always_called():
-
     @xs.process
     class P:
-        var = xs.variable(intent='out')
+        var = xs.variable(intent="out")
 
         def initialize(self):
             self.var = "initialized"
@@ -139,8 +138,8 @@ def test_finalize_always_called():
         def finalize(self):
             self.var = "finalized"
 
-    model = xs.Model({'p': P})
-    in_dataset = xs.create_setup(model=model, clocks={'clock': [0, 1]})
+    model = xs.Model({"p": P})
+    in_dataset = xs.create_setup(model=model, clocks={"clock": [0, 1]})
     driver = XarraySimulationDriver(in_dataset, model)
 
     try:
@@ -148,4 +147,4 @@ def test_finalize_always_called():
     except RuntimeError:
         pass
 
-    assert model.state[('p', 'var')] == "finalized"
+    assert model.state[("p", "var")] == "finalized"
