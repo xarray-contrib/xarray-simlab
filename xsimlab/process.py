@@ -9,7 +9,7 @@ import attr
 
 from .variable import VarIntent, VarType
 from .formatting import add_attribute_section, repr_process, var_details
-from .utils import has_method, variables_dict
+from .utils import Frozen, has_method, variables_dict
 
 
 Process = TypeVar("Process")
@@ -284,6 +284,30 @@ def _make_property_group(var):
     return property(fget=getter_state_or_on_demand, doc=var_details(var))
 
 
+def _make_property_group_dict(var):
+    """Create a read-only property for a group_dict variable."""
+
+    var_name = var.name
+
+    def getter_state_or_on_demand(self):
+        mapping = {}
+        model = self.__xsimlab_model__
+        state_keys = self.__xsimlab_state_keys__.get(var_name, [])
+        od_keys = self.__xsimlab_od_keys__.get(var_name, [])
+
+        for key in state_keys:
+            mapping[key] = self.__xsimlab_state__[key]
+
+        for key in od_keys:
+            p_name, v_name = key
+            p_obj = model._processes[p_name]
+            mapping[key] = getattr(p_obj, v_name)
+
+        return Frozen(mapping)
+
+    return property(fget=getter_state_or_on_demand, doc=var_details(var))
+
+
 class _RuntimeMethodExecutor:
     """Used to execute a process 'runtime' method in the context of a
     simulation.
@@ -488,6 +512,7 @@ class _ProcessBuilder:
         VarType.ON_DEMAND: _make_property_on_demand,
         VarType.FOREIGN: _make_property_variable,
         VarType.GROUP: _make_property_group,
+        VarType.GROUP_DICT: _make_property_group_dict,
     }
 
     def __init__(self, attr_cls):
@@ -557,8 +582,8 @@ def process(maybe_cls=None, autodoc=True, apply_attrs=True) -> Type[Process]:
 
     A process class usually implements:
 
-    - An interface as a set of variables defined as class attributes (see
-      :func:`variable`, :func:`on_demand`, :func:`foreign` and :func:`group`).
+    - An interface as a set of variables defined as class attributes (see, e.g.,
+      :func:`variable`, :func:`foreign`, :func:`on_demand`, :func:`group`, etc.).
       When the class is used within a :class:`Model` object, this decorator
       automatically adds properties to get/set values for these variables.
 

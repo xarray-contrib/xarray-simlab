@@ -15,6 +15,7 @@ class VarType(Enum):
     OBJECT = "object"
     FOREIGN = "foreign"
     GROUP = "group"
+    GROUP_DICT = "group_dict"
 
 
 class VarIntent(Enum):
@@ -469,4 +470,37 @@ def group(name):
 
     return attr.attrib(
         metadata=metadata, init=True, repr=True, default=tuple(), kw_only=True
+    )
+
+
+def group_dict(name):
+    """Create a special variable which value returns a mapping of
+    variables in a model that all belong to the same group.
+
+    Keys are in the form of ``('process_name', 'var_name')`` and values
+    are variable values.
+
+    Access to this collection of variables is read-only (i.e., intent='in').
+
+    Parameters
+    ----------
+    name : str
+        Name of the group.
+
+    See Also
+    --------
+    :func:`group`
+
+    """
+    description = f"Mapping of all variables that belong to group {name!r}"
+
+    metadata = {
+        "var_type": VarType.GROUP_DICT,
+        "group": name,
+        "intent": VarIntent.IN,
+        "description": description,
+    }
+
+    return attr.attrib(
+        metadata=metadata, init=True, repr=True, default=dict(), kw_only=True
     )

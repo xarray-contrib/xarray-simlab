@@ -182,7 +182,7 @@ class _ModelBuilder:
 
             state_key, od_key = self._get_var_key(target_p_name, target_var)
 
-        elif var_type == VarType.GROUP:
+        elif var_type in (VarType.GROUP, VarType.GROUP_DICT):
             var_group = var.metadata["group"]
             state_key, od_key = self._get_group_var_keys(var_group)
 
@@ -284,6 +284,7 @@ class _ModelBuilder:
         def filter_in(var):
             return (
                 var.metadata["var_type"] != VarType.GROUP
+                and var.metadata["var_type"] != VarType.GROUP_DICT
                 and var.metadata["intent"] != VarIntent.OUT
             )
 
@@ -293,7 +294,7 @@ class _ModelBuilder:
         in_keys = []
         out_keys = []
 
-        for p_name, p_obj in self._processes_obj.items():
+        for p_obj in self._processes_obj.values():
             in_keys += [
                 p_obj.__xsimlab_state_keys__.get(var.name)
                 for var in filter_variables(p_obj, func=filter_in).values()
