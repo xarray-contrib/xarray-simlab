@@ -319,3 +319,51 @@ class TestModel:
 
     def test_repr(self, simple_model, simple_model_repr):
         assert repr(simple_model) == simple_model_repr
+
+
+def test_on_demand_cache():
+    @xs.process
+    class P1:
+        var = xs.on_demand(dims="x")
+        cached_var = xs.on_demand(dims="x")
+
+        @var.compute
+        def _compute_var(self):
+            return np.random.rand(10)
+
+        @cached_var.compute(cache=True)
+        def _compute_cached_var(self):
+            return np.random.rand(10)
+
+    @xs.process
+    class P2:
+        var = xs.foreign(P1, "var")
+        cached_var = xs.foreign(P1, "cached_var")
+        view = xs.variable(dims="x", intent="out")
+        cached_view = xs.variable(dims="x", intent="out")
+
+        def run_step(self):
+            self.view = self.var
+            self.cached_view = self.cached_var
+
+    @xs.process
+    class P3:
+        p1_view = xs.foreign(P1, "var")
+        p1_cached_view = xs.foreign(P1, "cached_var")
+        p2_view = xs.foreign(P2, "view")
+        p2_cached_view = xs.foreign(P2, "cached_view")
+
+        def initialize(self):
+            self._p1_cached_view_init = self.p1_cached_view
+
+        def run_step(self):
+            # P1.var's compute method called twice
+            assert not np.all(self.p1_view == self.p2_view)
+            # P1.cached_var's compute method called once
+            assert self.p1_cached_view is self.p2_cached_view
+            # check cache cleared between simulation stages
+            assert not np.all(self.p1_cached_view == self._p1_cached_view_init)
+
+    model = xs.Model({"p1": P1, "p2": P2, "p3": P3})
+    model.execute("initialize", {})
+    model.execute("run_step", {})
