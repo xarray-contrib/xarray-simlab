@@ -43,6 +43,7 @@ class ExampleProcess:
     in_foreign_od_var = xs.foreign(SomeProcess, "some_od_var")
 
     group_var = xs.group("some_group")
+    group_dict_var = xs.group_dict("some_group")
 
     other_attrib = attr.attrib(init=False, repr=False)
     other_attr = "this is not a xsimlab variable attribute"
@@ -73,6 +74,7 @@ def example_process_repr():
         out_foreign_var      [out] ---> AnotherProcess.another_var
         in_foreign_od_var     [in] <--- SomeProcess.some_od_var
         group_var             [in] <--- group 'some_group'
+        group_dict_var        [in] <--- group 'some_group'
     Simulation stages:
         *no stage implemented*
     """
@@ -145,11 +147,13 @@ def processes_with_state():
             "in_foreign_var2": ("some_process", "some_var"),
             "out_foreign_var": ("another_process", "another_var"),
             "group_var": [("some_process", "some_var")],
+            "group_dict_var": [("some_process", "some_var")],
         },
         od_keys={
             "od_var": ("example_process", "od_var"),
             "in_foreign_od_var": ("some_process", "some_od_var"),
             "group_var": [("some_process", "some_od_var")],
+            "group_dict_var": [("some_process", "some_od_var")],
         },
     )
 
@@ -180,6 +184,7 @@ def example_process_in_model_repr():
         out_foreign_var      [out] ---> another_process.another_var
         in_foreign_od_var     [in] <--- some_process.some_od_var
         group_var             [in] <--- group 'some_group'
+        group_dict_var        [in] <--- group 'some_group'
     Simulation stages:
         *no stage implemented*
     """

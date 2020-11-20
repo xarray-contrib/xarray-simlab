@@ -1,6 +1,7 @@
 import pytest
 import attr
 
+import xsimlab as xs
 from xsimlab.tests.fixture_process import AnotherProcess, ExampleProcess
 from xsimlab.variable import _as_dim_tuple, _as_group_tuple, foreign, index
 
@@ -67,3 +68,23 @@ def test_foreign():
 
     for k in ("description", "attrs"):
         assert var.metadata[k] == ref_var.metadata[k]
+
+
+def test_group_dict():
+    @attr.attrs
+    class Foo:
+        bar = xs.group("g")
+
+    # test init with default tuple value
+    foo = Foo()
+    assert foo.bar == tuple()
+
+
+def test_group_dict():
+    @attr.attrs
+    class Foo:
+        bar = xs.group_dict("g")
+
+    # test init with default dict value
+    foo = Foo()
+    assert foo.bar == dict()

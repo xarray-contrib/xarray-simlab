@@ -6,6 +6,7 @@ import xsimlab as xs
 from xsimlab.process import get_process_cls
 from xsimlab.model import get_model_variables
 from xsimlab.tests.fixture_model import AddOnDemand, InitProfile, Profile
+from xsimlab.utils import Frozen
 from xsimlab.variable import VarType
 
 
@@ -367,3 +368,32 @@ def test_on_demand_cache():
     model = xs.Model({"p1": P1, "p2": P2, "p3": P3})
     model.execute("initialize", {})
     model.execute("run_step", {})
+
+
+def test_group_dict_variable():
+    @xs.process
+    class Foo:
+        a = xs.variable(groups="g", intent="out")
+
+        def initialize(self):
+            self.a = 1
+
+    @xs.process
+    class Bar:
+        b = xs.variable(groups="g", intent="out")
+
+        def initialize(self):
+            self.b = 2
+
+    @xs.process
+    class Baz:
+        c = xs.group_dict("g")
+        actual = xs.variable(intent="out")
+
+        def initialize(self):
+            self.actual = self.c
+
+    model = xs.Model({"foo": Foo, "bar": Bar, "baz": Baz})
+    model.execute("initialize", {})
+
+    assert model.state[("baz", "actual")] == Frozen({("foo", "a"): 1, ("bar", "b"): 2})
