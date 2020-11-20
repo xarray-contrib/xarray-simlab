@@ -383,13 +383,15 @@ class SimlabAccessor:
                 + f" is/are not valid key(s) for variables in model {model}",
             )
 
-        object_outputs = set(output_vars) & set(
-            get_model_variables(model, var_type=VarType.OBJECT)
+        forbidden_output_types = (VarType.OBJECT, VarType.GROUP, VarType.GROUP_DICT)
+        forbidden_model_vars = get_model_variables(
+            model, func=lambda var: var.metadata["var_type"] in forbidden_output_types
         )
-        if object_outputs:
+        forbidden_outputs = set(output_vars) & set(forbidden_model_vars)
+        if forbidden_outputs:
             raise ValueError(
-                f"Object variables can't be set as model outputs: "
-                + ", ".join([f"{pn}__{vn}" for pn, vn in object_outputs])
+                f"Object or group variables can't be set as model outputs: "
+                + ", ".join([f"{pn}__{vn}" for pn, vn in forbidden_outputs])
             )
 
         clock_vars = defaultdict(list)
