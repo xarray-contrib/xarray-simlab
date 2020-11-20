@@ -61,7 +61,7 @@ def _summarize_var(var, process, col_width):
         link_symbol = ""
         var_intent_str = "[inout]"
 
-    if var_type == VarType.GROUP:
+    if var_type in (VarType.GROUP, VarType.GROUP_DICT):
         var_info = f"{link_symbol} group {var.metadata['group']!r}"
 
     elif var_type == VarType.FOREIGN:
