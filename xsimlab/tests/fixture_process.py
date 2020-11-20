@@ -119,6 +119,7 @@ def processes_with_state():
         model,
         state,
         state_keys={"some_var": ("some_process", "some_var")},
+        od_keys={"some_od_var": ("some_process", "some_od_var")},
     )
     another_process = _init_process(
         AnotherProcess,
@@ -146,6 +147,7 @@ def processes_with_state():
             "group_var": [("some_process", "some_var")],
         },
         od_keys={
+            "od_var": ("example_process", "od_var"),
             "in_foreign_od_var": ("some_process", "some_od_var"),
             "group_var": [("some_process", "some_od_var")],
         },

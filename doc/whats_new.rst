@@ -25,6 +25,8 @@ Enhancements
 - Added ``%create_setup`` IPython (Jupyter) magic command to auto-generate code
   cells with a new simulation setup from a given model (:issue:`152`). The
   command is available after executing ``%load_ext xsimlab.ipython``.
+- Added an optional cache for on-demand variables (:issue:`156`). The ``@compute``
+  decorator now has a ``cache`` option (deactivated by default).
 
 Bug fixes
 ~~~~~~~~~

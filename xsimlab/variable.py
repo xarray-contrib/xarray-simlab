@@ -23,14 +23,22 @@ class VarIntent(Enum):
     INOUT = "inout"
 
 
-def compute(self, method):
+def compute(self, method=None, *, cache=False):
     """A decorator that, when applied to an on-demand variable, returns a
     value for that variable.
 
     """
-    self.metadata["compute"] = method
 
-    return method
+    def attach_to_metadata(method):
+        self.metadata["compute_method"] = method
+        self.metadata["compute_cache"] = cache
+
+        return method
+
+    if method is None:
+        return attach_to_metadata
+    else:
+        return attach_to_metadata(method)
 
 
 # monkey patch, waiting for cleaner solution:
@@ -284,13 +292,8 @@ def on_demand(
     Like other variables, such variable should be declared in a
     process class. Additionally, it requires its own method to compute
     its value, which must be defined in the same class and decorated
-    (e.g., using `@myvar.compute` if the name of the variable is
-    `myvar`).
-
-    An on-demand variable is always an output variable (i.e., intent='out').
-
-    Its computation usually involves other variables, although this is
-    not required.
+    (e.g., using ``@myvar.compute`` if the name of the variable is
+    ``myvar``).
 
     These variables may be useful, e.g., for model diagnostics.
 
@@ -317,6 +320,17 @@ def on_demand(
         include 'dtype', 'compressor', 'fill_value', 'order', 'filters'
         and 'object_codec'. See :func:`zarr.creation.create` for details
         about these options. Other keys are ignored.
+
+    Notes
+    -----
+    An on-demand variable is always an output variable (i.e., intent='out').
+
+    Its computation usually involves other variables, although this is
+    not required.
+
+    It is possible to cache its value at each simulation stage, by applying
+    the compute decorator like this: ``@myvar.compute(cache=True)``. This is
+    useful if the variable is meant to be accessed many times in other processes.
 
     See Also
     --------
