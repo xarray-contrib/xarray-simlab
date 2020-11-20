@@ -13,7 +13,7 @@ from .process import (
     runtime,
     variable_info,
 )
-from .variable import any_object, variable, index, on_demand, foreign, group
+from .variable import any_object, variable, index, on_demand, foreign, group, group_dict
 from .xr_accessor import SimlabAccessor, create_setup
 from . import monitoring
 

@@ -140,9 +140,10 @@ hard-coded links between processes.
 The membership of variables to one or several groups is defined via their
 ``groups`` attribute. If you want to reuse in a separate process all the
 variables of a given group, instead of explicitly declaring each of them as
-foreign variables you can simply declare a :func:`~xsimlab.group` variable. The
-latter behaves like an iterable of foreign variables pointing to each of the
-variables (model-wise) that are members of the same group.
+foreign variables you can simply declare a :func:`~xsimlab.group` (or
+:func:`~xsimlab.group_dict`) variable. The latter behaves like an iterable (or
+mapping) of foreign variables pointing to each of the variables (model-wise)
+that are members of the same group.
 
 Note that group variables implicitly have ``intent='in'``, i.e, they could only
 be used to get the values of multiple foreign variables, not set their values.

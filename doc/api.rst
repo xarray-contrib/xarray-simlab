@@ -160,6 +160,7 @@ Variable
    any_object
    foreign
    group
+   group_dict
    on_demand
 
 Validators

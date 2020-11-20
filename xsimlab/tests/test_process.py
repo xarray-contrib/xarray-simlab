@@ -16,7 +16,7 @@ from xsimlab.process import (
     process_info,
     variable_info,
 )
-from xsimlab.utils import variables_dict
+from xsimlab.utils import Frozen, variables_dict
 from xsimlab.tests.fixture_process import ExampleProcess, SomeProcess
 
 
@@ -69,6 +69,7 @@ def test_get_process_raise():
                 "out_foreign_var",
                 "in_foreign_od_var",
                 "group_var",
+                "group_dict_var",
                 "od_var",
                 "obj_var",
             },
@@ -82,6 +83,7 @@ def test_get_process_raise():
                 "in_foreign_var2",
                 "in_foreign_od_var",
                 "group_var",
+                "group_dict_var",
             },
         ),
         ({"intent": "out"}, {"out_var", "out_foreign_var", "od_var", "obj_var"}),
@@ -90,6 +92,7 @@ def test_get_process_raise():
             {
                 "func": lambda var: (
                     var.metadata["var_type"] != VarType.GROUP
+                    and var.metadata["var_type"] != VarType.GROUP_DICT
                     and var.metadata["intent"] != VarIntent.OUT
                 )
             },
@@ -204,6 +207,9 @@ def test_process_properties_values(processes_with_state):
     assert example_process.in_foreign_var2 == 4
 
     assert set(example_process.group_var) == {1, 4}
+    assert example_process.group_dict_var == Frozen(
+        {("some_process", "some_var"): 4, ("some_process", "some_od_var"): 1}
+    )
 
 
 def test_process_properties_converter(processes_with_state):
@@ -346,6 +352,7 @@ def test_process_no_model():
         "in_foreign_var2",
         "in_foreign_od_var",
         "group_var",
+        "group_dict_var",
     ]
 
     assert list(params.keys()) == expected_params
