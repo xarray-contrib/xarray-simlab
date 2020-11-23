@@ -233,7 +233,9 @@ def variable(
     )
 
 
-def index(dims, global_name=None, groups=None, description="", attrs=None, encoding=None):
+def index(
+    dims, global_name=None, groups=None, description="", attrs=None, encoding=None
+):
     """Create a variable aimed at indexing data.
 
     The process class in which this variable is declared should set its value
@@ -295,7 +297,13 @@ def index(dims, global_name=None, groups=None, description="", attrs=None, encod
 
 
 def on_demand(
-        dims=(), global_name=None, group=None, groups=None, description="", attrs=None, encoding=None
+    dims=(),
+    global_name=None,
+    group=None,
+    groups=None,
+    description="",
+    attrs=None,
+    encoding=None,
 ):
     """Create a variable that is computed on demand.
 
@@ -463,10 +471,11 @@ def foreign(other_process_cls, var_name, intent="in"):
 
 def global_ref(name, intent="in"):
     """Create a reference to a variable that is defined somewhere else
-    in a model.
+    in a model with a unique, global name.
 
-    The original variable is not known until the model is created (implicit
-    reference).
+    Unlike :func:`foreign`, the original variable is not known until the model
+    is created (implicit reference). This may be a good alternative if explicit
+    references are tricky and if standard names exist.
 
     Parameters
     ----------
