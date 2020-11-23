@@ -16,6 +16,7 @@ class VarType(Enum):
     FOREIGN = "foreign"
     GROUP = "group"
     GROUP_DICT = "group_dict"
+    GLOBAL = "global"
 
 
 class VarIntent(Enum):
@@ -93,6 +94,7 @@ def _as_group_tuple(groups, group):
     else:
         groups = list(groups)
 
+    # TODO: remove depreciated
     if group is not None:
         warnings.warn(
             "Setting variable group using `group` is depreciated; use `groups`.",
@@ -108,6 +110,7 @@ def _as_group_tuple(groups, group):
 def variable(
     dims=(),
     intent="in",
+    global_name=None,
     group=None,
     groups=None,
     default=attr.NOTHING,
@@ -144,6 +147,10 @@ def variable(
         computes a value for the variable) or both an input/output (i.e., the
         process may update the value of the variable).
         (default: input).
+    global_name : str, optional
+        Name that may be used to retrieve this variable from other processes in
+        a model with :func:`global` (model-wise implicit reference). If not None,
+        this name must be unique among all global names found in a model.
     group : str, optional
         Variable group (depreciated, use ``groups`` instead).
     groups : str or list, optional
@@ -200,6 +207,7 @@ def variable(
         "var_type": VarType.VARIABLE,
         "dims": _as_dim_tuple(dims),
         "intent": VarIntent(intent),
+        "global_name": global_name,
         "groups": _as_group_tuple(groups, group),
         "static": static,
         "attrs": attrs or {},
@@ -225,7 +233,7 @@ def variable(
     )
 
 
-def index(dims, groups=None, description="", attrs=None, encoding=None):
+def index(dims, global_name=None, groups=None, description="", attrs=None, encoding=None):
     """Create a variable aimed at indexing data.
 
     The process class in which this variable is declared should set its value
@@ -244,6 +252,10 @@ def index(dims, groups=None, description="", attrs=None, encoding=None):
         a n-d variable. A list of str or tuple items may also be provided if
         the variable accepts different numbers of dimensions. Note that an index
         variable does not accept scalar values.
+    global_name : str, optional
+        Name that may be used to retrieve this variable from other processes in
+        a model with :func:`global` (model-wise implicit reference). If not None,
+        this name must be unique among all global names found in a model.
     groups : str or list, optional
         Variable group(s).
     description : str, optional
@@ -271,6 +283,7 @@ def index(dims, groups=None, description="", attrs=None, encoding=None):
     metadata = {
         "var_type": VarType.INDEX,
         "dims": dims,
+        "global_name": global_name,
         "intent": VarIntent.OUT,
         "groups": _as_group_tuple(groups, None),
         "attrs": attrs or {},
@@ -282,7 +295,7 @@ def index(dims, groups=None, description="", attrs=None, encoding=None):
 
 
 def on_demand(
-    dims=(), group=None, groups=None, description="", attrs=None, encoding=None
+        dims=(), global_name=None, group=None, groups=None, description="", attrs=None, encoding=None
 ):
     """Create a variable that is computed on demand.
 
@@ -306,6 +319,10 @@ def on_demand(
         tuple corresponds to a 1-d variable and a n-length tuple corresponds to
         a n-d variable. A list of str or tuple items may also be provided if
         the variable accepts different numbers of dimensions.
+    global_name : str, optional
+        Name that may be used to retrieve this variable from other processes in
+        a model with :func:`global` (model-wise implicit reference). If not None,
+        this name must be unique among all global names found in a model.
     group : str, optional
         Variable group (depreciated, use ``groups`` instead).
     groups : str or list, optional
@@ -341,6 +358,7 @@ def on_demand(
     metadata = {
         "var_type": VarType.ON_DEMAND,
         "dims": _as_dim_tuple(dims),
+        "global_name": global_name,
         "intent": VarIntent.OUT,
         "groups": _as_group_tuple(groups, group),
         "attrs": attrs or {},
@@ -351,7 +369,7 @@ def on_demand(
     return attr.attrib(metadata=metadata, init=False, repr=False)
 
 
-def any_object(groups=None, description="", attrs=None):
+def any_object(global_name=None, groups=None, description="", attrs=None):
     """Create a variable used to hold any arbitrary object that needs to be shared
     with other process classes.
 
@@ -367,6 +385,10 @@ def any_object(groups=None, description="", attrs=None):
     ----------
     groups : str or list, optional
         Variable group(s).
+    global_name : str, optional
+        Name that may be used to retrieve this variable from other processes in
+        a model with :func:`global` (model-wise implicit reference). If not None,
+        this name must be unique among all global names found in a model.
     description : str, optional
         Short description of the variable.
     attrs : dict, optional
@@ -375,6 +397,7 @@ def any_object(groups=None, description="", attrs=None):
     """
     metadata = {
         "var_type": VarType.OBJECT,
+        "global_name": global_name,
         "intent": VarIntent.OUT,
         "groups": _as_group_tuple(groups, None),
         "attrs": attrs or {},
@@ -396,9 +419,8 @@ def foreign(other_process_cls, var_name, intent="in"):
         Name of the corresponding variable declared in `other_process_cls`.
     intent : {'in', 'out'}, optional
         Defines whether the foreign variable is an input (i.e., the process
-        needs the variable's value for its computation), an output (i.e., the
-        process computes a value for the variable).
-        (default: input).
+        needs the variable's value for its computation) or an output (i.e., the
+        process computes a value for the variable). Default: input.
 
     See Also
     --------
@@ -428,6 +450,49 @@ def foreign(other_process_cls, var_name, intent="in"):
         ref_value = ref_var.metadata.get(meta_key)
         if ref_value is not None:
             metadata[meta_key] = ref_value
+
+    if VarIntent(intent) == VarIntent.OUT:
+        _init = False
+        _repr = False
+    else:
+        _init = True
+        _repr = True
+
+    return attr.attrib(metadata=metadata, init=_init, repr=_repr, kw_only=True)
+
+
+def global_ref(name, intent="in"):
+    """Create a reference to a variable that is defined somewhere else
+    in a model.
+
+    The original variable is not known until the model is created (implicit
+    reference).
+
+    Parameters
+    ----------
+    name : str
+        The global name of the variable. Must refer to a unique variable
+        model-wise.
+    intent : {'in', 'out'}, optional
+        Defines whether the variable is an input (i.e., the process
+        needs the variable's value for its computation) or an output (i.e., the
+        process computes a value for the variable). Default: input. Intent
+        'inout' is not supported here.
+
+    See Also
+    --------
+    :func:`variable`
+    :func:`foreign`
+
+    """
+    if intent == "inout":
+        raise ValueError("intent='inout' is not supported for global variables")
+
+    metadata = {
+        "var_type": VarType.GLOBAL,
+        "global_name": name,
+        "intent": VarIntent(intent),
+    }
 
     if VarIntent(intent) == VarIntent.OUT:
         _init = False
