@@ -50,6 +50,43 @@ def get_model_variables(p_mapping, **kwargs):
     return var_keys
 
 
+def get_reverse_lookup(processes_cls):
+    """Return a dictionary with process classes as keys and process names
+    as values.
+
+    Additionally, the returned dictionary maps all parent classes
+    to one (str) or several (list) process names.
+
+    """
+    reverse_lookup = defaultdict(list)
+
+    for p_name, p_cls in processes_cls.items():
+        # exclude `object` base class from lookup
+        for cls in p_cls.mro()[:-1]:
+            reverse_lookup[cls].append(p_name)
+
+    return {k: v[0] if len(v) == 1 else v for k, v in reverse_lookup.items()}
+
+
+def get_global_refs(processes_cls):
+    """Return a dictionary with global names as keys and
+    ('process_name', var) tuples (or lists of those tuples) as values.
+
+    """
+    temp_refs = defaultdict(list)
+
+    for p_name, p_cls in processes_cls.items():
+        for var in variables_dict(p_cls).values():
+            global_name = var.metadata.get("global_name")
+
+            if var.metadata["var_type"] != VarType.GLOBAL and global_name is not None:
+                temp_refs[global_name].append((p_name, var))
+
+    global_refs = {k: v if len(v) > 1 else v[0] for k, v in temp_refs.items()}
+
+    return global_refs
+
+
 class _ModelBuilder:
     """Used to iteratively build a new model.
 
@@ -73,9 +110,11 @@ class _ModelBuilder:
         self._processes_cls = processes_cls
         self._processes_obj = {k: cls() for k, cls in processes_cls.items()}
 
-        self._reverse_lookup = self._get_reverse_lookup(self._processes_cls)
+        self._reverse_lookup = get_reverse_lookup(processes_cls)
 
-        self._all_vars = get_model_variables(self._processes_cls)
+        self._all_vars = get_model_variables(processes_cls)
+        self._global_vars = get_model_variables(processes_cls, var_type=VarType.GLOBAL)
+        self._global_refs = get_global_refs(processes_cls)
         self._input_vars = None
 
         self._dep_processes = None
@@ -83,23 +122,6 @@ class _ModelBuilder:
 
         # a cache for group keys
         self._group_keys = {}
-
-    def _get_reverse_lookup(self, processes_cls):
-        """Return a dictionary with process classes as keys and process names
-        as values.
-
-        Additionally, the returned dictionary maps all parent classes
-        to one (str) or several (list) process names.
-
-        """
-        reverse_lookup = defaultdict(list)
-
-        for p_name, p_cls in processes_cls.items():
-            # exclude `object` base class from lookup
-            for cls in p_cls.mro()[:-1]:
-                reverse_lookup[cls].append(p_name)
-
-        return {k: v[0] if len(v) == 1 else v for k, v in reverse_lookup.items()}
 
     def bind_processes(self, model_obj):
         for p_name, p_obj in self._processes_obj.items():
@@ -127,11 +149,76 @@ class _ModelBuilder:
                 var_cache[(p_name, v_name)] = {
                     "name": f"{p_name}__{v_name}",
                     "attrib": attrib,
-                    "metadata": attrib.metadata,
+                    "metadata": attrib.metadata.copy(),
                     "value": None,
                 }
 
+        # retrieve/update metadata for global variables
+        for key in self._global_vars:
+            metadata = var_cache[key]["metadata"]
+            _, ref_var = self._get_global_ref(var_cache[key]["attrib"])
+
+            ref_metadata = {
+                k: v for k, v in ref_var["metadata"].items() if k not in metadata
+            }
+            metadata.update(ref_metadata)
+
         return var_cache
+
+    def _get_global_ref(self, var):
+        """Return the reference to a global variable as a ('process_name', var) tuple
+        (check that a reference exists and is unique).
+
+        """
+        global_name = var.metadata["global_name"]
+        ref = self._global_refs.get(global_name)
+
+        if ref is None:
+            raise KeyError(
+                f"No variable with global name '{global_name}' found in model"
+            )
+
+        elif isinstance(ref, list):
+            raise ValueError(
+                f"Found multiple variables with global name '{global_name}' in model: "
+                ", ".join([str(r) for r in ref])
+            )
+
+        return ref
+
+    def _get_foreign_ref(self, p_name, var):
+        """Return the reference to a foreign variable as a ('process_name', var) tuple
+        (check that a reference exists and is unique).
+
+        """
+        target_p_cls, target_var = get_target_variable(var)
+        target_p_name = self._reverse_lookup.get(target_p_cls, None)
+
+        if target_p_name is None:
+            raise KeyError(
+                f"Process class '{target_p_cls.__name__}' "
+                "missing in Model but required "
+                f"by foreign variable '{var.name}' "
+                f"declared in process '{p_name}'"
+            )
+
+        elif isinstance(target_p_name, list):
+            raise ValueError(
+                "Process class {!r} required by foreign variable '{}.{}' "
+                "is used (possibly via one its child classes) by multiple "
+                "processes: {}".format(
+                    target_p_cls.__name__,
+                    p_name,
+                    var.name,
+                    ", ".join(["{!r}".format(n) for n in target_p_name]),
+                )
+            )
+
+        # go through global reference
+        if target_var.metadata["var_type"] == VarType.GLOBAL:
+            target_p_name, target_var = self._get_global_ref(target_var)
+
+        return target_p_name, target_var
 
     def _get_var_key(self, p_name, var):
         """Get state and/or on-demand keys for variable `var` declared in
@@ -157,30 +244,10 @@ class _ModelBuilder:
             od_key = (p_name, var.name)
 
         elif var_type == VarType.FOREIGN:
-            target_p_cls, target_var = get_target_variable(var)
-            target_p_name = self._reverse_lookup.get(target_p_cls, None)
+            state_key, od_key = self._get_var_key(*self._get_foreign_ref(p_name, var))
 
-            if target_p_name is None:
-                raise KeyError(
-                    f"Process class '{target_p_cls.__name__}' "
-                    "missing in Model but required "
-                    f"by foreign variable '{var.name}' "
-                    f"declared in process '{p_name}'"
-                )
-
-            elif isinstance(target_p_name, list):
-                raise ValueError(
-                    "Process class {!r} required by foreign variable '{}.{}' "
-                    "is used (possibly via one its child classes) by multiple "
-                    "processes: {}".format(
-                        target_p_cls.__name__,
-                        p_name,
-                        var.name,
-                        ", ".join(["{!r}".format(n) for n in target_p_name]),
-                    )
-                )
-
-            state_key, od_key = self._get_var_key(target_p_name, target_var)
+        elif var_type == VarType.GLOBAL:
+            state_key, od_key = self._get_var_key(*self._get_global_ref(var))
 
         elif var_type in (VarType.GROUP, VarType.GROUP_DICT):
             var_group = var.metadata["group"]
