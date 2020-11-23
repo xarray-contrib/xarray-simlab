@@ -149,7 +149,7 @@ def variable(
         (default: input).
     global_name : str, optional
         Name that may be used to retrieve this variable from other processes in
-        a model with :func:`global` (model-wise implicit reference). If not None,
+        a model with :func:`global_ref` (model-wise implicit reference). If not None,
         this name must be unique among all global names found in a model.
     group : str, optional
         Variable group (depreciated, use ``groups`` instead).
@@ -254,7 +254,7 @@ def index(dims, global_name=None, groups=None, description="", attrs=None, encod
         variable does not accept scalar values.
     global_name : str, optional
         Name that may be used to retrieve this variable from other processes in
-        a model with :func:`global` (model-wise implicit reference). If not None,
+        a model with :func:`global_ref` (model-wise implicit reference). If not None,
         this name must be unique among all global names found in a model.
     groups : str or list, optional
         Variable group(s).
@@ -321,7 +321,7 @@ def on_demand(
         the variable accepts different numbers of dimensions.
     global_name : str, optional
         Name that may be used to retrieve this variable from other processes in
-        a model with :func:`global` (model-wise implicit reference). If not None,
+        a model with :func:`global_ref` (model-wise implicit reference). If not None,
         this name must be unique among all global names found in a model.
     group : str, optional
         Variable group (depreciated, use ``groups`` instead).
@@ -387,7 +387,7 @@ def any_object(global_name=None, groups=None, description="", attrs=None):
         Variable group(s).
     global_name : str, optional
         Name that may be used to retrieve this variable from other processes in
-        a model with :func:`global` (model-wise implicit reference). If not None,
+        a model with :func:`global_ref` (model-wise implicit reference). If not None,
         this name must be unique among all global names found in a model.
     description : str, optional
         Short description of the variable.
