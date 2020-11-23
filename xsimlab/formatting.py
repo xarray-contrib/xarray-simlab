@@ -64,15 +64,17 @@ def _summarize_var(var, process, col_width):
     if var_type in (VarType.GROUP, VarType.GROUP_DICT):
         var_info = f"{link_symbol} group {var.metadata['group']!r}"
 
-    elif var_type == VarType.FOREIGN:
+    elif var_type in (VarType.FOREIGN, VarType.GLOBAL):
         key = process.__xsimlab_state_keys__.get(var_name)
         if key is None:
             key = process.__xsimlab_od_keys__.get(var_name)
-        if key is None:
+        if key is None and var_type == VarType.FOREIGN:
             key = (
                 var.metadata["other_process_cls"].__name__,
                 var.metadata["var_name"],
             )
+        if key is None and var_type == VarType.GLOBAL:
+            key = ("<unknown>", "<ref>")
 
         var_info = f"{link_symbol} {'.'.join(key)}"
 
@@ -116,6 +118,10 @@ def var_details(var, max_line_length=70):
         info.append(f"- reference variable : :attr:`{ref_cls.__qualname__}.{ref_var}`")
 
     info.append(f"- intent : ``{meta['intent'].value}``")
+
+    global_name = meta.get("global_name")
+    if global_name is not None:
+        info.append(f"- global name : {global_name}")
 
     if meta.get("dims", False):
         info.append("- dimensions : " + " or ".join(f"{d!r}" for d in meta["dims"]))
