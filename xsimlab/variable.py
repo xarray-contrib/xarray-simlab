@@ -298,7 +298,6 @@ def index(
 
 def on_demand(
     dims=(),
-    global_name=None,
     group=None,
     groups=None,
     description="",
@@ -327,10 +326,6 @@ def on_demand(
         tuple corresponds to a 1-d variable and a n-length tuple corresponds to
         a n-d variable. A list of str or tuple items may also be provided if
         the variable accepts different numbers of dimensions.
-    global_name : str, optional
-        Name that may be used to retrieve this variable from other processes in
-        a model with :func:`global_ref` (model-wise implicit reference). If not None,
-        this name must be unique among all global names found in a model.
     group : str, optional
         Variable group (depreciated, use ``groups`` instead).
     groups : str or list, optional
@@ -366,7 +361,6 @@ def on_demand(
     metadata = {
         "var_type": VarType.ON_DEMAND,
         "dims": _as_dim_tuple(dims),
-        "global_name": global_name,
         "intent": VarIntent.OUT,
         "groups": _as_group_tuple(groups, group),
         "attrs": attrs or {},
