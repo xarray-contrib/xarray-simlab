@@ -74,7 +74,7 @@ def _summarize_var(var, process, col_width):
                 var.metadata["var_name"],
             )
         if key is None and var_type == VarType.GLOBAL:
-            key = ("<unknown>", "<ref>")
+            key = ("<unknown>", "<unknown>")
 
         var_info = f"{link_symbol} {'.'.join(key)}"
 
@@ -102,7 +102,7 @@ def var_details(var, max_line_length=70):
     meta = var.metadata
     subsections = []
 
-    if meta["description"]:
+    if meta.get("description", False):
         wrapped_descr = textwrap.fill(
             meta["description"].capitalize(), width=max_line_length
         )
