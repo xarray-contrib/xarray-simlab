@@ -51,5 +51,7 @@ jobs:
         env:
           DASK_SINGLE_THREADED: true
       - name: Codecov
+        with:
+          yml: ./codecov.yml
         if: matrix.cfg.codecov
         uses: codecov/codecov-action@v1
