@@ -396,7 +396,7 @@ def test_global_variable():
     class Baz:
         # foreign pointing to global reference Bar.var
         # --> must pass through and actually points to Foo.var
-        var = xs.foreign(Bar, "var", intent='out')
+        var = xs.foreign(Bar, "var", intent="out")
 
         def initialize(self):
             self.var = 1
@@ -412,15 +412,17 @@ def test_global_variable():
     class NotFound:
         var = xs.global_ref("missing")
 
-    with pytest.raises(KeyError, match="No variable with global name 'missing' found.*"):
-        xs.Model({'foo': Foo, 'not_found': NotFound})
+    with pytest.raises(
+        KeyError, match="No variable with global name 'missing' found.*"
+    ):
+        xs.Model({"foo": Foo, "not_found": NotFound})
 
     @xs.process
     class Duplicate:
         var = xs.variable(global_name="global_var")
 
     with pytest.raises(ValueError, match="Found multiple variables with global name.*"):
-        xs.Model({'foo': Foo, 'bar': Bar, 'dup': Duplicate})
+        xs.Model({"foo": Foo, "bar": Bar, "dup": Duplicate})
 
 
 def test_group_dict_variable():
