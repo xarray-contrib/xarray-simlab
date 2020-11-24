@@ -68,6 +68,8 @@ def test_get_process_raise():
                 "in_foreign_var2",
                 "out_foreign_var",
                 "in_foreign_od_var",
+                "in_global_var",
+                "out_global_var",
                 "group_var",
                 "group_dict_var",
                 "od_var",
@@ -82,11 +84,15 @@ def test_get_process_raise():
                 "in_foreign_var",
                 "in_foreign_var2",
                 "in_foreign_od_var",
+                "in_global_var",
                 "group_var",
                 "group_dict_var",
             },
         ),
-        ({"intent": "out"}, {"out_var", "out_foreign_var", "od_var", "obj_var"}),
+        (
+            {"intent": "out"},
+            {"out_var", "out_foreign_var", "out_global_var", "od_var", "obj_var"},
+        ),
         ({"group": "example_group"}, {"out_var"}),
         (
             {
@@ -102,6 +108,7 @@ def test_get_process_raise():
                 "in_foreign_var",
                 "in_foreign_var2",
                 "in_foreign_od_var",
+                "in_global_var",
             },
         ),
     ],
@@ -351,6 +358,7 @@ def test_process_no_model():
         "in_foreign_var",
         "in_foreign_var2",
         "in_foreign_od_var",
+        "in_global_var",
         "group_var",
         "group_dict_var",
     ]

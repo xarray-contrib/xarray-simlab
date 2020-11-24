@@ -11,7 +11,9 @@ from xsimlab.process import get_process_obj
 class SomeProcess:
     """Just used for foreign variables in ExampleProcess."""
 
-    some_var = xs.variable(groups="some_group", intent="out")
+    some_var = xs.variable(
+        groups="some_group", intent="out", global_name="some_global_var"
+    )
     some_od_var = xs.on_demand(groups="some_group")
 
     @some_od_var.compute
@@ -23,7 +25,11 @@ class SomeProcess:
 class AnotherProcess:
     """Just used for foreign variables in ExampleProcess."""
 
-    another_var = xs.variable(description="original description", attrs={"unit": "m"})
+    another_var = xs.variable(
+        description="original description",
+        attrs={"unit": "m"},
+        global_name="another_global_var",
+    )
     some_var = xs.foreign(SomeProcess, "some_var")
 
 
@@ -41,6 +47,9 @@ class ExampleProcess:
     in_foreign_var2 = xs.foreign(AnotherProcess, "some_var")
     out_foreign_var = xs.foreign(AnotherProcess, "another_var", intent="out")
     in_foreign_od_var = xs.foreign(SomeProcess, "some_od_var")
+
+    in_global_var = xs.global_ref("some_global_var")
+    out_global_var = xs.global_ref("another_global_var", intent="out")
 
     group_var = xs.group("some_group")
     group_dict_var = xs.group_dict("some_group")
@@ -73,6 +82,8 @@ def example_process_repr():
         in_foreign_var2       [in] <--- AnotherProcess.some_var
         out_foreign_var      [out] ---> AnotherProcess.another_var
         in_foreign_od_var     [in] <--- SomeProcess.some_od_var
+        in_global_var         [in] <--- <unknown>.<unknown>
+        out_global_var       [out] ---> <unknown>.<unknown>
         group_var             [in] <--- group 'some_group'
         group_dict_var        [in] <--- group 'some_group'
     Simulation stages:
@@ -146,6 +157,8 @@ def processes_with_state():
             "in_foreign_var": ("some_process", "some_var"),
             "in_foreign_var2": ("some_process", "some_var"),
             "out_foreign_var": ("another_process", "another_var"),
+            "in_global_var": ("some_process", "some_var"),
+            "out_global_var": ("another_process", "another_var"),
             "group_var": [("some_process", "some_var")],
             "group_dict_var": [("some_process", "some_var")],
         },
@@ -183,6 +196,8 @@ def example_process_in_model_repr():
         in_foreign_var2       [in] <--- some_process.some_var
         out_foreign_var      [out] ---> another_process.another_var
         in_foreign_od_var     [in] <--- some_process.some_od_var
+        in_global_var         [in] <--- some_process.some_var
+        out_global_var       [out] ---> another_process.another_var
         group_var             [in] <--- group 'some_group'
         group_dict_var        [in] <--- group 'some_group'
     Simulation stages:

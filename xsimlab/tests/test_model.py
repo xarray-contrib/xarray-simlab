@@ -370,6 +370,59 @@ def test_on_demand_cache():
     model.execute("run_step", {})
 
 
+def test_global_variable():
+    @xs.process
+    class Foo:
+        var = xs.variable(global_name="global_var")
+        idx = xs.index(dims="x", global_name="global_idx")
+        obj = xs.any_object(global_name="global_obj")
+
+        def initialize(self):
+            self.idx = np.array([1, 1])
+            self.obj = 2
+
+    @xs.process
+    class Bar:
+        var = xs.global_ref("global_var")
+        idx = xs.global_ref("global_idx")
+        obj = xs.global_ref("global_obj")
+
+        actual = xs.variable(intent="out")
+
+        def initialize(self):
+            self.actual = self.var + self.obj * np.sum(self.idx)
+
+    @xs.process
+    class Baz:
+        # foreign pointing to global reference Bar.var
+        # --> must pass through and actually points to Foo.var
+        var = xs.foreign(Bar, "var", intent='out')
+
+        def initialize(self):
+            self.var = 1
+
+    model = xs.Model({"foo": Foo, "bar": Bar, "baz": Baz})
+    model.execute("initialize", {})
+
+    assert model.state[("foo", "var")] == 1
+    assert model.state[("bar", "actual")] == 5
+
+    # -- test errors
+    @xs.process
+    class NotFound:
+        var = xs.global_ref("missing")
+
+    with pytest.raises(KeyError, match="No variable with global name 'missing' found.*"):
+        xs.Model({'foo': Foo, 'not_found': NotFound})
+
+    @xs.process
+    class Duplicate:
+        var = xs.variable(global_name="global_var")
+
+    with pytest.raises(ValueError, match="Found multiple variables with global name.*"):
+        xs.Model({'foo': Foo, 'bar': Bar, 'dup': Duplicate})
+
+
 def test_group_dict_variable():
     @xs.process
     class Foo:

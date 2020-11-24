@@ -2,8 +2,8 @@ import pytest
 import attr
 
 import xsimlab as xs
-from xsimlab.tests.fixture_process import AnotherProcess, ExampleProcess
-from xsimlab.variable import _as_dim_tuple, _as_group_tuple, foreign, index
+from xsimlab.tests.fixture_process import SomeProcess, AnotherProcess, ExampleProcess
+from xsimlab.variable import _as_dim_tuple, _as_group_tuple
 
 
 @pytest.mark.parametrize(
@@ -53,15 +53,59 @@ def test_as_group_tuple(groups, group, expected):
     assert actual == expected
 
 
+def test_variable():
+    # test constructor
+    @attr.attrs
+    class Foo:
+        some_var = xs.variable()
+        another_var = xs.variable(intent="out")
+
+    assert Foo(some_var=2).some_var == 2
+
+    with pytest.raises(TypeError):
+        # intent='out' not in constructor
+        Foo(another_var=2)
+
+
 def test_index():
     with pytest.raises(ValueError, match=r".*not accept scalar values.*"):
-        index(())
+        xs.index(())
+
+    # test constructor
+    @attr.attrs
+    class Foo:
+        var = xs.index(dims="x")
+
+    with pytest.raises(TypeError):
+        # index variable not in contructor (intent='out')
+        Foo(var=2)
+
+
+def test_on_demand():
+    # test constructor
+    @attr.attrs
+    class Foo:
+        var = xs.on_demand()
+
+    with pytest.raises(TypeError):
+        # on_demand variable not in contructor (intent='out')
+        Foo(var=2)
+
+
+def test_any_object():
+    # test constructor
+    @attr.attrs
+    class Foo:
+        var = xs.any_object()
+
+    with pytest.raises(TypeError):
+        # any_object variable not in contructor (intent='out')
+        Foo(var=2)
 
 
 def test_foreign():
-    with pytest.raises(ValueError) as excinfo:
-        foreign(ExampleProcess, "some_var", intent="inout")
-    assert "intent='inout' is not supported" in str(excinfo.value)
+    with pytest.raises(ValueError, match="intent='inout' is not supported.*"):
+        xs.foreign(ExampleProcess, "some_var", intent="inout")
 
     var = attr.fields(ExampleProcess).out_foreign_var
     ref_var = attr.fields(AnotherProcess).another_var
@@ -69,8 +113,37 @@ def test_foreign():
     for k in ("description", "attrs"):
         assert var.metadata[k] == ref_var.metadata[k]
 
+    # test constructor
+    @attr.attrs
+    class Foo:
+        some_var = xs.foreign(SomeProcess, "some_var")
+        another_var = xs.foreign(AnotherProcess, "another_var", intent="out")
 
-def test_group_dict():
+    assert Foo(some_var=2).some_var == 2
+
+    with pytest.raises(TypeError):
+        # intent='out' not in constructor
+        Foo(another_var=2)
+
+
+def test_global_ref():
+    with pytest.raises(ValueError, match="intent='inout' is not supported.*"):
+        xs.global_ref("some_var", intent="inout")
+
+    # test constructor
+    @attr.attrs
+    class Foo:
+        some_var = xs.global_ref("some_var")
+        another_var = xs.global_ref("another_var", intent="out")
+
+    assert Foo(some_var=2).some_var == 2
+
+    with pytest.raises(TypeError):
+        # intent='out' not in constructor
+        Foo(another_var=2)
+
+
+def test_group():
     @attr.attrs
     class Foo:
         bar = xs.group("g")
