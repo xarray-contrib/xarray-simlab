@@ -92,7 +92,7 @@ class _GraphBuilder:
             node_attrs["style"] = "dashed"
             edge_attrs["style"] = "dashed"
 
-        elif var_type == VarType.GROUP:
+        elif var_type in (VarType.GROUP, VarType.GROUP_DICT):
             node_attrs["shape"] = "box3d"
 
         if var_intent == VarIntent.OUT:
