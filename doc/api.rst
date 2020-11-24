@@ -159,6 +159,7 @@ Variable
    index
    any_object
    foreign
+   global_ref
    group
    group_dict
    on_demand

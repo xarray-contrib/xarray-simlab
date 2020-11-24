@@ -28,6 +28,8 @@ Enhancements
 - Added an optional cache for on-demand variables (:issue:`156`). The ``@compute``
   decorator now has a ``cache`` option (deactivated by default).
 - Added :func:`~xsimlab.group_dict` variable (:issue:`159`).
+- Added :func:`~xsimlab.global_ref` variable for model-wise implicit linking of
+  variables in separate processes, based on global names (:issue:`160`).
 
 Bug fixes
 ~~~~~~~~~

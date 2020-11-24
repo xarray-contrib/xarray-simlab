@@ -125,11 +125,33 @@ determine process dependencies -- see below). For the same reason,
 only one process in a model may compute a value of a variable (i.e.,
 ``intent='out'``).
 
-The great advantage of declaring variables at unique places is that
-all their meta-data are defined once. However, a downside of this
-approach is that foreign variables may potentially add many hard-coded
-links between processes, which makes harder reusing these processes
-independently of each other.
+The great advantage of declaring variables at unique places is that all their
+meta-data are defined once. However, a downside of this approach is that foreign
+variables may potentially add many hard-coded links between processes, which
+makes harder reusing these processes independently of each other. Global and/or
+group variables may circumvent those hard-coded link.
+
+Global variables
+~~~~~~~~~~~~~~~~
+
+Like foreign variables, global variables can be used for accessing (read / write)
+common variables in multiple processes. Unlike foreign variables, linking global
+variables is implicit and only based on their "global name", which must identify
+it unambiguously in a model.
+
+Most variables in xarray-simlab accept a ``global_name`` argument. References to
+these variables can be declared in other processes using
+:func:`~xsimlab.global_ref`. Those references are resolved when creating new a
+:class:`~xsimlab.Model` object. Xarray-simlab also implements some safe-guards
+against possible inconsistencies in a model (i.e., unresolved global names or
+name conflicts).
+
+Global variables are a good alternative to foreign variables in the presence of
+naming standards. It may increase the potential to reuse process classes and
+build more flexible model structures. One major limitation, however, is that
+variable metadata (e.g., description, dimensions, etc.) is not known for
+:func:`~xsimlab.global_ref` declarations until a model is created, which limits
+introspection of the processes taken individually.
 
 Group variables
 ~~~~~~~~~~~~~~~
