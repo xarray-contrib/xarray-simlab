@@ -159,7 +159,7 @@ class _ModelBuilder:
             _, ref_var = self._get_global_ref(var_cache[key]["attrib"])
 
             ref_metadata = {
-                k: v for k, v in ref_var["metadata"].items() if k not in metadata
+                k: v for k, v in ref_var.metadata.items() if k not in metadata
             }
             metadata.update(ref_metadata)
 

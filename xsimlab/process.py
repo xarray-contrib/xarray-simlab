@@ -511,6 +511,7 @@ class _ProcessBuilder:
         VarType.OBJECT: _make_property_variable,
         VarType.ON_DEMAND: _make_property_on_demand,
         VarType.FOREIGN: _make_property_variable,
+        VarType.GLOBAL: _make_property_variable,
         VarType.GROUP: _make_property_group,
         VarType.GROUP_DICT: _make_property_group_dict,
     }
