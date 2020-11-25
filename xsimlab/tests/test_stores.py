@@ -190,6 +190,33 @@ class TestZarrSimulationStore:
 
         np.testing.assert_array_equal(ztest.x, np.array([1.0, 2.0, 3.0]))
 
+    def test_write_global_vars(self):
+        # ensure that variable metadata (dims, etc.) is properly accessed for global references
+
+        @xs.process
+        class Foo:
+            var = xs.variable(dims="x", global_name="global_var", intent="out")
+
+        @xs.process
+        class Bar:
+            var = xs.global_ref("global_var")
+
+        model = xs.Model({"foo": Foo, "bar": Bar})
+
+        in_ds = xs.create_setup(
+            model=model,
+            clocks={"clock": [0, 1]},
+            output_vars={"bar__var": None},
+        )
+
+        store = ZarrSimulationStore(in_ds, model)
+
+        model.state[("foo", "var")] = np.array([1, 2, 3])
+        store.write_output_vars(-1, -1)
+
+        ztest = zarr.open_group(store.zgroup.store, mode="r")
+        np.testing.assert_array_equal(ztest.bar__var, np.array([1, 2, 3]))
+
     def test_resize_zarr_dataset(self):
         @xs.process
         class P:

@@ -40,6 +40,7 @@ def test_var_details():
         var = xs.variable(
             dims=[(), "x"],
             description="a variable",
+            global_name="global_var",
             default=0,
             groups=["g1", "g2"],
             static=True,
@@ -58,6 +59,7 @@ def test_var_details():
 
         - type : ``variable``
         - intent : ``in``
+        - global name : global_var
         - dimensions : () or ('x',)
         - groups : g1, g2
         - default value : 0

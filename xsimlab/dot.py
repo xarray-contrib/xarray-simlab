@@ -65,7 +65,7 @@ class _GraphBuilder:
     def add_processes(self):
         seen = set()
 
-        for p_name, p_obj in self.model._processes.items():
+        for p_name in self.model._processes:
             if p_name not in seen:
                 seen.add(p_name)
                 self.g.node(p_name, label=p_name, **PROC_NODE_ATTRS)
@@ -88,11 +88,11 @@ class _GraphBuilder:
         if var_type == VarType.ON_DEMAND:
             node_attrs["style"] = "diagonals"
 
-        elif var_type == VarType.FOREIGN:
+        elif var_type in (VarType.FOREIGN, VarType.GLOBAL):
             node_attrs["style"] = "dashed"
             edge_attrs["style"] = "dashed"
 
-        elif var_type == VarType.GROUP:
+        elif var_type in (VarType.GROUP, VarType.GROUP_DICT):
             node_attrs["shape"] = "box3d"
 
         if var_intent == VarIntent.OUT:
@@ -115,7 +115,7 @@ class _GraphBuilder:
         for p_name, p_obj in self.model._processes.items():
             p_cls = type(p_obj)
 
-            for var_name, var in variables_dict(p_cls).items():
+            for var in variables_dict(p_cls).values():
                 self._add_var(var, p_name)
 
     def add_var_and_targets(self, p_name, var_name):
