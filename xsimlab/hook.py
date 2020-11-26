@@ -1,10 +1,16 @@
 import inspect
+from enum import Enum
 from typing import Callable, Dict, Iterable, List, Union
 
 from .process import SimulationStage
 
 
-__all__ = ("runtime_hook", "RuntimeHook")
+class RuntimeSignal(Enum):
+    NONE = 0
+    SKIP = 1
+    CONTINUE = 2
+    BREAK = 3
+    STOP = 4
 
 
 def runtime_hook(stage, level="model", trigger="post"):

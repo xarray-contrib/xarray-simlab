@@ -312,8 +312,13 @@ class _RuntimeMethodExecutor:
     """Used to execute a process 'runtime' method in the context of a
     simulation.
 
-    """
+    This is a thin wrapper around a process class runtime method, which:
 
+    - maps method argument(s) to their corresponding simulation runtime variable.
+    - optionally overrides the process object's state with an input state (i.e., when
+      executed as part of a Dask graph).
+
+    """
     def __init__(self, meth, args=None):
         self.meth = meth
 
@@ -454,6 +459,11 @@ class _ProcessExecutor:
         return [k.value for k in self.runtime_executors]
 
     def execute(self, obj, stage, runtime_context, state=None):
+        """Maybe execute the given simulation stage (if implemented).
+
+        Returns a state dictionary with only the 'out'/'inout' variables.
+
+        """
         executor = self.runtime_executors.get(stage)
 
         if executor is None:

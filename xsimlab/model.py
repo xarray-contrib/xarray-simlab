@@ -1,11 +1,13 @@
 from collections import OrderedDict, defaultdict
 import copy
 import time
+from xsimlab.hook import RuntimeSignal
 
 import attr
 import dask
 from dask.distributed import Client
 
+from .hook import RuntimeSignal
 from .variable import VarIntent, VarType
 from .process import (
     filter_variables,
@@ -795,60 +797,107 @@ class Model(AttrMapping):
         try:
             event_hooks = hooks[stage][level][trigger]
         except KeyError:
-            return
+            return RuntimeSignal.NONE
+
+        signals = []
 
         for h in event_hooks:
-            h(self, Frozen(runtime_context), Frozen(self.state))
+            s = h(self, Frozen(runtime_context), Frozen(self.state))
+
+            if s is None:
+                s = RuntimeSignal(0)
+            else:
+                s = RuntimeSignal(s)
+
+            signals.append(s)
+
+        # Signal with highest value has highest priority
+        return RuntimeSignal(max([s.value for s in signals]))
 
     def _execute_process(
         self, p_obj, stage, runtime_context, hooks, validate, state=None
     ):
+        """Internal process execution method, which calls the process object's
+        executor.
+
+        A state may be passed to the executor instead of using the executor's
+        state (this is to avoid stateful objects when calling the executor
+        during execution of a Dask graph).
+
+        The process executor returns a partial state (only the variables that
+        have been updated by the executor, which will be needed for executing
+        further tasks in the Dask graph).
+
+        This method returns this updated state as well as any runtime signal returned
+        by the hook functions (the one with highest priority).
+
+        """
         executor = p_obj.__xsimlab_executor__
         p_name = p_obj.__xsimlab_name__
 
-        self._call_hooks(hooks, runtime_context, stage, "process", "pre")
-        out_state = executor.execute(p_obj, stage, runtime_context, state=state)
-        self._call_hooks(hooks, runtime_context, stage, "process", "post")
+        signal_pre = self._call_hooks(hooks, runtime_context, stage, "process", "pre")
+
+        if signal_pre.value > 0:
+            return p_name, (state, signal_pre)
+
+        state_out = executor.execute(p_obj, stage, runtime_context, state=state)
+        signal_out = self._call_hooks(hooks, runtime_context, stage, "process", "post")
 
         if validate:
             self.validate(self._processes_to_validate[p_name])
 
-        return p_name, out_state
+        return p_name, (state_out, signal_out)
 
     def _build_dask_graph(self, execute_args):
         """Build a custom, 'stateless' graph of tasks (process execution) that will
         be passed to a Dask scheduler.
 
         """
-
-        def exec_process(p_obj, model_state, out_states):
-            # update model state with output state from all dependent processes
+        def exec_process(p_obj, model_state, exec_outputs):
+            # update model state with output states from all dependent processes
+            # gather and sort signals returned by all dependent processes
             state = {}
-            state.update(model_state)
-            for _, s in out_states:
-                state.update(s)
+            signal = RuntimeSignal.NONE
 
-            return self._execute_process(p_obj, *execute_args, state=state)
+            state.update(model_state)
+
+            for _, (state_out, signal_out) in exec_outputs:
+                state.update(state_out)
+
+                if signal_out.value > signal.value:
+                    signal = signal_out
+
+            if signal.value > 1:
+                # skip process execution and forward signal
+                return p_obj.__xsimlab_name__, ({}, signal)
+            else:
+                return self._execute_process(p_obj, *execute_args, state=state)
 
         dsk = {}
         for p_name, p_deps in self._dep_processes.items():
             dsk[p_name] = (exec_process, self._processes[p_name], self._state, p_deps)
 
         # add a node to gather output state from all executed processes
-        dsk["_gather"] = (lambda out_states: dict(out_states), list(self._processes))
+        dsk["_gather"] = (lambda exec_outputs: dict(exec_outputs), list(self._processes))
 
         return dsk
 
-    def _merge_and_update_state(self, out_states):
-        """Collect, merge together and update model state from the output
-        states returned by all executed processes (dask graph).
+    def _merge_exec_outputs(self, exec_outputs) -> RuntimeSignal:
+        """Collect and merge process execution outputs (from dask graph).
+
+        - combine all output states and update model's state.
+        - sort all output runtime signals and return the signal with highest priority.
 
         """
         new_state = {}
+        signal = RuntimeSignal.NONE
 
-        # process order matters!
+        # process order matters for properly updating state!
         for p_name in self._processes:
-            new_state.update(out_states[p_name])
+            state_out, signal_out = exec_outputs[p_name]
+            new_state.update(state_out)
+            if signal_out.value > signal.value:
+                signal = signal_out
 
         self._state.update(new_state)
 
@@ -856,6 +905,8 @@ class Model(AttrMapping):
         # for access between simulation stages (e.g., save snapshots)
         for p_obj in self._processes.values():
             p_obj.__xsimlab_state__ = self._state
+
+        return signal
 
     def _clear_od_cache(self):
         """Clear cached values of on-demand variables."""
@@ -896,6 +947,12 @@ class Model(AttrMapping):
             Dask's scheduler used to run the stage in parallel
             (Dask's threads scheduler is used as failback).
 
+        Returns
+        -------
+        signal : :class:`RuntimeSignal`
+            Signal with hightest priority among all signals returned by hook
+            functions, or ``RuntimeSignal.NONE`.
+
         Notes
         -----
         Even when run in parallel, xarray-simlab ensures that processes will
@@ -925,33 +982,44 @@ class Model(AttrMapping):
         if hooks is None:
             hooks = {}
 
-        dsk_get = dask.base.get_scheduler(scheduler=scheduler)
-        if dsk_get is None:
-            dsk_get = dask.threaded.get
-
         stage = SimulationStage(stage)
         execute_args = (stage, runtime_context, hooks, validate)
 
         self._clear_od_cache()
 
-        self._call_hooks(hooks, runtime_context, stage, "model", "pre")
+        signal_pre = self._call_hooks(hooks, runtime_context, stage, "model", "pre")
+
+        if signal_pre.value > 0:
+            return signal_pre
 
         if parallel:
+            dsk_get = dask.base.get_scheduler(scheduler=scheduler)
+            if dsk_get is None:
+                dsk_get = dask.threaded.get
+
             dsk = self._build_dask_graph(execute_args)
-            out_states = dsk_get(dsk, "_gather", scheduler=scheduler)
+            exec_outputs = dsk_get(dsk, "_gather", scheduler=scheduler)
 
             # TODO: without this -> flaky tests (don't know why)
             # state is not properly updated -> error when writing output vars in store
             if isinstance(scheduler, Client):
                 time.sleep(0.001)
 
-            self._merge_and_update_state(out_states)
+            signal_process = self._merge_exec_outputs(exec_outputs)
+
+            if signal_process.value > 2:
+                return signal_process
 
         else:
             for p_obj in self._processes.values():
-                self._execute_process(p_obj, *execute_args)
+                _, (_, signal_process) = self._execute_process(p_obj, *execute_args)
 
-        self._call_hooks(hooks, runtime_context, stage, "model", "post")
+                if signal_process.value > 1:
+                    return signal_process
+
+        signal_post = self._call_hooks(hooks, runtime_context, stage, "model", "post")
+
+        return signal_post
 
     def clone(self):
         """Clone the Model.
