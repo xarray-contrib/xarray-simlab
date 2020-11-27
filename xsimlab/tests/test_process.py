@@ -293,6 +293,7 @@ def test_process_executor():
 
         def run_step(self):
             self.out_var = self.in_var * 2
+            return xs.RuntimeSignal.BREAK
 
         @od_var.compute
         def _dummy(self):
@@ -302,11 +303,13 @@ def test_process_executor():
     executor = m.p.__xsimlab_executor__
     state = {("p", "in_var"): 1}
 
-    expected = {("p", "out_var"): 2}
-    actual = executor.execute(m.p, SimulationStage.RUN_STEP, {}, state=state)
-    assert actual == expected
+    state_out, signal_out = executor.execute(m.p, SimulationStage.RUN_STEP, {}, state=state)
+    assert state_out == {("p", "out_var"): 2}
+    assert signal_out == xs.RuntimeSignal.BREAK
 
-    assert executor.execute(m.p, SimulationStage.INITIALIZE, {}, state=state) == {}
+    state_out, signal_out = executor.execute(m.p, SimulationStage.INITIALIZE, {}, state=state)
+    assert state_out == {}
+    assert signal_out == xs.RuntimeSignal.NONE
 
 
 def test_process_executor_raise():
