@@ -1,18 +1,17 @@
 from collections import OrderedDict, defaultdict
 import copy
 import time
-from xsimlab.hook import RuntimeSignal
 
 import attr
 import dask
 from dask.distributed import Client
 
-from .hook import RuntimeSignal
 from .variable import VarIntent, VarType
 from .process import (
     filter_variables,
     get_process_cls,
     get_target_variable,
+    RuntimeSignal,
     SimulationStage,
 )
 from .utils import AttrMapping, Frozen, variables_dict
@@ -829,7 +828,7 @@ class Model(AttrMapping):
         further tasks in the Dask graph).
 
         This method returns this updated state as well as any runtime signal returned
-        by the hook functions (the one with highest priority).
+        by the hook functions and/or the executor (the one with highest priority).
 
         """
         executor = p_obj.__xsimlab_executor__
@@ -838,10 +837,13 @@ class Model(AttrMapping):
         signal_pre = self._call_hooks(hooks, runtime_context, stage, "process", "pre")
 
         if signal_pre.value > 0:
-            return p_name, (state, signal_pre)
+            return p_name, ({}, signal_pre)
 
-        state_out = executor.execute(p_obj, stage, runtime_context, state=state)
-        signal_out = self._call_hooks(hooks, runtime_context, stage, "process", "post")
+        state_out, signal_out = executor.execute(p_obj, stage, runtime_context, state=state)
+
+        signal_post = self._call_hooks(hooks, runtime_context, stage, "process", "post")
+        if signal_post.value > signal_out.value:
+            signal_out = signal_post
 
         if validate:
             self.validate(self._processes_to_validate[p_name])
@@ -855,7 +857,7 @@ class Model(AttrMapping):
         """
         def exec_process(p_obj, model_state, exec_outputs):
             # update model state with output states from all dependent processes
-            # gather and sort signals returned by all dependent processes
+            # gather signals returned by all dependent processes and sort them by highest piority
             state = {}
             signal = RuntimeSignal.NONE
 
@@ -867,8 +869,10 @@ class Model(AttrMapping):
                 if signal_out.value > signal.value:
                     signal = signal_out
 
-            if signal.value > 1:
-                # skip process execution and forward signal
+            if signal == RuntimeSignal.BREAK:
+                # received a BREAK signal from the execution of a dependent process
+                # -> skip execution of current process as well as all downstream processes
+                #    in the graph (by forwarding the signal).
                 return p_obj.__xsimlab_name__, ({}, signal)
             else:
                 return self._execute_process(p_obj, *execute_args, state=state)
@@ -1007,15 +1011,12 @@ class Model(AttrMapping):
 
             signal_process = self._merge_exec_outputs(exec_outputs)
 
-            if signal_process.value > 2:
-                return signal_process
-
         else:
             for p_obj in self._processes.values():
                 _, (_, signal_process) = self._execute_process(p_obj, *execute_args)
 
-                if signal_process.value > 1:
-                    return signal_process
+                if signal_process == RuntimeSignal.BREAK:
+                    break
 
         signal_post = self._call_hooks(hooks, runtime_context, stage, "model", "post")
 

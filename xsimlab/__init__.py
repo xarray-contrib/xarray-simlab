@@ -11,6 +11,7 @@ from .process import (
     process,
     process_info,
     runtime,
+    RuntimeSignal,
     variable_info,
 )
 from .variable import (

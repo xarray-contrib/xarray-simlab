@@ -5,14 +5,6 @@ from typing import Callable, Dict, Iterable, List, Union
 from .process import SimulationStage
 
 
-class RuntimeSignal(Enum):
-    NONE = 0
-    SKIP = 1
-    CONTINUE = 2
-    BREAK = 3
-    STOP = 4
-
-
 def runtime_hook(stage, level="model", trigger="post"):
     """Decorator that allows to call a function or a method
     at one or more specific times during a simulation.

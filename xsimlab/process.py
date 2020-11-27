@@ -308,6 +308,13 @@ def _make_property_group_dict(var):
     return property(fget=getter_state_or_on_demand, doc=var_details(var))
 
 
+class RuntimeSignal(Enum):
+    NONE = 0
+    SKIP = 1
+    CONTINUE = 2
+    BREAK = 3
+
+
 class _RuntimeMethodExecutor:
     """Used to execute a process 'runtime' method in the context of a
     simulation.
@@ -317,6 +324,7 @@ class _RuntimeMethodExecutor:
     - maps method argument(s) to their corresponding simulation runtime variable.
     - optionally overrides the process object's state with an input state (i.e., when
       executed as part of a Dask graph).
+    - returns a valid runtime signal.
 
     """
     def __init__(self, meth, args=None):
@@ -333,13 +341,18 @@ class _RuntimeMethodExecutor:
 
         self.args = tuple(args)
 
-    def execute(self, obj, runtime_context, state=None):
+    def execute(self, p_obj, runtime_context, state=None):
         if state is not None:
-            obj.__xsimlab_state__ = state
+            p_obj.__xsimlab_state__ = state
 
         args = [runtime_context[k] for k in self.args]
 
-        self.meth(obj, *args)
+        signal = self.meth(p_obj, *args)
+
+        if signal is None:
+            return RuntimeSignal.NONE
+        else:
+            return RuntimeSignal(signal)
 
 
 def runtime(meth=None, args=None):
@@ -458,22 +471,25 @@ class _ProcessExecutor:
     def stages(self):
         return [k.value for k in self.runtime_executors]
 
-    def execute(self, obj, stage, runtime_context, state=None):
+    def execute(self, p_obj, stage, runtime_context, state=None):
         """Maybe execute the given simulation stage (if implemented).
 
-        Returns a state dictionary with only the 'out'/'inout' variables.
+        Returns a state dictionary with only the 'out'/'inout' variables and
+        a runtime signal.
 
         """
         executor = self.runtime_executors.get(stage)
 
         if executor is None:
-            return {}
+            return {}, RuntimeSignal.NONE
         else:
-            executor.execute(obj, runtime_context, state=state)
+            signal_out = executor.execute(p_obj, runtime_context, state=state)
 
-            skeys = [obj.__xsimlab_state_keys__[k] for k in self.out_vars]
-            sobj = obj.__xsimlab_state__
-            return {k: sobj[k] for k in skeys if k in sobj}
+            skeys = [p_obj.__xsimlab_state_keys__[k] for k in self.out_vars]
+            sobj = p_obj.__xsimlab_state__
+            state_out = {k: sobj[k] for k in skeys if k in sobj}
+
+            return state_out, signal_out
 
 
 def _process_cls_init(obj):
