@@ -839,7 +839,9 @@ class Model(AttrMapping):
         if signal_pre.value > 0:
             return p_name, ({}, signal_pre)
 
-        state_out, signal_out = executor.execute(p_obj, stage, runtime_context, state=state)
+        state_out, signal_out = executor.execute(
+            p_obj, stage, runtime_context, state=state
+        )
 
         signal_post = self._call_hooks(hooks, runtime_context, stage, "process", "post")
         if signal_post.value > signal_out.value:
@@ -855,6 +857,7 @@ class Model(AttrMapping):
         be passed to a Dask scheduler.
 
         """
+
         def exec_process(p_obj, model_state, exec_outputs):
             # update model state with output states from all dependent processes
             # gather signals returned by all dependent processes and sort them by highest piority
@@ -882,7 +885,10 @@ class Model(AttrMapping):
             dsk[p_name] = (exec_process, self._processes[p_name], self._state, p_deps)
 
         # add a node to gather output state from all executed processes
-        dsk["_gather"] = (lambda exec_outputs: dict(exec_outputs), list(self._processes))
+        dsk["_gather"] = (
+            lambda exec_outputs: dict(exec_outputs),
+            list(self._processes),
+        )
 
         return dsk
 

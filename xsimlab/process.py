@@ -327,6 +327,7 @@ class _RuntimeMethodExecutor:
     - returns a valid runtime signal.
 
     """
+
     def __init__(self, meth, args=None):
         self.meth = meth
 
