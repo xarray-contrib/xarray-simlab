@@ -961,7 +961,8 @@ class Model(AttrMapping):
         -------
         signal : :class:`RuntimeSignal`
             Signal with hightest priority among all signals returned by hook
-            functions, or ``RuntimeSignal.NONE`.
+            functions and/or process runtime methods, if any. Otherwise,
+            returns ``RuntimeSignal.NONE``.
 
         Notes
         -----

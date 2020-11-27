@@ -309,10 +309,53 @@ def _make_property_group_dict(var):
 
 
 class RuntimeSignal(Enum):
+    """Signal controlling simulation runtime.
+
+    Such signal may be returned either by runtime methods of :func:`process`
+    decorated classes or by :func:`runtime_hook` decorated functions or methods.
+
+    All signals listed below are ordered from the lowest to the highest
+    priority. If multiple signals are emitted at the same time during a
+    simulation, the one with the highest priority prevails.
+
+    One signal may affect the simulation workflow in different ways, depending on
+    whether it is returned during the execution of a simulation stage (process-level)
+    or just before/after a stage (model-level).
+
+    Attributes
+    ----------
+    NONE : int
+        Do nothing (blank signal). Used by default when a process
+        runtime method or a hook function doesn't explicitly return a value.
+        Priority = 0.
+    SKIP : int
+        If returned by a pre-hook function, skip the current process
+        (process-level) or the current simulation stage (model-level).
+        Otherwise do nothing.
+        Priority = 1.
+    CONTINUE : int
+        Skip the current process or current simulation stage (pre-hook).
+        When returned by a model-level hook function in a looped
+        simulation stage (e.g., ``run_step``), also skip all remaining
+        simulation stages (e.g., ``finalize_step``) at the current step and
+        continues the simulation at the next step.
+        Priority = 2.
+    BREAK : int
+        Skip the current process or current simulation stage (pre-hook).
+        Also skip all remaining processes in a simulation stage (process-level)
+        or all remaining steps in looped simulation stages (model-level).
+        Priority = 3.
+
+    """
+
     NONE = 0
+    """Do nothing (blank signal)."""
     SKIP = 1
+    """Skip the current process or simulation stage."""
     CONTINUE = 2
+    """Skip all the remaining stages of the current step."""
     BREAK = 3
+    """Skip all remaining processes or steps."""
 
 
 class _RuntimeMethodExecutor:

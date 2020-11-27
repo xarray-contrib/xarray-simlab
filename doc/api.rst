@@ -189,3 +189,4 @@ Model runtime monitoring
    monitoring.ProgressBar
    runtime_hook
    RuntimeHook
+   RuntimeSignal
