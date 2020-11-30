@@ -14,7 +14,7 @@ from xsimlab.process import SimulationStage
         ("post", xs.RuntimeSignal.CONTINUE, [1.0, 3.0, 4.0, 5.0]),
         ("pre", xs.RuntimeSignal.BREAK, [1.0, 2.0, np.nan, np.nan]),
         ("post", xs.RuntimeSignal.BREAK, [1.0, 3.0, np.nan, np.nan]),
-    ]
+    ],
 )
 def test_signal_model_level(trigger, signal, expected):
     @xs.process
@@ -37,10 +37,10 @@ def test_signal_model_level(trigger, signal, expected):
         if context["step"] == 1:
             return signal
 
-    model = xs.Model({'foo': Foo})
+    model = xs.Model({"foo": Foo})
     ds_in = xs.create_setup(
         model=model,
-        clocks={'clock': range(4)},
+        clocks={"clock": range(4)},
         output_vars={"foo__v": "clock", "foo__vv": None},
     )
     ds_out = ds_in.xsimlab.run(model=model, hooks=[hook_func])
@@ -67,10 +67,12 @@ def parallel(request):
         # BREAK signal returned in Bar.run_step prevails
         (1, "post", xs.RuntimeSignal.SKIP, True, 0, 2),
         # BREAK signal returned by Bar.run_step only
-        (0, "post", xs.RuntimeSignal.BREAK, True, 0, 2)
-    ]
+        (0, "post", xs.RuntimeSignal.BREAK, True, 0, 2),
+    ],
 )
-def test_signal_process_level(step, trigger, signal, break_bar, expected_v1, expected_v2, parallel):
+def test_signal_process_level(
+    step, trigger, signal, break_bar, expected_v1, expected_v2, parallel
+):
     @xs.process
     class Foo:
         v1 = xs.variable(intent="out")
