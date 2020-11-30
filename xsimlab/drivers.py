@@ -348,12 +348,15 @@ def _run(
             model.update_state(in_vars, validate=validate_inputs, ignore_static=False)
             signal = model.execute("run_step", rt_context, **execute_kwargs)
 
-            if signal == RuntimeSignal.CONTINUE:
-                continue
-            elif signal == RuntimeSignal.BREAK:
+            if signal == RuntimeSignal.BREAK:
                 break
 
             store.write_output_vars(batch, step, model=model)
+
+            # after writing output variables so that index positions
+            # are properly updated in store.
+            if signal == RuntimeSignal.CONTINUE:
+                continue
 
             signal = model.execute("finalize_step", rt_context, **execute_kwargs)
 
