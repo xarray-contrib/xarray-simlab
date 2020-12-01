@@ -30,6 +30,8 @@ Enhancements
 - Added :func:`~xsimlab.group_dict` variable (:issue:`159`).
 - Added :func:`~xsimlab.global_ref` variable for model-wise implicit linking of
   variables in separate processes, based on global names (:issue:`160`).
+- Added :class:`~xsimlab.RuntimeSignal` for controlling simulation workflow from
+  process runtime methods and/or runtime hook functions (:issue:`161`).
 
 Bug fixes
 ~~~~~~~~~
