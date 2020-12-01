@@ -10,7 +10,8 @@ def runtime_hook(stage, level="model", trigger="post"):
     at one or more specific times during a simulation.
 
     The decorated function / method must have the following signature:
-    ``func(model, context, state)`` or ``meth(self, model, context, state)``.
+    ``func(model, context, state)`` or ``meth(self, model, context, state)``. It
+    may return a :class:`RuntimeSignal` (optional).
 
     Parameters
     ----------
