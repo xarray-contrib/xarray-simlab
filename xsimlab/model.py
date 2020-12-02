@@ -860,7 +860,7 @@ class Model(AttrMapping):
 
         def exec_process(p_obj, model_state, exec_outputs):
             # update model state with output states from all dependent processes
-            # gather signals returned by all dependent processes and sort them by highest piority
+            # gather signals returned by all dependent processes and sort them by highest priority
             state = {}
             signal = RuntimeSignal.NONE
 
@@ -884,7 +884,7 @@ class Model(AttrMapping):
         for p_name, p_deps in self._dep_processes.items():
             dsk[p_name] = (exec_process, self._processes[p_name], self._state, p_deps)
 
-        # add a node to gather output state from all executed processes
+        # add a node to gather output signals and state from all executed processes
         dsk["_gather"] = (
             lambda exec_outputs: dict(exec_outputs),
             list(self._processes),
