@@ -106,20 +106,21 @@ IPython (Jupyter) magic commands
 
 Writing a new setup from scratch may be tedious, especially for big models with
 a lot of input variables. If you are using IPython (Jupyter), xarray-simlab
-provides convenient commands that can be activated with:
+provides helper commands that are available after loading the
+``xsimlab.ipython`` extension, i.e.,
 
 .. ipython:: python
 
    %load_ext xsimlab.ipython
 
 The ``%create_setup`` magic command auto-generates the
-:func:`~xsimlab.create_setup` code cell above from a given model:
+:func:`~xsimlab.create_setup` code cell above from a given model, e.g.,
 
 .. ipython:: python
 
-   %create_setup advect_model --default --comment
+   %create_setup advect_model --default --verbose
 
-The ``--default`` and ``--comment`` options respectively add default values found
+The ``--default`` and ``--verbose`` options respectively add default values found
 for input variables in the model and input variable description as line comments.
 
 Full command help:

@@ -5,6 +5,7 @@ import dask
 import pandas as pd
 
 from .hook import flatten_hooks, group_hooks, RuntimeHook
+from .process import RuntimeSignal
 from .stores import ZarrSimulationStore
 from .utils import get_batch_size
 
@@ -345,16 +346,27 @@ def _run(
 
             in_vars = _get_input_vars(ds_step, model)
             model.update_state(in_vars, validate=validate_inputs, ignore_static=False)
-            model.execute("run_step", rt_context, **execute_kwargs)
+            signal = model.execute("run_step", rt_context, **execute_kwargs)
+
+            if signal == RuntimeSignal.BREAK:
+                break
 
             store.write_output_vars(batch, step, model=model)
 
-            model.execute("finalize_step", rt_context, **execute_kwargs)
+            # after writing output variables so that index positions
+            # are properly updated in store.
+            if signal == RuntimeSignal.CONTINUE:
+                continue
+
+            signal = model.execute("finalize_step", rt_context, **execute_kwargs)
+
+            if signal == RuntimeSignal.BREAK:
+                break
 
         store.write_output_vars(batch, -1, model=model)
         store.write_index_vars(model=model)
-    except Exception as error:
-        raise error
+    except Exception:
+        raise
     finally:
         model.execute("finalize", rt_context, **execute_kwargs)
 

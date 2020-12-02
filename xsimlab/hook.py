@@ -1,10 +1,8 @@
 import inspect
+from enum import Enum
 from typing import Callable, Dict, Iterable, List, Union
 
 from .process import SimulationStage
-
-
-__all__ = ("runtime_hook", "RuntimeHook")
 
 
 def runtime_hook(stage, level="model", trigger="post"):
@@ -12,7 +10,8 @@ def runtime_hook(stage, level="model", trigger="post"):
     at one or more specific times during a simulation.
 
     The decorated function / method must have the following signature:
-    ``func(model, context, state)`` or ``meth(self, model, context, state)``.
+    ``func(model, context, state)`` or ``meth(self, model, context, state)``. It
+    may return a :class:`RuntimeSignal` (optional).
 
     Parameters
     ----------

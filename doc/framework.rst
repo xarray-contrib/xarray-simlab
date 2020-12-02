@@ -224,18 +224,26 @@ A model run is divided into four successive stages:
 3. finalize step
 4. finalization
 
-During a simulation, stages 1 and 4 are run only once while stages 2
-and 3 are repeated for a given number of (time) steps. Stage 4 is run even if
-an exception is raised during stage 1, 2 or 3.
+During a simulation, stages 1 and 4 are run only once while stages 2 and 3 are
+repeated for a given number of (time) steps. Stage 4 is always run even when an
+exception is raised during stage 1, 2 or 3.
 
-Each process-ified class may provide its own computation instructions
-by implementing specific methods named ``.initialize()``,
-``.run_step()``, ``.finalize_step()`` and ``.finalize()`` for each
-stage above, respectively. Note that this is entirely optional. For
-example, time-independent processes (e.g., for setting model grids)
-usually implement stage 1 only. In a few cases, the role of a process
-may even consist of just declaring some variables that are used
-elsewhere.
+Each :func:`~xsimlab.process` decorated class may provide its own computation
+instructions by implementing specific "runtime" methods named ``.initialize()``,
+``.run_step()``, ``.finalize_step()`` and ``.finalize()`` for each stage above,
+respectively. Note that this is entirely optional. For example, time-independent
+processes (e.g., for setting model grids) usually implement stage 1 only. In a
+few cases, the role of a process may even consist of just declaring some
+variables that are used elsewhere.
+
+Runtime methods may be decorated by :func:`~xsimlab.runtime`. This is useful if
+one needs to access the value of some runtime-specific variables like the
+current step, time step duration, etc. from within those methods. Runtime
+methods may also return a :func:`~xsimlab.RuntimeSignal` to control the
+workflow, e.g., break the execution of the current stage.
+
+It is also possible to monitor and/or control simulations independently of any
+model, using runtime hooks. See Section :ref:`monitor`.
 
 Get / set variable values inside a process
 ------------------------------------------

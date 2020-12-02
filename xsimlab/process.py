@@ -308,9 +308,66 @@ def _make_property_group_dict(var):
     return property(fget=getter_state_or_on_demand, doc=var_details(var))
 
 
+class RuntimeSignal(Enum):
+    """Signal controlling simulation runtime.
+
+    Such signal may be returned either by runtime methods of :func:`process`
+    decorated classes or by :func:`runtime_hook` decorated functions or methods.
+
+    All signals listed below are ordered from the lowest to the highest
+    priority. If multiple signals are emitted at the same time during a
+    simulation, the one with the highest priority prevails.
+
+    One signal may affect the simulation workflow in different ways, depending on
+    whether it is returned during the execution of a simulation stage (process-level)
+    or just before/after a stage (model-level).
+
+    Attributes
+    ----------
+    NONE : int
+        Do nothing (blank signal). Used by default when a process
+        runtime method or a hook function doesn't explicitly return a value.
+        Priority = 0.
+    SKIP : int
+        If returned by a pre-hook function, skip the current process
+        (process-level) or the current simulation stage (model-level).
+        Otherwise do nothing.
+        Priority = 1.
+    CONTINUE : int
+        Skip the current process or current simulation stage (pre-hook).
+        When returned by a model-level hook function in a looped
+        simulation stage (e.g., ``run_step``), also skip all remaining
+        simulation stages (e.g., ``finalize_step``) at the current step and
+        continues the simulation at the next step.
+        Priority = 2.
+    BREAK : int
+        Skip the current process or current simulation stage (pre-hook).
+        Also skip all remaining processes in a simulation stage (process-level)
+        or all remaining steps in looped simulation stages (model-level).
+        Priority = 3.
+
+    """
+
+    NONE = 0
+    """Do nothing (blank signal)."""
+    SKIP = 1
+    """Skip the current process or simulation stage."""
+    CONTINUE = 2
+    """Skip all the remaining stages of the current step."""
+    BREAK = 3
+    """Skip all remaining processes or steps."""
+
+
 class _RuntimeMethodExecutor:
     """Used to execute a process 'runtime' method in the context of a
     simulation.
+
+    This is a thin wrapper around a process class runtime method, which:
+
+    - maps method argument(s) to their corresponding simulation runtime variable.
+    - optionally overrides the process object's state with an input state (i.e., when
+      executed as part of a Dask graph).
+    - returns a valid runtime signal.
 
     """
 
@@ -328,13 +385,18 @@ class _RuntimeMethodExecutor:
 
         self.args = tuple(args)
 
-    def execute(self, obj, runtime_context, state=None):
+    def execute(self, p_obj, runtime_context, state=None):
         if state is not None:
-            obj.__xsimlab_state__ = state
+            p_obj.__xsimlab_state__ = state
 
         args = [runtime_context[k] for k in self.args]
 
-        self.meth(obj, *args)
+        signal = self.meth(p_obj, *args)
+
+        if signal is None:
+            return RuntimeSignal.NONE
+        else:
+            return RuntimeSignal(signal)
 
 
 def runtime(meth=None, args=None):
@@ -453,17 +515,25 @@ class _ProcessExecutor:
     def stages(self):
         return [k.value for k in self.runtime_executors]
 
-    def execute(self, obj, stage, runtime_context, state=None):
+    def execute(self, p_obj, stage, runtime_context, state=None):
+        """Maybe execute the given simulation stage (if implemented).
+
+        Returns a state dictionary with only the 'out'/'inout' variables and
+        a runtime signal.
+
+        """
         executor = self.runtime_executors.get(stage)
 
         if executor is None:
-            return {}
+            return {}, RuntimeSignal.NONE
         else:
-            executor.execute(obj, runtime_context, state=state)
+            signal_out = executor.execute(p_obj, runtime_context, state=state)
 
-            skeys = [obj.__xsimlab_state_keys__[k] for k in self.out_vars]
-            sobj = obj.__xsimlab_state__
-            return {k: sobj[k] for k in skeys if k in sobj}
+            skeys = [p_obj.__xsimlab_state_keys__[k] for k in self.out_vars]
+            sobj = p_obj.__xsimlab_state__
+            state_out = {k: sobj[k] for k in skeys if k in sobj}
+
+            return state_out, signal_out
 
 
 def _process_cls_init(obj):

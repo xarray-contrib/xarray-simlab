@@ -16,25 +16,24 @@ it exemplifies how to create your own custom monitoring.
     sys.path.append('scripts')
     from advection_model import advect_model, advect_model_src
 
-The following imports are necessary for the examples below.
+Let's use the following setup for the examples below. It is based on the
+``advect_model`` created in Section :ref:`create_model`.
 
 .. ipython:: python
 
     import xsimlab as xs
 
-.. ipython:: python
-   :suppress:
-
     in_ds = xs.create_setup(
         model=advect_model,
         clocks={
-            'time': np.linspace(0., 1., 5),
+            'time': np.linspace(0., 1., 6),
         },
         input_vars={
             'grid': {'length': 1.5, 'spacing': 0.01},
             'init': {'loc': 0.3, 'scale': 0.1},
             'advect__v': 1.
         },
+        output_vars={'profile__u': 'time'}
     )
 
 
@@ -172,3 +171,41 @@ methods that may share some state:
 
    with PrintStepTime():
        in_ds.xsimlab.run(model=advect_model)
+
+
+Control simulation runtime
+--------------------------
+
+Runtime hook functions may return a :class:`~xsimlab.RuntimeSignal` so that you
+can control the simulation workflow (e.g., skip the current stage or process,
+break the simulation time steps) based on some condition or some computed value.
+
+In the example below, the simulation stops as soon as the gaussian pulse (peak
+value) has been advected past ``x = 0.4``.
+
+.. ipython::
+
+   In [2]: @xs.runtime_hook("run_step", "model", "post")
+      ...: def maybe_stop(model, context, state):
+      ...:     peak_idx = np.argmax(state[('profile', 'u')])
+      ...:     peak_x = state[('grid', 'x')][peak_idx]
+      ...:
+      ...:     if peak_x > 0.4:
+      ...:         print("Peak crossed x=0.4, stop simulation!")
+      ...:         return xs.RuntimeSignal.BREAK
+      ...:
+
+   In [3]: out_ds = in_ds.xsimlab.run(
+      ...:     model=advect_model,
+      ...:     hooks=[print_step_start, maybe_stop]
+      ...: )
+
+Even when a simulation stops early like in the example above, the resulting
+xarray Dataset still contains all time steps defined in the input Dataset.
+Output variables have fill (masked) values for the time steps that were not run,
+as shown below with the ``nan`` values for ``profile__u`` (fill values are not
+stored physically in the Zarr output store).
+
+.. ipython:: python
+
+   out_ds

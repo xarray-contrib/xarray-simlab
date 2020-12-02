@@ -78,7 +78,7 @@ class ProgressBar(RuntimeHook):
         self.pbar_model = self.tqdm(**self.tqdm_kwargs)
 
     @runtime_hook("initialize", trigger="post")
-    def update_init(self, mode, context, state):
+    def update_init(self, model, context, state):
         self.pbar_model.update(1)
 
     @runtime_hook("run_step", trigger="post")
