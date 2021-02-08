@@ -505,7 +505,7 @@ class SimlabAccessor:
 
         if master_clock is not None:
             warnings.warn(
-                "master_clock is to be deprecated in favour ofmain_clock",
+                "master_clock is to be deprecated in favour of main_clock",
                 FutureWarning,
             )
             main_clock = master_clock
@@ -857,7 +857,7 @@ def create_setup(
         :class:`xarray.IndexVariable` objects (e.g., a 1-d
         :class:`numpy.ndarray` or a :class:`pandas.Index`).
     master_clock: str or dict, optional
-        Seemain_clock to be deprecated
+        See main_clock to be deprecated
     main_clock : str or dict, optional
         Name of the clock coordinate (dimension) to use as main clock.
         If not set, the name is inferred from ``clocks`` (only if
@@ -921,7 +921,7 @@ def create_setup(
 
     if master_clock is not None:
         warnings.warn(
-            "master_clock is to be deprecated in favour ofmain_clock",
+            "master_clock is to be deprecated in favour of main_clock",
             FutureWarning,
         )
         main_clock = master_clock
