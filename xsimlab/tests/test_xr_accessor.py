@@ -113,7 +113,7 @@ def test_flatten_outputs_error():
 class TestSimlabAccessor:
 
     _clock_key = xr_accessor.SimlabAccessor._clock_key
-    _master_clock_key = xr_accessor.SimlabAccessor._master_clock_key
+    _main_clock_key = xr_accessor.SimlabAccessor._main_clock_key
     _output_vars_key = xr_accessor.SimlabAccessor._output_vars_key
 
     def test_clock_coords(self):
@@ -122,7 +122,7 @@ class TestSimlabAccessor:
                 "mclock": (
                     "mclock",
                     [0, 1, 2],
-                    {self._clock_key: 1, self._master_clock_key: 1},
+                    {self._clock_key: 1, self._main_clock_key: 1},
                 ),
                 "sclock": ("sclock", [0, 2], {self._clock_key: 1}),
                 "no_clock": ("no_clock", [3, 4]),
@@ -141,19 +141,19 @@ class TestSimlabAccessor:
 
         assert ds.xsimlab.clock_sizes == {"clock1": 3, "clock2": 2}
 
-    def test_master_clock_dim(self):
-        attrs = {self._clock_key: 1, self._master_clock_key: 1}
+    def test_main_clock_dim(self):
+        attrs = {self._clock_key: 1, self._main_clock_key: 1}
         ds = xr.Dataset(coords={"clock": ("clock", [1, 2], attrs)})
 
-        assert ds.xsimlab.master_clock_dim == "clock"
-        assert ds.xsimlab._master_clock_dim == "clock"  # cache
-        assert ds.xsimlab.master_clock_dim == "clock"  # get cached value
+        assert ds.xsimlab.main_clock_dim == "clock"
+        assert ds.xsimlab._main_clock_dim == "clock"  # cache
+        assert ds.xsimlab.main_clock_dim == "clock"  # get cached value
 
         ds = xr.Dataset()
-        assert ds.xsimlab.master_clock_dim is None
+        assert ds.xsimlab.main_clock_dim is None
 
     def test_nsteps(self):
-        attrs = {self._clock_key: 1, self._master_clock_key: 1}
+        attrs = {self._clock_key: 1, self._main_clock_key: 1}
         ds = xr.Dataset(coords={"clock": ("clock", [1, 2, 3], attrs)})
 
         assert ds.xsimlab.nsteps == 2
@@ -162,7 +162,7 @@ class TestSimlabAccessor:
         assert ds.xsimlab.nsteps == 0
 
     def test_get_output_save_steps(self):
-        attrs = {self._clock_key: 1, self._master_clock_key: 1}
+        attrs = {self._clock_key: 1, self._main_clock_key: 1}
         ds = xr.Dataset(
             coords={
                 "clock": ("clock", [0, 1, 2, 3, 4], attrs),
@@ -228,7 +228,7 @@ class TestSimlabAccessor:
             )
 
         ds = xr.Dataset()
-        with pytest.raises(KeyError, match="Master clock dimension name.*"):
+        with pytest.raises(KeyError, match="Main clock dimension name.*"):
             ds.xsimlab.update_clocks(
                 model=model,
                 clocks={"clock": [0, 1, 2]},
@@ -252,7 +252,7 @@ class TestSimlabAccessor:
 
         ds = xr.Dataset()
         ds = ds.xsimlab.update_clocks(model=model, clocks={"clock": [0, 1, 2]})
-        assert ds.xsimlab.master_clock_dim == "clock"
+        assert ds.xsimlab.main_clock_dim == "clock"
 
         ds.clock.attrs[self._output_vars_key] = "profile__u"
 
@@ -275,13 +275,13 @@ class TestSimlabAccessor:
             clocks={"clock2": [0, 0.5, 1, 1.5, 2]},
             master_clock="clock2",
         )
-        assert new_ds.xsimlab.master_clock_dim == "clock2"
+        assert new_ds.xsimlab.main_clock_dim == "clock2"
 
         new_ds = ds.xsimlab.update_clocks(model=model, clocks={"out2": [0, 2]})
-        assert new_ds.xsimlab.master_clock_dim == "clock"
+        assert new_ds.xsimlab.main_clock_dim == "clock"
 
         new_ds = ds.xsimlab.update_clocks(model=model, clocks={"clock": [0, 2, 4]})
-        assert new_ds.xsimlab.master_clock_dim == "clock"
+        assert new_ds.xsimlab.main_clock_dim == "clock"
         np.testing.assert_array_equal(new_ds.clock.values, [0, 2, 4])
 
     def test_update_vars(self, model, in_dataset):
@@ -333,7 +333,7 @@ class TestSimlabAccessor:
         ds["clock"] = (
             "clock",
             [0, 2, 4, 6, 8],
-            {self._clock_key: 1, self._master_clock_key: 1},
+            {self._clock_key: 1, self._main_clock_key: 1},
         )
         ds["out"] = ("out", [0, 4, 8], {self._clock_key: 1})
         ds["not_a_clock"] = ("not_a_clock", [0, 1])

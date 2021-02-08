@@ -86,7 +86,7 @@ def test_get_input_vars_scalar(in_dataset, model, value, is_scalar):
 class TestXarraySimulationDriver:
     def test_constructor(self, in_dataset, model):
         invalid_ds = in_dataset.drop("clock")
-        with pytest.raises(ValueError, match=r"Missing master clock.*"):
+        with pytest.raises(ValueError, match=r"Missing main clock.*"):
             XarraySimulationDriver(invalid_ds, model)
 
         invalid_ds = in_dataset.drop("init_profile__n_points")

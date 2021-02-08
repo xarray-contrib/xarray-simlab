@@ -133,7 +133,7 @@ def simple_model_repr():
 @pytest.fixture
 def in_dataset():
     clock_key = SimlabAccessor._clock_key
-    mclock_key = SimlabAccessor._master_clock_key
+    mclock_key = SimlabAccessor._main_clock_key
     svars_key = SimlabAccessor._output_vars_key
 
     ds = xr.Dataset()
