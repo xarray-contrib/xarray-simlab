@@ -19,7 +19,9 @@ class CheckDimsOption(Enum):
     STRICT = "strict"
     TRANSPOSE = "transpose"
 
+
 MAIN_CLOCK = "_main_clock"
+
 
 class RuntimeContext(Mapping[str, Any]):
     """A mapping providing runtime information at the current time step."""
