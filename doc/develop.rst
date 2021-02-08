@@ -33,9 +33,9 @@ Fork the repository and download the code
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To further be able to submit modifications, it is preferable to start by
-forking the xarray-simlab repository on GitHub_ (you need to have an account).
+forking the xarray-simlab repository on GitHub_ (you need to have an account). 
 
-Then clone your fork locally::
+Fork the project to your own github (online), then clone your fork locally::
 
   $ git clone git@github.com:your_name_here/xarray-simlab.git
 
@@ -45,6 +45,8 @@ original xarray-simlab git repository::
    $ git clone git@github.com:benbovy/xarray-simlab.git
 
 .. _GitHub: https://github.com
+
+for more basic understanding of how to work with code, the [xarray documentation](http://xarray.pydata.org/en/latest/contributing.html#working-with-the-code) helps
 
 Install
 ~~~~~~~
