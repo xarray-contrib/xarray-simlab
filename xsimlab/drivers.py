@@ -19,6 +19,7 @@ class CheckDimsOption(Enum):
     STRICT = "strict"
     TRANSPOSE = "transpose"
 
+MAIN_CLOCK = "_main_clock"
 
 class RuntimeContext(Mapping[str, Any]):
     """A mapping providing runtime information at the current time step."""
@@ -163,7 +164,7 @@ def _generate_runtime_datasets(dataset):
         "_sim_start": mclock_coord[0],
         "_nsteps": dataset.xsimlab.nsteps,
         # since we pass a dataset, we need to set the coords
-        "mclock": dataset.coords[mclock_dim].data,
+        MAIN_CLOCK: dataset.coords[mclock_dim].data,
         "_sim_end": mclock_coord[-1],
     }
 
@@ -330,7 +331,7 @@ def _run(
         sim_start=ds_init["_sim_start"].values,
         nsteps=ds_init["_nsteps"].values,
         sim_end=ds_init["_sim_end"].values,
-        main_clock=ds_init["mclock"],
+        main_clock=ds_init[MAIN_CLOCK],
     )
 
     in_vars = _get_input_vars(ds_init, model)
