@@ -156,15 +156,13 @@ def _generate_runtime_datasets(dataset):
     """
     mclock_dim = dataset.xsimlab.master_clock_dim
 
-
-
     # prevent non-index coordinates be included
     mclock_coord = dataset[mclock_dim].reset_coords(drop=True)
 
     init_data_vars = {
         "_sim_start": mclock_coord[0],
         "_nsteps": dataset.xsimlab.nsteps,
-        #since we pass a dataset, we need to set the coords
+        # since we pass a dataset, we need to set the coords
         "mclock": dataset.coords[mclock_dim].data,
         "_sim_end": mclock_coord[-1],
     }
