@@ -130,6 +130,40 @@ class TestSimlabAccessor:
         )
         assert set(ds.xsimlab.clock_coords) == {"mclock", "sclock"}
 
+    def test_main_clock_coords(self):
+        ds = xr.Dataset(
+            coords={
+                "mclock": (
+                    "mclock",
+                    [0, 1, 2],
+                    {self._clock_key: 1, self._main_clock_key: 1},
+                ),
+                "sclock": ("sclock", [0, 2], {self._clock_key: 1}),
+                "no_clock": ("no_clock", [3, 4]),
+            }
+        )
+        print(ds.xsimlab.main_clock_coord)
+        xr.testing.assert_equal(ds.xsimlab.main_clock_coord, ds.mclock)
+
+    def test_master_clock_coords_warning(self):
+        ds = xr.Dataset(
+            coords={
+                "mclock": (
+                    "mclock",
+                    [0, 1, 2],
+                    {self._clock_key: 1, self._main_clock_key: 1},
+                ),
+                "sclock": ("sclock", [0, 2], {self._clock_key: 1}),
+                "no_clock": ("no_clock", [3, 4]),
+            }
+        )
+        print(ds.xsimlab.main_clock_coord)
+        with pytest.warns(
+            FutureWarning,
+            match="master_clock is to be deprecated in favour of main_clock",
+        ):
+            xr.testing.assert_equal(ds.xsimlab.master_clock_coord, ds.mclock)
+
     def test_clock_sizes(self):
         ds = xr.Dataset(
             coords={

@@ -162,6 +162,15 @@ class SimlabAccessor:
 
     @property
     def master_clock_dim(self):
+        """Dimension used as main clock for model runs. Returns None
+        if no dimension is set as main clock.
+        to be deprecated in favour of `main_clock_dim`
+
+        See Also
+        --------
+        :meth:`Dataset.xsimlab.update_clocks`
+
+        """
         warnings.warn(
             "master_clock is to be deprecated in favour of main_clock",
             FutureWarning,
@@ -194,11 +203,16 @@ class SimlabAccessor:
 
     @property
     def master_clock_coord(self):
+        """Main clock coordinate (as a :class:`xarray.DataArray` object).
+        To be deprecated in a future release in favour of `main_clock_coord`
+
+        Returns None if no main clock is defined in the dataset.
+        """
         warnings.warn(
             "master_clock is to be deprecated in favour of main_clock",
             FutureWarning,
         )
-        return self.main_clock_coord(self)
+        return self.main_clock_coord
 
     @property
     def main_clock_coord(self):

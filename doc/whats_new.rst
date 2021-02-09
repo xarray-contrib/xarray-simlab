@@ -5,6 +5,10 @@ Release Notes
 
 v0.6.0 (Unreleased)
 -------------------
+ - Changed ``master_clock``, ``master_clock_dim`` and ``master_clock_coords`` to 
+   ``main_clock``, ``main_clock_dim`` and ``main_clock_coords`` and all
+   occurences of ``master`` to ``main`` in the rest of the codebase. all 
+   ``master...`` API hooks are still working, but raise a Futurewarning
 
 v0.5.0 (26 January 2021)
 ------------------------
