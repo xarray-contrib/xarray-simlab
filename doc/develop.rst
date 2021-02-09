@@ -33,7 +33,7 @@ Fork the repository and download the code
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To further be able to submit modifications, it is preferable to start by
-forking the xarray-simlab repository on GitHub_ (you need to have an account). 
+forking the xarray-simlab repository on GitHub_ (you need to have an account).
 
 Fork the project to your own github (online), then clone your fork locally::
 
