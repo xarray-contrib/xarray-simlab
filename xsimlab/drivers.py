@@ -7,7 +7,7 @@ import pandas as pd
 from .hook import flatten_hooks, group_hooks, RuntimeHook
 from .process import RuntimeSignal
 from .stores import ZarrSimulationStore
-from .utils import get_batch_size, MAIN_CLOCK
+from .utils import get_batch_size
 
 
 class ValidateOption(Enum):
@@ -334,7 +334,7 @@ def _run(
         sim_end=ds_init["_sim_end"].values,
         main_clock_values=ds_init["_main_clock_values"].values,
         main_clock_array=ds_init["_main_clock_array"].swap_dims(
-            {"_main_clock_array": MAIN_CLOCK}
+            {"_main_clock_array": dataset.xsimlab.master_clock_dim}
         ),
     )
 

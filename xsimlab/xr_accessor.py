@@ -542,7 +542,7 @@ class SimlabAccessor:
         ds.xsimlab._set_output_vars(model, o_vars)
 
         # update the MAIN_CLOCK placeholder TODO: change with master-main conversion.
-        MAIN_CLOCK.main_clock_dim = master_clock
+        MAIN_CLOCK.main_clock_dim = master_clock_dict["dim"]
 
         return ds
 

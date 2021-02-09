@@ -30,7 +30,6 @@ class _MainClockDim(str):
             _MainClockDim._singleton = super(_MainClockDim, cls).__new__(cls)
         return _MainClockDim._singleton
 
-    # xarray dim must be hashable. Normally it returns 0, so define hash function
     def __hash__(self):
         return hash(self.main_clock_dim)
 
