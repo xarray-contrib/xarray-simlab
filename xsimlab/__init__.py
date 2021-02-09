@@ -24,8 +24,7 @@ from .variable import (
     group,
     group_dict,
 )
-from .xr_accessor import SimlabAccessor, create_setup
-from .drivers import MAIN_CLOCK
+from .xr_accessor import MAIN_CLOCK, SimlabAccessor, create_setup
 from . import monitoring
 
 from ._version import get_versions
