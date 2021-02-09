@@ -161,6 +161,14 @@ class SimlabAccessor:
         return Frozen({k: coord.size for k, coord in self.clock_coords.items()})
 
     @property
+    def master_clock_dim(self):
+        warnings.warn(
+            "master_clock is to be deprecated in favour of main_clock",
+            FutureWarning,
+        )
+        return self.main_clock_dim
+
+    @property
     def main_clock_dim(self):
         """Dimension used as main clock for model runs. Returns None
         if no dimension is set as main clock.
@@ -183,6 +191,14 @@ class SimlabAccessor:
                     self._main_clock_dim = dim
                     return dim
             return None
+
+    @property
+    def master_clock_coord(self):
+        warnings.warn(
+            "master_clock is to be deprecated in favour of main_clock",
+            FutureWarning,
+        )
+        return self.main_clock_coord(self)
 
     @property
     def main_clock_coord(self):

@@ -28,7 +28,6 @@ class RuntimeContext(Mapping[str, Any]):
         "batch",
         "sim_start",
         "sim_end",
-        "main_clock",
         "step",
         "nsteps",
         "step_start",

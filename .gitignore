@@ -50,6 +50,9 @@ bin/
 # IPython / Jupyter
 .ipynb_checkpoints
 
+# VsCode
+.vscode/
+
 # misc
 .DS_Store
 
