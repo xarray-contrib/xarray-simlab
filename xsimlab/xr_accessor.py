@@ -503,7 +503,8 @@ class SimlabAccessor:
             - ``dim`` : name of the main clock dimension/coordinate
             - ``units`` : units of all clock coordinate labels
             - ``calendar`` : a unique calendar for all (time) clock coordinates
-        master_clock : same as `main_clock`, to be deprecated
+        master_clock : str or dict, optional
+            Same as `main_clock`, to be deprecated
 
         Returns
         -------
