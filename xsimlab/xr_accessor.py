@@ -520,7 +520,7 @@ class SimlabAccessor:
 
         ds = self._ds.copy()
 
-        if master_clock is not None:
+        if master_clock is not None and main_clock is None:
             warnings.warn(
                 "master_clock is to be deprecated in favour of main_clock",
                 FutureWarning,
