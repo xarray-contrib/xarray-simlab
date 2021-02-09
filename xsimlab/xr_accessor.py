@@ -517,7 +517,8 @@ class SimlabAccessor:
             - ``dim`` : name of the main clock dimension/coordinate
             - ``units`` : units of all clock coordinate labels
             - ``calendar`` : a unique calendar for all (time) clock coordinates
-        master_clock : same as `main_clock`, to be deprecated
+        master_clock : str or dict, optional
+            Same as `main_clock`, to be deprecated
 
         Returns
         -------
@@ -533,7 +534,7 @@ class SimlabAccessor:
 
         ds = self._ds.copy()
 
-        if master_clock is not None:
+        if master_clock is not None and main_clock is None:
             warnings.warn(
                 "master_clock is to be deprecated in favour of main_clock",
                 FutureWarning,
@@ -949,7 +950,7 @@ def create_setup(
         else:
             return ds
 
-    if master_clock is not None:
+    if master_clock is not None and main_clock is None:
         warnings.warn(
             "master_clock is to be deprecated in favour of main_clock",
             FutureWarning,
