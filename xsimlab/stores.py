@@ -182,6 +182,7 @@ class ZarrSimulationStore:
     def _create_zarr_dataset(
         self, model: Model, var_key: VarKey, name: Optional[str] = None
     ):
+        print("creating zarr dataset")
         var_info = self.var_info[var_key]
 
         if name is None:
@@ -241,6 +242,13 @@ class ZarrSimulationStore:
                 f"its accepted dimension(s): {var_info['metadata']['dims']}"
             )
 
+        # set MAIN_CLOCK placeholder to main_clock dimension
+        print("_create_zarr_dataset: ", self.mclock_dim, dim_labels)
+        if self.mclock_dim in dim_labels and MAIN_CLOCK in dim_labels:
+            raise ValueError(
+                f"Main clock: '{self.mclock_dim}' has a duplicate in {dim_labels}."
+                "Please change the name of 'main_clock' in `create_setup`"
+            )
         dim_labels = [self.mclock_dim if d is MAIN_CLOCK else d for d in dim_labels]
 
         if clock is not None:

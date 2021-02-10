@@ -474,6 +474,26 @@ def test_main_clock_access():
     )
     ds_in.xsimlab.run(model=model)
 
+    # test for error when another dim has the same name as xs.MAIN_CLOCK
+    @xs.process
+    class DoubleMainClockDim:
+        a = xs.variable(intent="out", dims=("clock", xs.MAIN_CLOCK))
+
+        def initialize(self):
+            self.a = [[1, 2, 3], [3, 4, 5]]
+
+        def run_step(self):
+            self.a += self.a
+
+    model = xs.Model({"foo": DoubleMainClockDim})
+    # with pytest.raises(ValueError,match="")
+    xs.create_setup(
+        model=model,
+        clocks={"clock": [0, 1, 2, 3]},
+        input_vars={},
+        output_vars={},
+    ).xsimlab.run(model)
+
     # test for error when trying to put xs.MAIN_CLOCK as a dim in an input var
     @xs.process
     class InputMainClockDim:
