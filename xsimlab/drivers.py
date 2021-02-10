@@ -335,7 +335,7 @@ def _run(
         nsteps=ds_init["_nsteps"].values,
         sim_end=ds_init["_sim_end"].values,
         main_clock_values=ds_init["_main_clock_values"].values,
-        main_clock_dataarray=dataset.xsimlab.master_clock_coord,
+        main_clock_dataarray=dataset.xsimlab.main_clock_coord,
     )
 
     in_vars = _get_input_vars(ds_init, model)
