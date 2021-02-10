@@ -142,7 +142,6 @@ class TestSimlabAccessor:
                 "no_clock": ("no_clock", [3, 4]),
             }
         )
-        print(ds.xsimlab.main_clock_coord)
         xr.testing.assert_equal(ds.xsimlab.main_clock_coord, ds.mclock)
 
     def test_master_clock_coords_warning(self):
@@ -157,7 +156,6 @@ class TestSimlabAccessor:
                 "no_clock": ("no_clock", [3, 4]),
             }
         )
-        print(ds.xsimlab.main_clock_coord)
         with pytest.warns(
             FutureWarning,
             match="master_clock is to be deprecated in favour of main_clock",
