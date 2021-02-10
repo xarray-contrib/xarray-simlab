@@ -452,3 +452,41 @@ def test_group_dict_variable():
     model.execute("initialize", {})
 
     assert model.state[("baz", "actual")] == Frozen({("foo", "a"): 1, ("bar", "b"): 2})
+
+
+def test_main_clock_access():
+    @xs.process
+    class Foo:
+        a = xs.variable(intent="out", dims=xs.MAIN_CLOCK)
+        b = xs.variable(intent="out", dims=xs.MAIN_CLOCK)
+
+        @xs.runtime(args=["main_clock_values", "main_clock_dataarray"])
+        def initialize(self, clock_values, clock_array):
+            self.a = clock_values
+            assert all(self.a == [0, 1, 2, 3])
+            self.b = clock_array * 2
+            assert clock_array.dims[0] == "clock"
+            assert all(clock_array[clock_array.dims[0]].data == [0, 1, 2, 3])
+
+    model = xs.Model({"foo": Foo})
+    ds_in = xs.create_setup(
+        model=model, clocks={"clock": [0, 1, 2, 3]}, input_vars={}, output_vars={}
+    )
+    ds_in.xsimlab.run(model=model)
+
+    # test for error when trying to put xs.MAIN_CLOCK as a dim in an input var
+    @xs.process
+    class InputMainClockDim:
+        a = xs.variable(intent="in", dims=xs.MAIN_CLOCK)
+
+    model = xs.Model({"foo": InputMainClockDim})
+    ds_in = xs.create_setup(
+        model=model,
+        clocks={"clock": [0, 1, 2, 3]},
+        input_vars={"foo__a": 5},
+        output_vars={},
+    )
+    with pytest.raises(
+        ValueError, match="Do not pass xs.MAIN_CLOCK into input vars dimensions"
+    ):
+        ds_in.xsimlab.run(model=model)
