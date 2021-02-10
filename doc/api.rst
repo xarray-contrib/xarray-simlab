@@ -42,8 +42,8 @@ properties listed below. Proper use of this accessor should be like:
 
    Dataset.xsimlab.clock_coords
    Dataset.xsimlab.clock_sizes
-   Dataset.xsimlab.master_clock_dim
-   Dataset.xsimlab.master_clock_coord
+   Dataset.xsimlab.main_clock_dim
+   Dataset.xsimlab.main_clock_coord
    Dataset.xsimlab.nsteps
    Dataset.xsimlab.output_vars
    Dataset.xsimlab.output_vars_by_clock

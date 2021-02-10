@@ -113,7 +113,7 @@ def test_flatten_outputs_error():
 class TestSimlabAccessor:
 
     _clock_key = xr_accessor.SimlabAccessor._clock_key
-    _master_clock_key = xr_accessor.SimlabAccessor._master_clock_key
+    _main_clock_key = xr_accessor.SimlabAccessor._main_clock_key
     _output_vars_key = xr_accessor.SimlabAccessor._output_vars_key
 
     def test_clock_coords(self):
@@ -122,13 +122,45 @@ class TestSimlabAccessor:
                 "mclock": (
                     "mclock",
                     [0, 1, 2],
-                    {self._clock_key: 1, self._master_clock_key: 1},
+                    {self._clock_key: 1, self._main_clock_key: 1},
                 ),
                 "sclock": ("sclock", [0, 2], {self._clock_key: 1}),
                 "no_clock": ("no_clock", [3, 4]),
             }
         )
         assert set(ds.xsimlab.clock_coords) == {"mclock", "sclock"}
+
+    def test_main_clock_coords(self):
+        ds = xr.Dataset(
+            coords={
+                "mclock": (
+                    "mclock",
+                    [0, 1, 2],
+                    {self._clock_key: 1, self._main_clock_key: 1},
+                ),
+                "sclock": ("sclock", [0, 2], {self._clock_key: 1}),
+                "no_clock": ("no_clock", [3, 4]),
+            }
+        )
+        xr.testing.assert_equal(ds.xsimlab.main_clock_coord, ds.mclock)
+
+    def test_master_clock_coords_warning(self):
+        ds = xr.Dataset(
+            coords={
+                "mclock": (
+                    "mclock",
+                    [0, 1, 2],
+                    {self._clock_key: 1, self._main_clock_key: 1},
+                ),
+                "sclock": ("sclock", [0, 2], {self._clock_key: 1}),
+                "no_clock": ("no_clock", [3, 4]),
+            }
+        )
+        with pytest.warns(
+            FutureWarning,
+            match="master_clock is to be deprecated in favour of main_clock",
+        ):
+            xr.testing.assert_equal(ds.xsimlab.master_clock_coord, ds.mclock)
 
     def test_clock_sizes(self):
         ds = xr.Dataset(
@@ -141,19 +173,43 @@ class TestSimlabAccessor:
 
         assert ds.xsimlab.clock_sizes == {"clock1": 3, "clock2": 2}
 
-    def test_master_clock_dim(self):
-        attrs = {self._clock_key: 1, self._master_clock_key: 1}
+    def test_main_clock_dim(self):
+        attrs = {self._clock_key: 1, self._main_clock_key: 1}
         ds = xr.Dataset(coords={"clock": ("clock", [1, 2], attrs)})
 
-        assert ds.xsimlab.master_clock_dim == "clock"
-        assert ds.xsimlab._master_clock_dim == "clock"  # cache
-        assert ds.xsimlab.master_clock_dim == "clock"  # get cached value
+        assert ds.xsimlab.main_clock_dim == "clock"
+        assert ds.xsimlab._main_clock_dim == "clock"  # cache
+        assert ds.xsimlab.main_clock_dim == "clock"  # get cached value
 
         ds = xr.Dataset()
-        assert ds.xsimlab.master_clock_dim is None
+        assert ds.xsimlab.main_clock_dim is None
+
+    def test_master_clock_dim_warning(self):
+        attrs = {self._clock_key: 1, self._main_clock_key: 1}
+        ds = xr.Dataset(coords={"clock": ("clock", [1, 2], attrs)})
+
+        with pytest.warns(
+            FutureWarning,
+            match="master_clock is to be deprecated in favour of main_clock",
+        ):
+            assert ds.xsimlab.master_clock_dim == "clock"
+        # internally, _main_clock_dim is used
+        assert ds.xsimlab._main_clock_dim == "clock"  # cache
+        with pytest.warns(
+            FutureWarning,
+            match="master_clock is to be deprecated in favour of main_clock",
+        ):
+            assert ds.xsimlab.master_clock_dim == "clock"  # get cached value
+
+        ds = xr.Dataset()
+        with pytest.warns(
+            FutureWarning,
+            match="master_clock is to be deprecated in favour of main_clock",
+        ):
+            assert ds.xsimlab.master_clock_dim is None
 
     def test_nsteps(self):
-        attrs = {self._clock_key: 1, self._master_clock_key: 1}
+        attrs = {self._clock_key: 1, self._main_clock_key: 1}
         ds = xr.Dataset(coords={"clock": ("clock", [1, 2, 3], attrs)})
 
         assert ds.xsimlab.nsteps == 2
@@ -162,7 +218,7 @@ class TestSimlabAccessor:
         assert ds.xsimlab.nsteps == 0
 
     def test_get_output_save_steps(self):
-        attrs = {self._clock_key: 1, self._master_clock_key: 1}
+        attrs = {self._clock_key: 1, self._main_clock_key: 1}
         ds = xr.Dataset(
             coords={
                 "clock": ("clock", [0, 1, 2, 3, 4], attrs),
@@ -228,11 +284,11 @@ class TestSimlabAccessor:
             )
 
         ds = xr.Dataset()
-        with pytest.raises(KeyError, match="Master clock dimension name.*"):
+        with pytest.raises(KeyError, match="Main clock dimension name.*"):
             ds.xsimlab.update_clocks(
                 model=model,
                 clocks={"clock": [0, 1, 2]},
-                master_clock="non_existing_clock_dim",
+                main_clock="non_existing_clock_dim",
             )
 
         ds = xr.Dataset()
@@ -247,19 +303,19 @@ class TestSimlabAccessor:
             ds.xsimlab.update_clocks(
                 model=model,
                 clocks={"clock": [0, 1, 2], "out": [0, 0.5, 2]},
-                master_clock="clock",
+                main_clock="clock",
             )
 
         ds = xr.Dataset()
         ds = ds.xsimlab.update_clocks(model=model, clocks={"clock": [0, 1, 2]})
-        assert ds.xsimlab.master_clock_dim == "clock"
+        assert ds.xsimlab.main_clock_dim == "clock"
 
         ds.clock.attrs[self._output_vars_key] = "profile__u"
 
         ds = ds.xsimlab.update_clocks(
             model=model,
             clocks={"clock": [0, 1, 2]},
-            master_clock={
+            main_clock={
                 "dim": "clock",
                 "units": "days since 1-1-1 0:0:0",
                 "calendar": "365_days",
@@ -273,16 +329,54 @@ class TestSimlabAccessor:
         new_ds = ds.xsimlab.update_clocks(
             model=model,
             clocks={"clock2": [0, 0.5, 1, 1.5, 2]},
-            master_clock="clock2",
+            main_clock="clock2",
         )
-        assert new_ds.xsimlab.master_clock_dim == "clock2"
+        assert new_ds.xsimlab.main_clock_dim == "clock2"
 
         new_ds = ds.xsimlab.update_clocks(model=model, clocks={"out2": [0, 2]})
-        assert new_ds.xsimlab.master_clock_dim == "clock"
+        assert new_ds.xsimlab.main_clock_dim == "clock"
 
         new_ds = ds.xsimlab.update_clocks(model=model, clocks={"clock": [0, 2, 4]})
-        assert new_ds.xsimlab.master_clock_dim == "clock"
+        assert new_ds.xsimlab.main_clock_dim == "clock"
         np.testing.assert_array_equal(new_ds.clock.values, [0, 2, 4])
+
+    def test_update_clocks_master_clock_warning(self, model):
+        ds = xr.Dataset()
+        ds = ds.xsimlab.update_clocks(model=model, clocks={"clock": [0, 1, 2]})
+        assert ds.xsimlab.main_clock_dim == "clock"
+
+        ds.clock.attrs[self._output_vars_key] = "profile__u"
+
+        # assert that a warning is raised with correct use of update master clock
+        with pytest.warns(
+            FutureWarning,
+            match="master_clock is to be deprecated in favour of main_clock",
+        ):
+            ds = ds.xsimlab.update_clocks(
+                model=model,
+                clocks={"clock": [0, 1, 2]},
+                master_clock={
+                    "dim": "clock",
+                    "units": "days since 1-1-1 0:0:0",
+                    "calendar": "365_days",
+                },
+            )
+
+        np.testing.assert_array_equal(ds.clock.values, [0, 1, 2])
+        assert "units" in ds.clock.attrs
+        assert "calendar" in ds.clock.attrs
+        assert ds.clock.attrs[self._output_vars_key] == "profile__u"
+
+        with pytest.warns(
+            FutureWarning,
+            match="master_clock is to be deprecated in favour of main_clock",
+        ):
+            new_ds = ds.xsimlab.update_clocks(
+                model=model,
+                clocks={"clock2": [0, 0.5, 1, 1.5, 2]},
+                master_clock="clock2",
+            )
+        assert new_ds.xsimlab.main_clock_dim == "clock2"
 
     def test_update_vars(self, model, in_dataset):
         ds = in_dataset.xsimlab.update_vars(
@@ -333,7 +427,7 @@ class TestSimlabAccessor:
         ds["clock"] = (
             "clock",
             [0, 2, 4, 6, 8],
-            {self._clock_key: 1, self._master_clock_key: 1},
+            {self._clock_key: 1, self._main_clock_key: 1},
         )
         ds["out"] = ("out", [0, 4, 8], {self._clock_key: 1})
         ds["not_a_clock"] = ("not_a_clock", [0, 1])
@@ -391,7 +485,7 @@ class TestSimlabAccessor:
                 # snapshot clock with no output variable
                 "out2": [0, 8],
             },
-            master_clock="clock",
+            main_clock="clock",
             output_vars=o_vars,
         )
 
@@ -595,7 +689,7 @@ def test_create_setup(model, in_dataset):
             "add__offset": ("clock", [1, 2, 3, 4, 5]),
         },
         clocks={"clock": [0, 2, 4, 6, 8], "out": [0, 4, 8]},
-        master_clock="clock",
+        main_clock="clock",
         output_vars={
             "profile__u": "clock",
             ("roll", "u_diff"): "out",
@@ -603,4 +697,36 @@ def test_create_setup(model, in_dataset):
             "profile": {"u_opp": None},
         },
     )
+    xr.testing.assert_identical(ds, in_dataset)
+
+
+def test_create_setup_masterclock_warning(model, in_dataset):
+    expected = xr.Dataset()
+    actual = create_setup(model=model, fill_default=False)
+    xr.testing.assert_identical(actual, expected)
+
+    expected = xr.Dataset({"roll__shift": 2})
+    actual = create_setup(model=model, fill_default=True)
+    xr.testing.assert_equal(actual, expected)
+
+    with pytest.warns(
+        FutureWarning, match="master_clock is to be deprecated in favour of main_clock"
+    ):
+        ds = create_setup(
+            model=model,
+            input_vars={
+                "init_profile": {"n_points": 5},
+                ("roll", "shift"): 1,
+                "add__offset": ("clock", [1, 2, 3, 4, 5]),
+            },
+            clocks={"clock": [0, 2, 4, 6, 8], "out": [0, 4, 8]},
+            master_clock="clock",
+            output_vars={
+                "profile__u": "clock",
+                ("roll", "u_diff"): "out",
+                ("add", "u_diff"): "out",
+                "profile": {"u_opp": None},
+            },
+        )
+
     xr.testing.assert_identical(ds, in_dataset)

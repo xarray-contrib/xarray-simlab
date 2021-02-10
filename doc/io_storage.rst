@@ -43,7 +43,7 @@ one used in Section :doc:`run_model`:
             'time': np.linspace(0., 1., 101),
             'otime': [0, 0.5, 1]
         },
-        master_clock='time',
+        main_clock='time',
         input_vars={
             'grid': {'length': 1.5, 'spacing': 0.01},
             'init': {'loc': 0.3, 'scale': 0.1},
