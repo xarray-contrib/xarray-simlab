@@ -345,7 +345,9 @@ class TestSimlabAccessor:
         ds = ds.xsimlab.update_clocks(model=model, clocks={"clock": [0, 1, 2]})
         assert ds.xsimlab.main_clock_dim == "clock"
 
-        # assert that a warning is raised with correct use of update
+        ds.clock.attrs[self._output_vars_key] = "profile__u"
+
+        # assert that a warning is raised with correct use of update master clock
         with pytest.warns(
             FutureWarning,
             match="master_clock is to be deprecated in favour of main_clock",
