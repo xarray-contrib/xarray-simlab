@@ -378,13 +378,6 @@ class TestSimlabAccessor:
             )
         assert new_ds.xsimlab.main_clock_dim == "clock2"
 
-        new_ds = ds.xsimlab.update_clocks(model=model, clocks={"out2": [0, 2]})
-        assert new_ds.xsimlab.main_clock_dim == "clock"
-
-        new_ds = ds.xsimlab.update_clocks(model=model, clocks={"clock": [0, 2, 4]})
-        assert new_ds.xsimlab.main_clock_dim == "clock"
-        np.testing.assert_array_equal(new_ds.clock.values, [0, 2, 4])
-
     def test_update_vars(self, model, in_dataset):
         ds = in_dataset.xsimlab.update_vars(
             model=model,
