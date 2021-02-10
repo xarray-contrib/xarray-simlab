@@ -15,14 +15,12 @@ K = TypeVar("K")
 V = TypeVar("V")
 
 
-class _MainClockDim(str):
+class _MainClockDim:
     """singleton class to be used as main clock dimension: update on runtime
     it has all behaviour that dimensions in a `xr.DataArray` normally have.
     """
 
-    # TODO: it does not show up as a dimension in Jupyter notebook output
     _singleton = None
-    main_clock_dim = "MAIN_CLOCK"
 
     def __new__(cls):
         if _MainClockDim._singleton is None:
@@ -30,19 +28,8 @@ class _MainClockDim(str):
             _MainClockDim._singleton = super(_MainClockDim, cls).__new__(cls)
         return _MainClockDim._singleton
 
-    def __hash__(self):
-        return hash(self.main_clock_dim)
-
-    def __eq__(self, other):
-        return self.main_clock_dim == other
-
-    # so that it shows up in xarray dims
     def __repr__(self):
-        return self.main_clock_dim
-
-    # so it shows up in print()
-    def __str__(self):
-        return self.main_clock_dim
+        return "MAIN_CLOCK (uninitialized)"
 
 
 MAIN_CLOCK = _MainClockDim()

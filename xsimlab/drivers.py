@@ -7,7 +7,7 @@ import pandas as pd
 from .hook import flatten_hooks, group_hooks, RuntimeHook
 from .process import RuntimeSignal
 from .stores import ZarrSimulationStore
-from .utils import get_batch_size
+from .utils import get_batch_size, MAIN_CLOCK
 
 
 class ValidateOption(Enum):
@@ -29,7 +29,7 @@ class RuntimeContext(Mapping[str, Any]):
         "sim_start",
         "sim_end",
         "main_clock_values",
-        "main_clock_array",
+        "main_clock_dataarray",
         "step",
         "nsteps",
         "step_start",
@@ -165,7 +165,6 @@ def _generate_runtime_datasets(dataset):
         "_nsteps": dataset.xsimlab.nsteps,
         # since we pass a dataset, we need to set the coords
         "_main_clock_values": dataset.coords[mclock_dim].data,
-        "_main_clock_array": dataset[mclock_dim].data,
         "_sim_end": mclock_coord[-1],
     }
 
@@ -209,6 +208,9 @@ def _maybe_transpose(dataset, model, check_dims, batch_dim):
 
         if xr_var is None:
             continue
+
+        if any([MAIN_CLOCK in d for d in model.cache[var_key]["metadata"]["dims"]]):
+            raise ValueError("Do not pass xs.MAIN_CLOCK into input vars dimensions")
 
         # all valid dimensions in the right order
         dims = [list(d) for d in model.cache[var_key]["metadata"]["dims"]]
@@ -333,9 +335,7 @@ def _run(
         nsteps=ds_init["_nsteps"].values,
         sim_end=ds_init["_sim_end"].values,
         main_clock_values=ds_init["_main_clock_values"].values,
-        main_clock_array=ds_init["_main_clock_array"].swap_dims(
-            {"_main_clock_array": dataset.xsimlab.master_clock_dim}
-        ),
+        main_clock_dataarray=dataset.xsimlab.master_clock_coord,
     )
 
     in_vars = _get_input_vars(ds_init, model)

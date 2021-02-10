@@ -11,7 +11,7 @@ from xarray import as_variable, Dataset, register_dataset_accessor
 
 from .drivers import XarraySimulationDriver
 from .model import get_model_variables, Model
-from .utils import Frozen, variables_dict, MAIN_CLOCK
+from .utils import Frozen, variables_dict
 from .variable import VarType
 
 
@@ -289,6 +289,7 @@ class SimlabAccessor:
                 )
 
     def _set_input_vars(self, model, input_vars):
+
         invalid_inputs = set(input_vars) - set(model.input_vars)
 
         if invalid_inputs:
@@ -540,9 +541,6 @@ class SimlabAccessor:
         # operations on clock coords may have discarded coord attributes
         o_vars = {k: v for k, v in self.output_vars.items() if v is None or v in ds}
         ds.xsimlab._set_output_vars(model, o_vars)
-
-        # update the MAIN_CLOCK placeholder TODO: change with master-main conversion.
-        MAIN_CLOCK.main_clock_dim = master_clock_dict["dim"]
 
         return ds
 

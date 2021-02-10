@@ -6,7 +6,7 @@ import xarray as xr
 import zarr
 
 from . import Model
-from .utils import get_batch_size, normalize_encoding
+from .utils import get_batch_size, normalize_encoding, MAIN_CLOCK
 from .variable import VarType
 
 
@@ -240,6 +240,8 @@ class ZarrSimulationStore:
                 f"for variable '{name}' doesn't match any of "
                 f"its accepted dimension(s): {var_info['metadata']['dims']}"
             )
+
+        dim_labels = [self.mclock_dim if d is MAIN_CLOCK else d for d in dim_labels]
 
         if clock is not None:
             dim_labels.insert(0, clock)
