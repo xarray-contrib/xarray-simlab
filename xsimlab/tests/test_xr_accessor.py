@@ -342,45 +342,10 @@ class TestSimlabAccessor:
         assert new_ds.xsimlab.main_clock_dim == "clock"
         np.testing.assert_array_equal(new_ds.clock.values, [0, 2, 4])
 
-    def test_update_clocks_masterclock_warning(self, model):
-        ds = xr.Dataset()
-        with pytest.raises(ValueError, match="Cannot determine which clock.*"):
-            ds.xsimlab.update_clocks(model=model, clocks={})
-
-        ds = xr.Dataset()
-        with pytest.raises(ValueError, match="Cannot determine which clock.*"):
-            ds.xsimlab.update_clocks(
-                model=model, clocks={"clock": [0, 1, 2], "out": [0, 2]}
-            )
-
-        ds = xr.Dataset()
-        with pytest.raises(KeyError, match="Main clock dimension name.*"):
-            ds.xsimlab.update_clocks(
-                model=model,
-                clocks={"clock": [0, 1, 2]},
-                master_clock="non_existing_clock_dim",
-            )
-
-        ds = xr.Dataset()
-        with pytest.raises(ValueError, match="Invalid dimension.*"):
-            ds.xsimlab.update_clocks(
-                model=model,
-                clocks={"clock": ("x", [0, 1, 2])},
-            )
-
-        ds = xr.Dataset()
-        with pytest.raises(ValueError, match=".*not synchronized.*"):
-            ds.xsimlab.update_clocks(
-                model=model,
-                clocks={"clock": [0, 1, 2], "out": [0, 0.5, 2]},
-                master_clock="clock",
-            )
-
+    def test_update_clocks_master_clock_warning(self, model):
         ds = xr.Dataset()
         ds = ds.xsimlab.update_clocks(model=model, clocks={"clock": [0, 1, 2]})
         assert ds.xsimlab.main_clock_dim == "clock"
-
-        ds.clock.attrs[self._output_vars_key] = "profile__u"
 
         # assert that a warning is raised with correct use of update
         with pytest.warns(
