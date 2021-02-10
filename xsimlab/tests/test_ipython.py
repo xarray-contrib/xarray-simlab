@@ -143,7 +143,7 @@ ds_in = xs.create_setup(
     input_vars={
         # v1 description
         #     dimensions: ('x',)
-        #     static: master clock dimension not supported
+        #     static: main clock dimension not supported
         'foo__v1': ,
         # v2 description
         'foo__v2': ,
@@ -164,7 +164,7 @@ ds_in = xs.create_setup(
     input_vars={
         # v1 description
         #     dimensions: ('x',)
-        #     static: master clock dimension not supported
+        #     static: main clock dimension not supported
         'foo__v1': ,
         # v2 description
         #     units: m

@@ -41,7 +41,7 @@ def format_var_comment(var, verbose=0):
         if var_dims:
             comment += f"#     dimensions: {var_dims}\n"
         if var.metadata["static"]:
-            comment += f"#     static: master clock dimension not supported\n"
+            comment += f"#     static: main clock dimension not supported\n"
 
     if verbose > 2:
         var_attrs = var.metadata.get("attrs", False)

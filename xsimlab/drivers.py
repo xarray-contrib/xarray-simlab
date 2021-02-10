@@ -110,9 +110,9 @@ def _reset_multi_indexes(dataset):
     return dataset.reset_index(dims), multi_indexes
 
 
-def _check_missing_master_clock(dataset):
-    if dataset.xsimlab.master_clock_dim is None:
-        raise ValueError("Missing master clock dimension / coordinate")
+def _check_missing_main_clock(dataset):
+    if dataset.xsimlab.main_clock_dim is None:
+        raise ValueError("Missing main clock dimension / coordinate")
 
 
 def _check_missing_inputs(dataset, model):
@@ -153,7 +153,7 @@ def _generate_runtime_datasets(dataset):
     Runtime data is added to those datasets.
 
     """
-    mclock_dim = dataset.xsimlab.master_clock_dim
+    mclock_dim = dataset.xsimlab.main_clock_dim
 
     # prevent non-index coordinates be included
     mclock_coord = dataset[mclock_dim].reset_coords(drop=True)
@@ -187,7 +187,7 @@ def _maybe_transpose(dataset, model, check_dims, batch_dim):
     """Check and maybe re-order the dimensions of model input variables in the input
     dataset.
 
-    Dimensions are re-ordered like this: (<batch dim>, <master clock dim>, *model var dims)
+    Dimensions are re-ordered like this: (<batch dim>, <main clock dim>, *model var dims)
 
     Raise an error if dimensions found in the dataset are not valid or could not
     be transposed.
@@ -207,7 +207,7 @@ def _maybe_transpose(dataset, model, check_dims, batch_dim):
 
         # all valid dimensions in the right order
         dims = [list(d) for d in model.cache[var_key]["metadata"]["dims"]]
-        dims += [[dataset.xsimlab.master_clock_dim] + d for d in dims]
+        dims += [[dataset.xsimlab.main_clock_dim] + d for d in dims]
         if batch_dim is not None:
             dims += [[batch_dim] + d for d in dims]
 
@@ -404,7 +404,7 @@ class XarraySimulationDriver(BaseSimulationDriver):
 
         self.dataset, self.multi_indexes = _reset_multi_indexes(dataset)
 
-        _check_missing_master_clock(self.dataset)
+        _check_missing_main_clock(self.dataset)
         _check_missing_inputs(self.dataset, model)
 
         self.batch_dim = batch_dim

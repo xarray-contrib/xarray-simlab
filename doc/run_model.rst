@@ -52,7 +52,7 @@ create a new setup in a very declarative way:
             'time': np.linspace(0., 1., 101),
             'otime': [0, 0.5, 1]
         },
-        master_clock='time',
+        main_clock='time',
         input_vars={
             'grid': {'length': 1.5, 'spacing': 0.01},
             'init': {'loc': 0.3, 'scale': 0.1},
@@ -72,7 +72,7 @@ A setup consists in:
 
 - one or more time dimensions ("clocks") and their given coordinate
   values ;
-- one of these time dimensions, defined as master clock, which will be
+- one of these time dimensions, defined as main clock, which will be
   used to define the simulation time steps (the other time dimensions
   usually serve to take snapshots during a simulation on a different
   but synchronized clock) ;
@@ -81,7 +81,7 @@ A setup consists in:
   clocks (time dimension) or just once at the end of the simulation
   (``None``).
 
-In the example above, we set ``time`` as the master clock dimension
+In the example above, we set ``time`` as the main clock dimension
 and ``otime`` as another dimension for taking snapshots of :math:`u`
 along the grid at three given times of the simulation (beginning,
 middle and end).
@@ -225,7 +225,7 @@ for the ``otime`` coordinate (which serves to take snapshots of
     clocks = {'otime': [0, 0.25, 0.5]}
     with advect_model:
         out_ds3 = (in_ds.xsimlab.update_clocks(clocks=clocks,
-                                               master_clock='time')
+                                               main_clock='time')
                         .xsimlab.run())
     @savefig run_advect_model_clock.png width=100%
     out_ds3.profile__u.plot(col='otime', figsize=(9, 3));
@@ -258,7 +258,7 @@ Time-varying input values
 -------------------------
 
 Except for static variables, all model inputs accept arrays which have a
-dimension that corresponds to the master clock. This is useful for adding
+dimension that corresponds to the main clock. This is useful for adding
 external forcing.
 
 The example below is based on the last example above, but instead of
