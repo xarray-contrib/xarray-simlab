@@ -5,7 +5,7 @@ import warnings
 import attr
 from attr._make import _CountingAttr
 
-from .utils import normalize_encoding
+from .utils import normalize_encoding, MAIN_CLOCK
 
 
 class VarType(Enum):
@@ -57,7 +57,10 @@ def _as_dim_tuple(dims):
     ambiguous and thus not allowed.
 
     """
-    if not len(dims):
+    # MAIN_CLOCK is sentinel and does not have length (or zero), so check explicitly
+    if dims == MAIN_CLOCK:
+        dims = [(dims,)]
+    elif not len(dims):
         dims = [()]
     elif isinstance(dims, str):
         dims = [(dims,)]

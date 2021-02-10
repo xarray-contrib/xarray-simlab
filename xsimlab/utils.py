@@ -15,6 +15,26 @@ K = TypeVar("K")
 V = TypeVar("V")
 
 
+class _MainClockDim:
+    """singleton class to be used as main clock dimension: update on runtime
+    it has all behaviour that dimensions in a `xr.DataArray` normally have.
+    """
+
+    _singleton = None
+
+    def __new__(cls):
+        if _MainClockDim._singleton is None:
+            # if there is no instance of it yet, create a class instance
+            _MainClockDim._singleton = super(_MainClockDim, cls).__new__(cls)
+        return _MainClockDim._singleton
+
+    def __repr__(self):
+        return "MAIN_CLOCK (uninitialized)"
+
+
+MAIN_CLOCK = _MainClockDim()
+
+
 def variables_dict(process_cls):
     """Get all xsimlab variables declared in a process.
 

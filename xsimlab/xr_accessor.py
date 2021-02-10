@@ -319,6 +319,7 @@ class SimlabAccessor:
                 )
 
     def _set_input_vars(self, model, input_vars):
+
         invalid_inputs = set(input_vars) - set(model.input_vars)
 
         if invalid_inputs:

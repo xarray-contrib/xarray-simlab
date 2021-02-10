@@ -24,6 +24,7 @@ from .variable import (
     group,
     group_dict,
 )
+from .utils import MAIN_CLOCK
 from .xr_accessor import SimlabAccessor, create_setup
 from . import monitoring
 
