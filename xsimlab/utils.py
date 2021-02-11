@@ -16,8 +16,12 @@ V = TypeVar("V")
 
 
 class _MainClockDim:
-    """singleton class to be used as main clock dimension: update on runtime
-    it has all behaviour that dimensions in a `xr.DataArray` normally have.
+    """Singleton class to be used as a placeholder of the main clock
+    dimension.
+
+    It will be replaced by the actual dimension label set during simulation setup
+    (i.e., ``main_clock`` argument).
+
     """
 
     _singleton = None
