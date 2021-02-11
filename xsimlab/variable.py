@@ -58,14 +58,17 @@ def _as_dim_tuple(dims):
 
     """
     # MAIN_CLOCK is sentinel and does not have length (or zero), so check explicitly
-    if dims == MAIN_CLOCK:
+    if dims is MAIN_CLOCK:
         dims = [(dims,)]
     elif not len(dims):
         dims = [()]
     elif isinstance(dims, str):
         dims = [(dims,)]
     elif isinstance(dims, list):
-        dims = [tuple([d]) if isinstance(d, str) else tuple(d) for d in dims]
+        dims = [
+            tuple([d]) if (isinstance(d, str) or d is MAIN_CLOCK) else tuple(d)
+            for d in dims
+        ]
     else:
         dims = [dims]
 
@@ -224,6 +227,9 @@ def variable(
     else:
         _init = True
         _repr = True
+        # also check if MAIN_CLOCK is there
+        if any([MAIN_CLOCK in d for d in metadata["dims"]]):
+            raise ValueError("Do not pass xs.MAIN_CLOCK into input vars dimensions")
 
     return attr.attrib(
         metadata=metadata,
@@ -342,7 +348,7 @@ def on_demand(
         Dictionary specifying how to encode this variable's data into a
         serialized format (i.e., as a zarr dataset). Currently used keys
         include 'dtype', 'compressor', 'fill_value', 'order', 'filters'
-        and 'object_codec'. See :func:`zarr.creation.create` for details
+        and 'object_codec'. See :func:`zarr.creation.df` for details
         about these options. Other keys are ignored.
 
     Notes

@@ -462,17 +462,30 @@ def test_main_clock_access():
 
         @xs.runtime(args=["main_clock_values", "main_clock_dataarray"])
         def initialize(self, clock_values, clock_array):
-            self.a = clock_values
-            assert all(self.a == [0, 1, 2, 3])
+            self.a = clock_values * 2
+            assert all(self.a == [0, 2, 4, 6])
             self.b = clock_array * 2
             assert clock_array.dims[0] == "clock"
             assert all(clock_array[clock_array.dims[0]].data == [0, 1, 2, 3])
 
+        @xs.runtime(args=["step_delta", "step"])
+        def run_step(self, dt, n):
+            assert self.a[n] == 2 * n
+            self.a[n] += 1
+
     model = xs.Model({"foo": Foo})
     ds_in = xs.create_setup(
-        model=model, clocks={"clock": [0, 1, 2, 3]}, input_vars={}, output_vars={}
+        model=model,
+        clocks={"clock": range(4)},
+        input_vars={},
+        output_vars={"foo__a": None},
     )
-    ds_in.xsimlab.run(model=model)
+    ds_out = ds_in.xsimlab.run(model=model)
+    assert all(ds_out.foo__a.data == [1, 3, 5, 6])
+
+    # TODO: there is still the problem that the first (0) value of the clock is
+    # set to np.nan in output (still works fine in input) Also, getting
+    # time variables as DataArray as output is not working
 
     # test for error when another dim has the same name as xs.MAIN_CLOCK
     @xs.process
@@ -486,27 +499,27 @@ def test_main_clock_access():
             self.a += self.a
 
     model = xs.Model({"foo": DoubleMainClockDim})
-    # with pytest.raises(ValueError,match="")
-    xs.create_setup(
-        model=model,
-        clocks={"clock": [0, 1, 2, 3]},
-        input_vars={},
-        output_vars={},
-    ).xsimlab.run(model)
+    with pytest.raises(ValueError, match=r"Main clock:*"):
+        xs.create_setup(
+            model=model,
+            clocks={"clock": [0, 1, 2, 3]},
+            input_vars={},
+            output_vars={"foo__a": None},
+        ).xsimlab.run(model)
 
     # test for error when trying to put xs.MAIN_CLOCK as a dim in an input var
     @xs.process
     class InputMainClockDim:
-        a = xs.variable(intent="in", dims=xs.MAIN_CLOCK)
+        with pytest.raises(
+            ValueError, match="Do not pass xs.MAIN_CLOCK into input vars dimensions"
+        ):
+            a = xs.variable(intent="in", dims=xs.MAIN_CLOCK)
 
-    model = xs.Model({"foo": InputMainClockDim})
-    ds_in = xs.create_setup(
-        model=model,
-        clocks={"clock": [0, 1, 2, 3]},
-        input_vars={"foo__a": 5},
-        output_vars={},
-    )
-    with pytest.raises(
-        ValueError, match="Do not pass xs.MAIN_CLOCK into input vars dimensions"
-    ):
-        ds_in.xsimlab.run(model=model)
+        with pytest.raises(
+            ValueError, match="Do not pass xs.MAIN_CLOCK into input vars dimensions"
+        ):
+            b = xs.variable(intent="in", dims=(xs.MAIN_CLOCK,))
+        with pytest.raises(
+            ValueError, match="Do not pass xs.MAIN_CLOCK into input vars dimensions"
+        ):
+            c = xs.variable(intent="in", dims=["a", ("a", xs.MAIN_CLOCK)])

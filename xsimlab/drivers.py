@@ -209,9 +209,6 @@ def _maybe_transpose(dataset, model, check_dims, batch_dim):
         if xr_var is None:
             continue
 
-        if any([MAIN_CLOCK in d for d in model.cache[var_key]["metadata"]["dims"]]):
-            raise ValueError("Do not pass xs.MAIN_CLOCK into input vars dimensions")
-
         # all valid dimensions in the right order
         dims = [list(d) for d in model.cache[var_key]["metadata"]["dims"]]
         dims += [[dataset.xsimlab.main_clock_dim] + d for d in dims]
