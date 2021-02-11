@@ -58,7 +58,7 @@ def _as_dim_tuple(dims):
 
     """
     # MAIN_CLOCK is sentinel and does not have length (or zero), so check explicitly
-    if dims == MAIN_CLOCK:
+    if dims is MAIN_CLOCK:
         dims = [(dims,)]
     elif not len(dims):
         dims = [()]
