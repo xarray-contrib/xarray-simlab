@@ -29,7 +29,7 @@ class _MainClockDim:
         return _MainClockDim._singleton
 
     def __repr__(self):
-        return "MAIN_CLOCK (uninitialized)"
+        return "MAIN_CLOCK (undefined)"
 
 
 MAIN_CLOCK = _MainClockDim()
