@@ -158,9 +158,9 @@ class TestSimlabAccessor:
         )
         with pytest.warns(
             FutureWarning,
-            match="master_clock is to be deprecated in favour of main_clock",
+            match="master_clock_coord is to be deprecated in favour of main_clock",
         ):
-            xr.testing.assert_equal(ds.xsimlab.master_clock_coord, ds.mclock)
+            ds.xsimlab.master_clock_coord
 
     def test_clock_sizes(self):
         ds = xr.Dataset(
