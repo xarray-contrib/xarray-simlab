@@ -463,7 +463,7 @@ def test_main_clock_access():
         @xs.runtime(args=["main_clock_values", "main_clock_dataarray"])
         def initialize(self, clock_values, clock_array):
             self.a = clock_values * 2
-            assert all(self.a == [0, 2, 4, 6])
+            np.testing.assert_equal(self.a, [0, 2, 4, 6])
             self.b = clock_array * 2
             assert clock_array.dims[0] == "clock"
             assert all(clock_array[clock_array.dims[0]].data == [0, 1, 2, 3])
