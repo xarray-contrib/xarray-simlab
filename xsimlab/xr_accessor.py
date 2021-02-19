@@ -212,7 +212,6 @@ class SimlabAccessor:
             "master_clock_coord is to be deprecated in favour of main_clock",
             FutureWarning,
         )
-        warnings.warn("Poep in je hoofd!")
         return self.main_clock_coord
 
     @property
