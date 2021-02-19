@@ -37,6 +37,10 @@ class _MainClockDim:
 
 
 MAIN_CLOCK = _MainClockDim()
+"""
+Sentinel to indicate simulation's main clock dimension, to be
+replaced by the actual dimension label set in input/output datasets.
+"""
 
 
 def variables_dict(process_cls):

@@ -483,10 +483,6 @@ def test_main_clock_access():
     ds_out = ds_in.xsimlab.run(model=model)
     assert all(ds_out.foo__a.data == [1, 3, 5, 6])
 
-    # TODO: there is still the problem that the first (0) value of the clock is
-    # set to np.nan in output (still works fine in input) Also, getting
-    # time variables as DataArray as output is not working
-
     # test for error when another dim has the same name as xs.MAIN_CLOCK
     @xs.process
     class DoubleMainClockDim:
@@ -508,18 +504,16 @@ def test_main_clock_access():
         ).xsimlab.run(model)
 
     # test for error when trying to put xs.MAIN_CLOCK as a dim in an input var
-    @xs.process
-    class InputMainClockDim:
-        with pytest.raises(
-            ValueError, match="Do not pass xs.MAIN_CLOCK into input vars dimensions"
-        ):
-            a = xs.variable(intent="in", dims=xs.MAIN_CLOCK)
+    with pytest.raises(
+        ValueError, match="Do not pass xs.MAIN_CLOCK into input vars dimensions"
+    ):
+        a = xs.variable(intent="in", dims=xs.MAIN_CLOCK)
 
-        with pytest.raises(
-            ValueError, match="Do not pass xs.MAIN_CLOCK into input vars dimensions"
-        ):
-            b = xs.variable(intent="in", dims=(xs.MAIN_CLOCK,))
-        with pytest.raises(
-            ValueError, match="Do not pass xs.MAIN_CLOCK into input vars dimensions"
-        ):
-            c = xs.variable(intent="in", dims=["a", ("a", xs.MAIN_CLOCK)])
+    with pytest.raises(
+        ValueError, match="Do not pass xs.MAIN_CLOCK into input vars dimensions"
+    ):
+        b = xs.variable(intent="in", dims=(xs.MAIN_CLOCK,))
+    with pytest.raises(
+        ValueError, match="Do not pass xs.MAIN_CLOCK into input vars dimensions"
+    ):
+        c = xs.variable(intent="in", dims=["a", ("a", xs.MAIN_CLOCK)])

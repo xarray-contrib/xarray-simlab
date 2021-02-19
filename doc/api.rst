@@ -154,7 +154,7 @@ Variable
 
 .. autosummary::
    :toctree: _api_generated/
-
+   MAIN_CLOCK
    variable
    index
    any_object

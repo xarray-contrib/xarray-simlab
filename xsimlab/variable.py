@@ -348,7 +348,7 @@ def on_demand(
         Dictionary specifying how to encode this variable's data into a
         serialized format (i.e., as a zarr dataset). Currently used keys
         include 'dtype', 'compressor', 'fill_value', 'order', 'filters'
-        and 'object_codec'. See :func:`zarr.creation.df` for details
+        and 'object_codec'. See :func:`zarr.creation.create` for details
         about these options. Other keys are ignored.
 
     Notes
