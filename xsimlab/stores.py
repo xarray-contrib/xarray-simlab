@@ -60,8 +60,12 @@ def ensure_no_dataset_conflict(zgroup, znames):
 def default_fill_value_from_dtype(dtype=None):
     if dtype is None:
         return 0
-    if dtype.kind == "f":
+    elif dtype.kind == "f":
         return np.nan
+    elif dtype.kind == "i":
+        return np.iinfo(dtype).max
+    elif dtype.kind == "u":
+        return np.iinfo(dtype).max
     elif dtype.kind in "c":
         return (
             default_fill_value_from_dtype(dtype.type().real.dtype),
@@ -135,7 +139,6 @@ class ZarrSimulationStore:
         self.decoding = decoding
 
         self.var_info = _get_var_info(dataset, model, encoding)
-
         self.batch_dim = batch_dim
         self.batch_size = get_batch_size(dataset, batch_dim)
 
@@ -190,7 +193,11 @@ class ZarrSimulationStore:
         value = model.cache[var_key]["value"]
         clock = var_info["clock"]
 
-        dtype = getattr(value, "dtype", np.asarray(value).dtype)
+        if "dtype" in var_info["metadata"]["encoding"]:
+            dtype = np.dtype(var_info["metadata"]["encoding"]["dtype"])
+        else:
+            dtype = getattr(value, "dtype", np.asarray(value).dtype)
+
         shape = list(np.shape(value))
         chunks = list(get_auto_chunks(shape, dtype))
 
