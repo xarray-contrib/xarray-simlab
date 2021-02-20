@@ -139,7 +139,7 @@ class ZarrSimulationStore:
         self.batch_dim = batch_dim
         self.batch_size = get_batch_size(dataset, batch_dim)
 
-        self.mclock_dim = dataset.xsimlab.master_clock_dim
+        self.mclock_dim = dataset.xsimlab.main_clock_dim
         self.clock_sizes = dataset.xsimlab.clock_sizes
 
         # initialize clock incrementers

@@ -122,7 +122,7 @@ class TestZarrSimulationStore:
             ztest.add__u_diff, np.array([2.0, np.nan, np.nan])
         )
 
-        # test save master clock but not out clock
+        # test save main clock but not out clock
         store.write_output_vars(-1, 1)
         np.testing.assert_array_equal(ztest.profile__u[1], np.array([1.0, 2.0, 3.0]))
         np.testing.assert_array_equal(
