@@ -59,7 +59,6 @@ def ensure_no_dataset_conflict(zgroup, znames):
 
 
 def default_fill_value_from_dtype(dtype=None):
-    print("default_from_dtype: ", dtype.kind)
     if dtype is None:
         return 0
     elif dtype.kind == "f":
@@ -69,7 +68,6 @@ def default_fill_value_from_dtype(dtype=None):
     elif dtype.kind == "u":
         return np.iinfo(dtype).max
     elif dtype.kind == "U":
-        print("string dtype")
         return ""
     elif dtype.kind in "c":
         return (
@@ -78,9 +76,11 @@ def default_fill_value_from_dtype(dtype=None):
         )
     elif dtype.kind == "b":
         warnings.warn(
-            "Filling 0 values for a boolean datatype, please consider changing `encoding={'mask_and_scale':False}` in `model.run()`"
+            "Filling `False` values for a boolean datatype, please "
+            "consider changing `encoding={'mask_and_scale':False}`"
+            " in `model.run()` to get them in the output array"
         )
-        return 0
+        return False
     else:
         return 0
 
@@ -149,6 +149,7 @@ class ZarrSimulationStore:
         self.decoding = decoding
 
         self.var_info = _get_var_info(dataset, model, encoding)
+
         self.batch_dim = batch_dim
         self.batch_size = get_batch_size(dataset, batch_dim)
 
