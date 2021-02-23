@@ -75,11 +75,7 @@ def default_fill_value_from_dtype(dtype=None):
             default_fill_value_from_dtype(dtype.type().imag.dtype),
         )
     elif dtype.kind == "b":
-        warnings.warn(
-            "Filling `False` values for a boolean datatype, please "
-            "consider changing `encoding={'mask_and_scale':False}`"
-            " in `model.run()` to get them in the output array"
-        )
+        print(dtype)
         return False
     else:
         return 0
