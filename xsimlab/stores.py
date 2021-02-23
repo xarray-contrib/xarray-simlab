@@ -59,7 +59,7 @@ def ensure_no_dataset_conflict(zgroup, znames):
 
 
 def default_fill_value_from_dtype(dtype=None):
-    print('default_from_dtype: ',dtype.kind)
+    print("default_from_dtype: ", dtype.kind)
     if dtype is None:
         return 0
     elif dtype.kind == "f":
@@ -68,16 +68,18 @@ def default_fill_value_from_dtype(dtype=None):
         return np.iinfo(dtype).max
     elif dtype.kind == "u":
         return np.iinfo(dtype).max
-    elif dtype.kind == 'U':
-        print('string dtype')
-        return ''
+    elif dtype.kind == "U":
+        print("string dtype")
+        return ""
     elif dtype.kind in "c":
         return (
             default_fill_value_from_dtype(dtype.type().real.dtype),
             default_fill_value_from_dtype(dtype.type().imag.dtype),
         )
     elif dtype.kind == "b":
-        warnings.warn("Filling 0 values for a boolean datatype, please consider changing `encoding={'mask_and_scale':False}` in `model.run()`")
+        warnings.warn(
+            "Filling 0 values for a boolean datatype, please consider changing `encoding={'mask_and_scale':False}` in `model.run()`"
+        )
         return 0
     else:
         return 0
@@ -270,9 +272,7 @@ class ZarrSimulationStore:
         self.consolidated = False
 
     def _maybe_resize_zarr_dataset(
-        self,
-        model: Model,
-        var_key: VarKey,
+        self, model: Model, var_key: VarKey,
     ):
         # Maybe increases the length of one or more dimensions of
         # the zarr array (only increases, never shrinks dimensions).
