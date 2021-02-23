@@ -1,5 +1,6 @@
 from collections.abc import MutableMapping
 from typing import Any, Dict, Optional, Tuple, Union
+import warnings
 
 import numpy as np
 import xarray as xr
@@ -58,6 +59,7 @@ def ensure_no_dataset_conflict(zgroup, znames):
 
 
 def default_fill_value_from_dtype(dtype=None):
+    print('default_from_dtype: ',dtype.kind)
     if dtype is None:
         return 0
     elif dtype.kind == "f":
@@ -66,11 +68,17 @@ def default_fill_value_from_dtype(dtype=None):
         return np.iinfo(dtype).max
     elif dtype.kind == "u":
         return np.iinfo(dtype).max
+    elif dtype.kind == 'U':
+        print('string dtype')
+        return ''
     elif dtype.kind in "c":
         return (
             default_fill_value_from_dtype(dtype.type().real.dtype),
             default_fill_value_from_dtype(dtype.type().imag.dtype),
         )
+    elif dtype.kind == "b":
+        warnings.warn("Filling 0 values for a boolean datatype, please consider changing `encoding={'mask_and_scale':False}` in `model.run()`")
+        return 0
     else:
         return 0
 
