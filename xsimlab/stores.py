@@ -74,9 +74,6 @@ def default_fill_value_from_dtype(dtype=None):
             default_fill_value_from_dtype(dtype.type().real.dtype),
             default_fill_value_from_dtype(dtype.type().imag.dtype),
         )
-    elif dtype.kind == "b":
-        print(dtype)
-        return False
     else:
         return 0
 
