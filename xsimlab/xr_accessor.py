@@ -172,7 +172,8 @@ class SimlabAccessor:
 
         """
         warnings.warn(
-            "master_clock is to be deprecated in favour of main_clock", FutureWarning,
+            "master_clock is to be deprecated in favour of main_clock",
+            FutureWarning,
         )
         return self.main_clock_dim
 
@@ -208,7 +209,8 @@ class SimlabAccessor:
         Returns None if no main clock is defined in the dataset.
         """
         warnings.warn(
-            "master_clock is to be deprecated in favour of main_clock", FutureWarning,
+            "master_clock is to be deprecated in favour of main_clock",
+            FutureWarning,
         )
         return self.main_clock_coord
 
@@ -950,7 +952,8 @@ def create_setup(
 
     if master_clock is not None and main_clock is None:
         warnings.warn(
-            "master_clock is to be deprecated in favour of main_clock", FutureWarning,
+            "master_clock is to be deprecated in favour of main_clock",
+            FutureWarning,
         )
         main_clock = master_clock
 

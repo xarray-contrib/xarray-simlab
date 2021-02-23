@@ -297,7 +297,12 @@ def index(
 
 
 def on_demand(
-    dims=(), group=None, groups=None, description="", attrs=None, encoding=None,
+    dims=(),
+    group=None,
+    groups=None,
+    description="",
+    attrs=None,
+    encoding=None,
 ):
     """Create a variable that is computed on demand.
 
