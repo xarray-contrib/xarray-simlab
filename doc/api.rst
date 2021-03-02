@@ -141,6 +141,8 @@ Process introspection and variables
    variable_info
    filter_variables
 
+
+
 Process runtime methods
 -----------------------
 
@@ -154,8 +156,9 @@ Variable
 
 .. autosummary::
    :toctree: _api_generated/
-   MAIN_CLOCK
+
    variable
+   MAIN_CLOCK
    index
    any_object
    foreign
