@@ -149,6 +149,86 @@ computing with Dask`_ in xarray's docs).
 
 Advanced usage
 --------------
+Encoding options
+~~~~~~~~~~~~~~~~
+
+It is possible to control via some encoding options how Zarr stores simulation
+data. Those options can be set for variables declared in process classes. See
+the ``encoding`` parameter of :func:`~xsimlab.variable` for all available
+options. Encoding options may also be set or overridden when calling
+:func:`~xarray.Dataset.xsimlab.run`. A often encountered use-case for encoding, 
+is to suppress ``nan`` values in the output dataset:
+
+Default fill values
+~~~~~~~~~~~~~~~~~~~
+
+By default, output variables have a fill value that is set to `np.nan` in output. 
+These values are determined during model runtime from the variable's datatype.
+This only affects the output array: during the model run, the actual values are used. 
+
+.. list-table:: Fill values
+   :header-rows: 1
+
+   * - datatype
+     - fill values
+     - example
+   * - (unsigned) integer
+     - maximum possible value
+     - uint8, 255
+   * - float
+     - np.nan
+     -
+   * - string
+     - empty string
+     - ""
+   * - bool
+     - False
+     - 
+   * - complex values
+     - default for each dtype
+     - 
+
+Especially for boolean datatypes, where the default fill value is ``False``, it is
+desireable to suppress this behaviour. There are several options, with different 
+benefits and drawbacks, as outlined below.  
+
+
+If you know beforehand what the ``fill_value`` should be, this can be set directly in the process class:
+
+.. literalinclude:: scripts/encoding.py
+   :lines: 5-13
+
+.. ipython:: python
+   :suppress:
+
+   from encoding import Foo
+
+The resulting output is set to nan when no ``fill_value`` is specified:
+
+.. ipython:: python
+
+   model = xs.Model({"foo":Foo})
+   in_ds = xs.create_setup(
+      model=model,
+      clocks={"clock": [0, 1]},
+      output_vars={"foo__v_bool": None, "foo__v_bool_nan": None},
+   )
+   #this will result in nan values in output
+   in_ds.xsimlab.run(model=model)
+
+Alternatively, encoding (or decoding) options can be set during model run:
+
+.. ipython:: python
+
+   # set encoding options during model run
+   in_ds.xsimlab.run(model=model, encoding={"foo__v_bool_nan": {"fill_value": None}})
+
+   # set mask_and_scale to false
+   in_ds.xsimlab.run(model=model, decoding={"mask_and_scale": False})
+
+However, using ``mask_and_scale:False`` results in non-serializeable attributes 
+in the output dataset, so the other alternatives are preferable.
+
 
 Dynamically sized arrays
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -206,22 +286,4 @@ to the xarray Dataset or DataArray :meth:`~xarray.Dataset.stack`,
 
 .. _io_storage_encoding:
 
-Encoding options
-~~~~~~~~~~~~~~~~
 
-It is possible to control via some encoding options how Zarr stores simulation
-data. Those options can be set for variables declared in process classes. See
-the ``encoding`` parameter of :func:`~xsimlab.variable` for all available
-options. Encoding options may also be set or overridden when calling
-:func:`~xarray.Dataset.xsimlab.run`.
-
-.. warning::
-
-   Zarr uses ``0`` as the default fill value for numeric value types. This may
-   badly affect the results, as array elements with the fill value are replaced
-   by NA in the output xarray Dataset. For variables which accept ``0`` as a
-   possible (non-missing) value, it is highly recommended to explicitly provide
-   another ``fill_value``. Alternatively, it is possible to deactivate this
-   value masking behavior by setting the ``mask_and_scale=False`` option and
-   pass it via the ``decoding`` parameter of
-   :func:`~xarray.Dataset.xsimlab.run`.
