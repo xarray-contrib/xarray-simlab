@@ -7,7 +7,7 @@ import xarray as xr
 import zarr
 
 from . import Model
-from .utils import get_batch_size, normalize_encoding
+from .utils import get_batch_size, normalize_encoding, MAIN_CLOCK
 from .variable import VarType
 
 
@@ -252,6 +252,14 @@ class ZarrSimulationStore:
                 f"its accepted dimension(s): {var_info['metadata']['dims']}"
             )
 
+        # set MAIN_CLOCK placeholder to main_clock dimension
+        if self.mclock_dim in dim_labels and MAIN_CLOCK in dim_labels:
+            raise ValueError(
+                f"Main clock: '{self.mclock_dim}' has a duplicate in {dim_labels}."
+                "Please change the name of 'main_clock' in `create_setup`"
+            )
+        dim_labels = [self.mclock_dim if d is MAIN_CLOCK else d for d in dim_labels]
+
         if clock is not None:
             dim_labels.insert(0, clock)
         if add_batch_dim:
@@ -331,7 +339,6 @@ class ZarrSimulationStore:
 
                 else:
                     idx_dims = [clock_inc] + [slice(0, n) for n in np.shape(value)]
-
                     if batch != -1:
                         idx_dims.insert(0, batch)
 

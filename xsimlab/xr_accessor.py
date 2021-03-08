@@ -209,7 +209,7 @@ class SimlabAccessor:
         Returns None if no main clock is defined in the dataset.
         """
         warnings.warn(
-            "master_clock is to be deprecated in favour of main_clock",
+            "master_clock_coord is to be deprecated in favour of main_clock",
             FutureWarning,
         )
         return self.main_clock_coord
@@ -224,7 +224,7 @@ class SimlabAccessor:
 
     @property
     def nsteps(self):
-        """Number of simulation steps, computed from the master
+        """Number of simulation steps, computed from the main
         clock coordinate.
 
         Returns 0 if no main clock is defined in the dataset.
@@ -319,6 +319,7 @@ class SimlabAccessor:
                 )
 
     def _set_input_vars(self, model, input_vars):
+
         invalid_inputs = set(input_vars) - set(model.input_vars)
 
         if invalid_inputs:

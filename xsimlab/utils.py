@@ -15,6 +15,34 @@ K = TypeVar("K")
 V = TypeVar("V")
 
 
+class _MainClockDim:
+    """Singleton class to be used as a placeholder of the main clock
+    dimension.
+
+    It will be replaced by the actual dimension label set during simulation setup
+    (i.e., ``main_clock`` argument).
+
+    """
+
+    _singleton = None
+
+    def __new__(cls):
+        if _MainClockDim._singleton is None:
+            # if there is no instance of it yet, create a class instance
+            _MainClockDim._singleton = super(_MainClockDim, cls).__new__(cls)
+        return _MainClockDim._singleton
+
+    def __repr__(self):
+        return "MAIN_CLOCK (undefined)"
+
+
+MAIN_CLOCK = _MainClockDim()
+"""
+Sentinel to indicate simulation's main clock dimension, to be
+replaced by the actual dimension label set in input/output datasets.
+"""
+
+
 def variables_dict(process_cls):
     """Get all xsimlab variables declared in a process.
 

@@ -452,3 +452,68 @@ def test_group_dict_variable():
     model.execute("initialize", {})
 
     assert model.state[("baz", "actual")] == Frozen({("foo", "a"): 1, ("bar", "b"): 2})
+
+
+def test_main_clock_access():
+    @xs.process
+    class Foo:
+        a = xs.variable(intent="out", dims=xs.MAIN_CLOCK)
+        b = xs.variable(intent="out", dims=xs.MAIN_CLOCK)
+
+        @xs.runtime(args=["main_clock_values", "main_clock_dataarray"])
+        def initialize(self, clock_values, clock_array):
+            self.a = clock_values * 2
+            np.testing.assert_equal(self.a, [0, 2, 4, 6])
+            self.b = clock_array * 2
+            assert clock_array.dims[0] == "clock"
+            assert all(clock_array[clock_array.dims[0]].data == [0, 1, 2, 3])
+
+        @xs.runtime(args=["step_delta", "step"])
+        def run_step(self, dt, n):
+            assert self.a[n] == 2 * n
+            self.a[n] += 1
+
+    model = xs.Model({"foo": Foo})
+    ds_in = xs.create_setup(
+        model=model,
+        clocks={"clock": range(4)},
+        input_vars={},
+        output_vars={"foo__a": None},
+    )
+    ds_out = ds_in.xsimlab.run(model=model)
+    assert all(ds_out.foo__a.data == [1, 3, 5, 6])
+
+    # test for error when another dim has the same name as xs.MAIN_CLOCK
+    @xs.process
+    class DoubleMainClockDim:
+        a = xs.variable(intent="out", dims=("clock", xs.MAIN_CLOCK))
+
+        def initialize(self):
+            self.a = [[1, 2, 3], [3, 4, 5]]
+
+        def run_step(self):
+            self.a += self.a
+
+    model = xs.Model({"foo": DoubleMainClockDim})
+    with pytest.raises(ValueError, match=r"Main clock:*"):
+        xs.create_setup(
+            model=model,
+            clocks={"clock": [0, 1, 2, 3]},
+            input_vars={},
+            output_vars={"foo__a": None},
+        ).xsimlab.run(model)
+
+    # test for error when trying to put xs.MAIN_CLOCK as a dim in an input var
+    with pytest.raises(
+        ValueError, match="Do not pass xs.MAIN_CLOCK into input vars dimensions"
+    ):
+        a = xs.variable(intent="in", dims=xs.MAIN_CLOCK)
+
+    with pytest.raises(
+        ValueError, match="Do not pass xs.MAIN_CLOCK into input vars dimensions"
+    ):
+        b = xs.variable(intent="in", dims=(xs.MAIN_CLOCK,))
+    with pytest.raises(
+        ValueError, match="Do not pass xs.MAIN_CLOCK into input vars dimensions"
+    ):
+        c = xs.variable(intent="in", dims=["a", ("a", xs.MAIN_CLOCK)])

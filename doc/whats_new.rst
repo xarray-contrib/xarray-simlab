@@ -9,10 +9,12 @@ v0.6.0 (Unreleased)
    ``main_clock``, ``main_clock_dim`` and ``main_clock_coords`` and all
    occurences of ``master`` to ``main`` in the rest of the codebase. all 
    ``master...`` API hooks are still working, but raise a Futurewarning
+ - Added access to main clock in initialize step as ``main_clock_values``
+   and as a ``xr.DataArray``: ``main_clock_array``. for refering to the main
+   clock as a dimension label, the placeholder ``xs.MAIN_CLOCK`` can be used.
+   This will be set to the main clock when storing the dataset.
  - Changed default ``fill_value`` in the zarr stores to maximum dtype value 
    for integer dtypes and ``np.nan`` for floating-point variables.
-
-
 
 v0.5.0 (26 January 2021)
 ------------------------
