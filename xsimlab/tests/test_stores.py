@@ -286,6 +286,44 @@ class TestZarrSimulationStore:
         assert ztest.p__v3.chunks == (10,)
         assert ztest.p__v4[0] == {"foo": "bar"}
 
+    def test_fill_values(self):
+        @xs.process
+        class Foo:
+            v_int64 = xs.variable(dims="x", intent="out")
+            v_float64 = xs.variable(dims="x", intent="out")
+            v_uint8 = xs.variable(dims="x", intent="out", encoding={"dtype": np.uint8})
+            v_string = xs.variable(dims="x", intent="out")
+            v_bool = xs.variable(dims="x", intent="out")
+
+            def initialize(self):
+                self.v_int64 = [0, np.iinfo("int64").max]
+                self.v_float64 = [0.0, np.nan]
+                self.v_uint8 = [0, 255]
+                self.v_string = ["hello", ""]
+                self.v_bool = [True, False]
+
+        model = xs.Model({"foo": Foo})
+        in_ds = xs.create_setup(
+            model=model,
+            clocks={"clock": [0, 1]},
+            output_vars={
+                "foo__v_int64": None,
+                "foo__v_float64": None,
+                "foo__v_uint8": None,
+                "foo__v_string": None,
+                "foo__v_bool": None,
+            },
+        )
+        out_ds = in_ds.xsimlab.run(model=model)
+        np.testing.assert_equal(out_ds["foo__v_int64"].data, [0, np.nan])
+        np.testing.assert_equal(out_ds["foo__v_float64"].data, [0.0, np.nan])
+        np.testing.assert_equal(out_ds["foo__v_uint8"].data, [0, np.nan])
+        # np.testing.assert_equal does not work for "object" dtypes, so test each value explicitly:
+        assert out_ds["foo__v_string"].data[0] == "hello"
+        assert np.isnan(out_ds["foo__v_string"].data[1])
+        assert out_ds["foo__v_bool"].data[0] == True
+        assert np.isnan(out_ds["foo__v_bool"].data[1])
+
     def test_open_as_xr_dataset(self, store):
         model = store.model
         model.state[("profile", "u")] = np.array([1.0, 2.0, 3.0])
