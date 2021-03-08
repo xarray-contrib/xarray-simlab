@@ -183,7 +183,7 @@ files) in ``xarray-simlab/doc``.
 To build the documentation locally, first install requirements (for example here
 in a separate conda environment)::
 
-   $ conda env create -n xarray-simlab_doc -f doc/environment.yml
+   $ conda env create -n xarray-simlab_doc -f ci/requirements/doc.yml
    $ conda activate xarray-simlab_doc
 
 Then build documentation with ``make``::

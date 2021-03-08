@@ -9,6 +9,10 @@ v0.6.0 (Unreleased)
    ``main_clock``, ``main_clock_dim`` and ``main_clock_coords`` and all
    occurences of ``master`` to ``main`` in the rest of the codebase. all 
    ``master...`` API hooks are still working, but raise a Futurewarning
+ - Changed default ``fill_value`` in the zarr stores to maximum dtype value 
+   for integer dtypes and ``np.nan`` for floating-point variables.
+
+
 
 v0.5.0 (26 January 2021)
 ------------------------
