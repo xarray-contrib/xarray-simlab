@@ -79,8 +79,8 @@ extensions = [
 ]
 
 extlinks = {
-    "issue": ("https://github.com/benbovy/xarray-simlab/issues/%s", "#"),
-    "pull": ("https://github.com/benbovy/xarray-simlab/pull/%s", "#"),
+    "issue": ("https://github.com/xarray-contrib/xarray-simlab/issues/%s", "#"),
+    "pull": ("https://github.com/xarray-contrib/xarray-simlab/pull/%s", "#"),
 }
 
 autosummary_generate = True

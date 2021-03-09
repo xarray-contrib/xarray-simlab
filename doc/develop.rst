@@ -21,7 +21,7 @@ found a bug or if you have suggestions about new features or changes.
 For now, as the project is still very young, it is also a good place for
 asking usage questions.
 
-.. _`Github Issue Tracker`: https://github.com/benbovy/xarray-simlab/issues
+.. _`Github Issue Tracker`: https://github.com/xarray-contrib/xarray-simlab/issues
 
 Development environment
 -----------------------
@@ -42,7 +42,7 @@ Then clone your fork locally::
 Alternatively, if you don't plan to submit any modification, you can clone the
 original xarray-simlab git repository::
 
-   $ git clone git@github.com:benbovy/xarray-simlab.git
+   $ git clone git@github.com:xarray-contrib/xarray-simlab.git
 
 .. _GitHub: https://github.com
 

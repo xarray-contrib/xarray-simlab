@@ -14,11 +14,11 @@ ecosystem such as `dask <https://docs.dask.org>`_ and `zarr
 <https://zarr.readthedocs.io>`_.
 
 .. _xarray: http://xarray.pydata.org
-.. |Build Status| image:: https://github.com/benbovy/xarray-simlab/workflows/test/badge.svg?branch=master
-   :target: https://github.com/benbovy/xarray-simlab/actions?workflow=test
+.. |Build Status| image:: https://github.com/xarray-contrib/xarray-simlab/workflows/test/badge.svg?branch=master
+   :target: https://github.com/xarray-contrib/xarray-simlab/actions?workflow=test
    :alt: Build Status
-.. |Coverage| image:: https://codecov.io/gh/benbovy/xarray-simlab/branch/master/graphs/badge.svg?branch=master
-   :target: https://codecov.io/github/benbovy/xarray-simlab?branch=master
+.. |Coverage| image:: https://codecov.io/gh/xarray-contrib/xarray-simlab/branch/master/graphs/badge.svg?branch=master
+   :target: https://codecov.io/github/xarray-contrib/xarray-simlab?branch=master
    :alt: Coverage Status
 .. |Doc Status| image:: http://readthedocs.org/projects/xarray-simlab/badge/?version=latest
    :target: http://xarray-simlab.readthedocs.io/en/latest/?badge=latest
@@ -142,7 +142,7 @@ License
 -------
 
 3-clause ("Modified" or "New") BSD license,
-see `License file <https://github.com/benbovy/xarray-simlab/blob/master/LICENSE>`__.
+see `License file <https://github.com/xarray-contrib/xarray-simlab/blob/master/LICENSE>`__.
 
 xarray-simlab uses short parts of the code of the xarray_, pandas_ and
 dask_ libraries. Their licenses are reproduced in the "licenses"
