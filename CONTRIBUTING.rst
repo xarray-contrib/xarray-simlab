@@ -14,4 +14,4 @@ You may find the following resources helpful:
 - `Roadmap`_ in xarray-simlab's GitHub Wiki
 
 .. _`Contributor guide`: http://xarray-simlab.readthedocs.io/en/latest/develop.html
-.. _`Roadmap`: https://github.com/benbovy/xarray-simlab/wiki/Roadmap
+.. _`Roadmap`: https://github.com/xarray-contrib/xarray-simlab/wiki/Roadmap

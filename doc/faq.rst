@@ -115,5 +115,5 @@ xarray-simlab is a very young project. Some ideas for future
 development can be found in the roadmap_ on the xarray-simlab's Github
 wiki_.
 
-.. _roadmap: https://github.com/benbovy/xarray-simlab/wiki/Roadmap
-.. _wiki: https://github.com/benbovy/xarray-simlab/wiki
+.. _roadmap: https://github.com/xarray-contrib/xarray-simlab/wiki/Roadmap
+.. _wiki: https://github.com/xarray-contrib/xarray-simlab/wiki

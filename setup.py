@@ -13,7 +13,7 @@ setup(
     description=(
         "generic framework and xarray extension " "for computer model simulations"
     ),
-    url="http://github.com/benbovy/xarray-simlab",
+    url="http://github.com/xarray-contrib/xarray-simlab",
     maintainer="Benoit Bovy",
     maintainer_email="benbovy@gmail.com",
     license="BSD-Clause3",

@@ -88,7 +88,7 @@ Get in touch
 - You can report bugs, suggest features or view the source code
   `on GitHub`_.
 
-.. _on GitHub: http://github.com/benbovy/xarray-simlab
+.. _on GitHub: http://github.com/xarray-contrib/xarray-simlab
 
 License
 -------

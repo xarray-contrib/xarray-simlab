@@ -60,7 +60,7 @@ packages in a separate environment, e.g. using conda::
 Then you can clone the xarray-simlab git repository and install it
 using ``pip`` locally::
 
-    $ git clone https://github.com/benbovy/xarray-simlab
+    $ git clone https://github.com/xarray-contrib/xarray-simlab
     $ cd xarray-simlab
     $ pip install .
 
