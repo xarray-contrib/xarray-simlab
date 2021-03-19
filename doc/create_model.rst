@@ -241,6 +241,16 @@ In terms of computation and inputs, ``advect_model`` is equivalent to the
 ``advect_model_raw`` instance created above ; it is just organized
 differently.
 
+Avoiding cycles in the model
+----------------------------
+Often, a process involves updating a variable, that is used by other processes in the model.
+This may result in a cycle being detected, and the model not able to run. The
+process order is created based on variables with ``intent='out'``. Therefore, any variable 
+that is created with ``intent='inout'`` will be set last in the calculation order. 
+Any process that uses this variable as an input, will use the veriable from the previous timestep. 
+For example, the ``u`` variable in ``ProfileU`` has ``intent='inout'``, and is therefore last in the calculation order.
+
+
 Update existing models
 ----------------------
 

@@ -273,7 +273,9 @@ in their computation.
 In a model, the processes and their dependencies together form the
 nodes and the edges of a Directed Acyclic Graph (DAG). The graph
 topology is fully determined by the ``intent`` set for each variable
-or foreign variable declared in each process. An ordering that is
+or foreign variable declared in each process. That is, a process depends on
+another process if and only if the 'parent' process has an ``intent='out'``
+variable, that is used by the 'child' process. An ordering that is
 computationally consistent can then be obtained using topological
 sorting. This is done at Model object creation. The same ordering is
 used at every stage of a model run.
