@@ -43,6 +43,7 @@ INPUT_NODE_ATTRS = {
 INPUT_EDGE_ATTRS = {"arrowhead": "none", "color": "#b49434"}
 VAR_NODE_ATTRS = {"shape": "box", "color": "#555555", "fontcolor": "#555555"}
 VAR_EDGE_ATTRS = {"arrowhead": "none", "color": "#555555"}
+INOUT_EDGE_ATTRS = {"color": "#000000", "style": "dashed"}
 
 
 def _hash_variable(var):
@@ -98,11 +99,40 @@ class _GraphBuilder:
         if var_intent == VarIntent.OUT:
             edge_attrs.update({"arrowhead": "empty"})
             edge_ends = p_name, var_key
+        elif var_intent == VarIntent.INOUT:
+            edge_attrs.update({"arrowhead": "empty"})
+            edge_ends = p_name, var_key
         else:
             edge_ends = var_key, p_name
 
         self.g.node(var_key, label=var.name, **node_attrs)
         self.g.edge(*edge_ends, weight="200", **edge_attrs)
+
+    def add_inout_arrows(self):
+        for p_name, p_obj in self.model._processes.items():
+            p_cls = type(p_obj)
+
+            for var_name, var in variables_dict(p_cls).items():
+                # test if the variable is inout
+                if var.metadata["intent"] == VarIntent.INOUT:
+                    target_keys = _get_target_keys(p_obj, var_name)
+
+                    # now again cycle through all processes to see if there is a variable with the same reference
+                    for p2_name, p2_obj in self.model._processes.items():
+                        p2_cls = type(p2_obj)
+
+                        for var2_name, var2 in variables_dict(p2_cls).items():
+                            # if the variable is
+                            target2_keys = _get_target_keys(p2_obj, var2_name)
+                            if (
+                                len(set(target_keys) & set(target2_keys))
+                                and var2.metadata["intent"] == VarIntent.IN
+                            ):
+                                edge_ends = p_name, p2_name
+                                print(target_keys, target2_keys, var_name, var2_name)
+                                self.g.edge(
+                                    *edge_ends, weight="200", **INOUT_EDGE_ATTRS
+                                )
 
     def add_inputs(self):
         for p_name, var_name in self.model._input_vars:
@@ -146,6 +176,7 @@ def to_graphviz(
     show_only_variable=None,
     show_inputs=False,
     show_variables=False,
+    show_inout_arrows=True,
     graph_attr={},
     **kwargs,
 ):
@@ -166,6 +197,9 @@ def to_graphviz(
 
     elif show_inputs:
         builder.add_inputs()
+
+    elif show_inout_arrows:
+        builder.add_inout_arrows()
 
     return builder.get_graph()
 
@@ -211,6 +245,7 @@ def dot_graph(
     show_only_variable=None,
     show_inputs=False,
     show_variables=False,
+    show_inout_arrows=True,
     **kwargs,
 ):
     """
@@ -236,6 +271,8 @@ def dot_graph(
     show_variables : bool, optional
         If True, show also the other variables (default: False).
         Ignored if `show_only_variable` is not None.
+    show_inout_arrows : bool, optional
+        if True, show references to inout variables as dotted lines. (default: True)
     **kwargs
         Additional keyword arguments to forward to `to_graphviz`.
 
@@ -262,6 +299,7 @@ def dot_graph(
         show_only_variable=show_only_variable,
         show_inputs=show_inputs,
         show_variables=show_variables,
+        show_inout_arrows=show_inout_arrows,
         **kwargs,
     )
 
