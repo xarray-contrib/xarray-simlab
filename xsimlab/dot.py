@@ -114,7 +114,10 @@ class _GraphBuilder:
 
             for var_name, var in variables_dict(p_cls).items():
                 # test if the variable is inout
-                if var.metadata["intent"] == VarIntent.INOUT:
+                if (
+                    var.metadata["intent"] == VarIntent.INOUT
+                    and var.metadata["var_type"] == VarType.VARIABLE
+                ):
                     target_keys = _get_target_keys(p_obj, var_name)
 
                     # now again cycle through all processes to see if there is a variable with the same reference
@@ -129,7 +132,6 @@ class _GraphBuilder:
                                 and var2.metadata["intent"] == VarIntent.IN
                             ):
                                 edge_ends = p_name, p2_name
-                                print(target_keys, target2_keys, var_name, var2_name)
                                 self.g.edge(
                                     *edge_ends, weight="200", **INOUT_EDGE_ATTRS
                                 )

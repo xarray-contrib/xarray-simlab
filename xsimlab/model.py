@@ -14,7 +14,7 @@ from .process import (
     RuntimeSignal,
     SimulationStage,
 )
-from .utils import AttrMapping, Frozen, variables_dict
+from .utils import AttrMapping, Frozen, variables_dict, as_variable_key
 from .formatting import repr_model
 
 
@@ -401,10 +401,12 @@ class _ModelBuilder:
 
         return {k: list(v) for k, v in processes_to_validate.items()}
 
-    def get_process_dependencies(self):
+    def get_process_dependencies(self, custom_dependencies=None):
         """Return a dictionary where keys are each process of the model and
         values are lists of the names of dependent processes (or empty
         lists for processes that have no dependencies).
+
+        inputs: dependencies: a {('p_name','var_name'):'dep_p_name'} dictionary
 
         Process 1 depends on process 2 if the later declares a
         variable (resp. a foreign variable) with intent='out' that
@@ -414,6 +416,7 @@ class _ModelBuilder:
         self._dep_processes = {k: set() for k in self._processes_obj}
 
         d_keys = {}  # all state/on-demand keys for each process
+        skip_deps = {}  # dict of dependencies to skip {'p_name':key}
 
         for p_name, p_obj in self._processes_obj.items():
             d_keys[p_name] = _flatten_keys(
@@ -423,6 +426,16 @@ class _ModelBuilder:
                 ]
             )
 
+        if custom_dependencies is not None:
+            for dep_key in custom_dependencies:
+                p_name, var_name = as_variable_key(dep_key)
+                dep_p_name = custom_dependencies[dep_key]
+                # TODO: fix also for on-demand variables
+                skip_deps[p_name] = self._processes_obj[p_name].__xsimlab_state_keys__[
+                    var_name
+                ]
+                self._dep_processes[p_name].add(dep_p_name)
+
         for p_name, p_obj in self._processes_obj.items():
             for var in filter_variables(p_obj, intent=VarIntent.OUT).values():
                 if var.metadata["var_type"] == VarType.ON_DEMAND:
@@ -430,8 +443,16 @@ class _ModelBuilder:
                 else:
                     key = p_obj.__xsimlab_state_keys__[var.name]
 
+                # iterate through all processes names out_var->pn
                 for pn in self._processes_obj:
+                    # check if this is a different process and the process key is the same
+                    # -> then we have an out process that is used as input here!
+                    # here also check if the process is not in the dependencies list (how?)
                     if pn != p_name and key in d_keys[pn]:
+                        if pn in skip_deps:
+                            if skip_deps[pn] == key:
+                                # do not add this process, since it is in the dependencies list
+                                continue
                         self._dep_processes[pn].add(p_name)
 
         self._dep_processes = {k: list(v) for k, v in self._dep_processes.items()}
@@ -534,13 +555,17 @@ class Model(AttrMapping):
 
     active = []
 
-    def __init__(self, processes):
+    def __init__(self, processes, custom_dependencies=None):
         """
         Parameters
         ----------
         processes : dict
             Dictionnary with process names as keys and classes (decorated with
             :func:`process`) as values.
+        custom_dependencies : dict
+            Dictionary with dependencies of processes wher this is not clear from
+             the model, in the case of intent='inout' variables. the dictionary should be in the form:
+             {('process_name','variable_name'):'dependent_process_name'} or {'p_name__var_name':'dep_p_name'}
 
         Raises
         ------
@@ -572,7 +597,8 @@ class Model(AttrMapping):
 
         self._processes_to_validate = builder.get_processes_to_validate()
 
-        self._dep_processes = builder.get_process_dependencies()
+        self._custom_dependencies = custom_dependencies
+        self._dep_processes = builder.get_process_dependencies(custom_dependencies)
         self._processes = builder.get_sorted_processes()
 
         super(Model, self).__init__(self._processes)
@@ -1035,11 +1061,11 @@ class Model(AttrMapping):
         Returns
         -------
         cloned : Model
-            New Model instance with the same processes.
+            New Model instance with the same processes. and defined dependencies
 
         """
         processes_cls = {k: type(obj) for k, obj in self._processes.items()}
-        return type(self)(processes_cls)
+        return type(self)(processes_cls, self._custom_dependencies)
 
     def update_processes(self, processes):
         """Add or replace processe(s) in this model.

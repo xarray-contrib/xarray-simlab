@@ -43,6 +43,33 @@ replaced by the actual dimension label set in input/output datasets.
 """
 
 
+def as_variable_key(key):
+    """Returns ``key`` as a tuple of the form
+    ``('process_name', 'var_name')``.
+
+    If ``key`` is given as a string, then process name and variable
+    name must be separated unambiguously by '__' (double underscore)
+    and must not be empty.
+
+    """
+    key_tuple = None
+
+    if isinstance(key, tuple) and len(key) == 2:
+        key_tuple = key
+
+    elif isinstance(key, str):
+        key_split = key.split("__")
+        if len(key_split) == 2:
+            p_name, var_name = key_split
+            if p_name and var_name:
+                key_tuple = (p_name, var_name)
+
+    if key_tuple is None:
+        raise ValueError(f"{key!r} is not a valid input variable key")
+
+    return key_tuple
+
+
 def variables_dict(process_cls):
     """Get all xsimlab variables declared in a process.
 
