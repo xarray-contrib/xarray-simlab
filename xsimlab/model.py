@@ -428,12 +428,14 @@ class _ModelBuilder:
 
         if custom_dependencies is not None:
             for dep_key in custom_dependencies:
+                # this is all just necessary to not add this variable to dependencies.
                 p_name, var_name = as_variable_key(dep_key)
                 dep_p_name = custom_dependencies[dep_key]
                 # TODO: fix also for on-demand variables
                 skip_deps[p_name] = self._processes_obj[p_name].__xsimlab_state_keys__[
                     var_name
                 ]
+                # actually add to dependencies
                 self._dep_processes[p_name].add(dep_p_name)
 
         for p_name, p_obj in self._processes_obj.items():

@@ -111,7 +111,6 @@ class _GraphBuilder:
     def add_inout_arrows(self):
         for p_name, p_obj in self.model._processes.items():
             p_cls = type(p_obj)
-
             for var_name, var in variables_dict(p_cls).items():
                 # test if the variable is inout
                 if (
@@ -123,6 +122,10 @@ class _GraphBuilder:
                     # now again cycle through all processes to see if there is a variable with the same reference
                     for p2_name, p2_obj in self.model._processes.items():
                         p2_cls = type(p2_obj)
+
+                        # skip this if it is a dependent process
+                        if p_name in self.model.dependent_processes[p2_name]:
+                            continue
 
                         for var2_name, var2 in variables_dict(p2_cls).items():
                             # if the variable is
