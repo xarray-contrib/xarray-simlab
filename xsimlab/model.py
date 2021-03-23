@@ -426,14 +426,9 @@ class _ModelBuilder:
                 ]
             )
 
-        for p_name in custom_dependencies:
-            deps = custom_dependencies[p_name]
-            if type(deps) == str:
-                deps = [deps]
-
-            # actually add to dependencies
-            for dep_p_name in deps:
-                self._dep_processes[p_name].add(dep_p_name)
+        # actually add custom dependencies
+        for p_name, deps in custom_dependencies.items():
+            self._dep_processes[p_name].update(deps)
 
         for p_name, p_obj in self._processes_obj.items():
             for var in filter_variables(p_obj, intent=VarIntent.OUT).values():
@@ -524,7 +519,7 @@ class _ModelBuilder:
                     if child_ios:
                         # TODO: fix this with intersections
                         # lost_children = child_ios.symetric_difference(set(verified_ios))
-                        if len(child_ios) == len(verified_ios):
+                        if child_ios == set(verified_ios):
                             child_ins = in_ps.intersection(self._deps_dict[cur])
                             # verify that all children have the previous io as dependency
                             for child_in in child_ins:
@@ -537,7 +532,7 @@ class _ModelBuilder:
                             in_ps -= child_ins
                             verified_ios.append(cur)
                             io_stack.pop()
-                        elif len(child_ios) > len(verified_ios):
+                        elif child_ios - set(verified_ios):
                             # we need to search deeper: add to the stack.
                             io_stack.extend(
                                 [io for io in child_ios if io not in verified_ios]
@@ -737,15 +732,26 @@ class Model(AttrMapping):
 
         self._processes_to_validate = builder.get_processes_to_validate()
 
-        self._custom_dependencies = custom_dependencies
-        self._dep_processes = builder.get_process_dependencies(custom_dependencies)
+        # clean custom dependencies
+        self._custom_dependencies = {}
+        for p_name, c_deps in custom_dependencies.items():
+            c_deps = (
+                {c_deps} if isinstance(c_deps, str) else {c_dep for c_dep in c_deps}
+            )
+            self._custom_dependencies[p_name] = c_deps
+
+        self._dep_processes = builder.get_process_dependencies(
+            self._custom_dependencies
+        )
 
         self._processes = builder.get_sorted_processes()
 
         # these depend on the deps_dict created in sort_processes:
-        if strict_check:
+        self._strict_check = strict_check
+        self._transitive_reduce = transitive_reduce
+        if self._strict_check:
             builder._check_inout_vars()
-        if transitive_reduce:
+        if self._transitive_reduce:
             builder.transitive_reduction()
 
         super(Model, self).__init__(self._processes)
@@ -827,9 +833,13 @@ class Model(AttrMapping):
         return self._dep_processes
 
     def visualize(
-        self, show_only_variable=None, show_inputs=False, show_variables=False
+        self,
+        show_only_variable=None,
+        show_inputs=False,
+        show_variables=False,
+        show_inout_arrows=True,
     ):
-        """Render the model as a graph using dot (require graphviz).
+        """Render the model as a graph using dot (requires graphviz).
 
         Parameters
         ----------
@@ -856,6 +866,7 @@ class Model(AttrMapping):
             show_only_variable=show_only_variable,
             show_inputs=show_inputs,
             show_variables=show_variables,
+            show_inout_arrows=show_inout_arrows,
         )
 
     @property
@@ -1212,7 +1223,12 @@ class Model(AttrMapping):
 
         """
         processes_cls = {k: type(obj) for k, obj in self._processes.items()}
-        return type(self)(processes_cls, self._custom_dependencies)
+        return type(self)(
+            processes_cls,
+            self._custom_dependencies,
+            self._strict_check,
+            self._transitive_reduce,
+        )
 
     def update_processes(self, processes):
         """Add or replace processe(s) in this model.
@@ -1231,14 +1247,19 @@ class Model(AttrMapping):
         """
         processes_cls = {k: type(obj) for k, obj in self._processes.items()}
         processes_cls.update(processes)
-        return type(self)(processes_cls, self._custom_dependencies)
+        return type(self)(
+            processes_cls,
+            self._custom_dependencies,
+            self._strict_check,
+            self._transitive_reduce,
+        )
 
     def drop_processes(self, keys):
         """Drop processe(s) from this model.
 
         Parameters
         ----------
-        keys : str or list of str
+        keys : str or iterable of str
             Name(s) of the processes to drop.
 
         Returns
@@ -1247,19 +1268,56 @@ class Model(AttrMapping):
             New Model instance with dropped processes.
 
         """
-        if isinstance(keys, str):
-            keys = [keys]
+        keys = {keys} if isinstance(keys, str) else {key for key in keys}
 
         processes_cls = {
             k: type(obj) for k, obj in self._processes.items() if k not in keys
         }
-        self._custom_dependencies = {
-            p_name: list(set(deps) - set(keys))
-            for p_name, deps in self._custom_dependencies.items()
-            if p_name not in keys
-        }
 
-        return type(self)(processes_cls, self._custom_dependencies)
+        # nooo we also should check for chains of deps e.g.
+        # a->b->c->d->e where {b,c,d} are removed
+        # wake me up when the depndencies end...
+        # here comes the stack again... defining who we are...
+        # start a DFS only on these keys again...
+        # actually it is only dfs on custom deps, so not too bad
+        # let's see if we can do it in-place
+        completed = set()
+        for key in self._custom_dependencies:
+            if key in completed:
+                continue
+            key_stack = [key]
+            while key_stack:
+                cur = key_stack[-1]
+                if cur in completed:
+                    key_stack.pop()
+                    continue
+
+                child_keys = keys.intersection(self._custom_dependencies[cur])
+                if child_keys.issubset(completed):
+                    # all children are added, so we are safe
+                    self._custom_dependencies[cur].update(
+                        *[
+                            self._custom_dependencies[child_key]
+                            for child_key in child_keys
+                        ]
+                    )
+                    self._custom_dependencies[cur] -= child_keys
+                    completed.add(cur)
+                    key_stack.pop()
+                else:  # if child_keys - completed:
+                    # we need to search deeper: add to the stack.
+                    key_stack.extend([k for k in child_keys - completed])
+
+        # that was actually quite ok.. now also remove keys from custom deps
+        for key in keys:
+            del self._custom_dependencies[key]
+
+        return type(self)(
+            processes_cls,
+            self._custom_dependencies,
+            self._strict_check,
+            self._transitive_reduce,
+        )
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
