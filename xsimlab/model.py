@@ -120,6 +120,7 @@ class _ModelBuilder:
 
         self._dep_processes = None
         self._sorted_processes = None
+        self._deps_dict = None
 
         # a cache for group keys
         self._group_keys = {}
@@ -448,7 +449,7 @@ class _ModelBuilder:
         self._dep_processes = {k: list(v) for k, v in self._dep_processes.items()}
         return self._dep_processes
 
-    def _check_inout_vars(self, deps_dict):
+    def _check_inout_vars(self):
         """
         checks if all inout variables and corresponding in variables are explicitly set in the dependencies
         Out variables always come first, since the get_process_dependencies checks for that.
@@ -459,6 +460,7 @@ class _ModelBuilder:
          /   \  /    \
         in    in      in
         ```
+        needs to be run after _sort_processes
         """
         # create dictionaries with all inout variables and input variables
         inout_dict = {}  # dict of {key:{p1_name,p2_name}} for inout variables
@@ -518,15 +520,15 @@ class _ModelBuilder:
                         io_stack.pop()
                         continue
 
-                    child_ios = deps_dict[io_p].intersection(inout_ps - {cur})
+                    child_ios = self._deps_dict[io_p].intersection(inout_ps - {cur})
                     if child_ios:
                         # TODO: fix this with intersections
                         # lost_children = child_ios.symetric_difference(set(verified_ios))
                         if len(child_ios) == len(verified_ios):
-                            child_ins = in_ps.intersection(deps_dict[cur])
+                            child_ins = in_ps.intersection(self._deps_dict[cur])
                             # verify that all children have the previous io as dependency
                             for child_in in child_ins:
-                                if not verified_ios[-1] in deps_dict[child_in]:
+                                if not verified_ios[-1] in self._deps_dict[child_in]:
                                     raise RuntimeError(
                                         f"inout process {verified_ios[-1]} not in {child_in}'s "
                                         + "dependencies, could not establish strict dependency order"
@@ -542,35 +544,36 @@ class _ModelBuilder:
                             )
                         else:
                             raise RuntimeError(
-                                f"inout process {cur} depends on {child_ios}, but should depend on all of {verified_ios}, especially {verified_ios[-1]}"
+                                f"inout process {cur} depends on {child_ios}, but should\
+                                depend on all of {verified_ios}, especially {verified_ios[-1]}"
                             )
                     else:
                         # we are at the bottom inout process: remove in variables from the set
                         # this can only happen if we are the first process at the bottom
                         if verified_ios:
-                            # impor
                             raise RuntimeError(
                                 f"inout process {cur} has no dependencies with variable {key}, but {verified_ios} should be one",
                             )
-                        in_ps -= deps_dict[cur]
+                        in_ps -= self._deps_dict[cur]
                         verified_ios.append(cur)
                         io_stack.pop()
 
             # we finished all inout, and inputs that are descendants of inout
             # vars, so all remaining input vars shoudl depend on the last inout var
             for p in in_ps:
-                if not verified_ios[-1] in deps_dict[p]:
+                if not verified_ios[-1] in self._deps_dict[p]:
                     raise RuntimeError(
                         f"process {verified_ios[-1]} not in depdendencies of {p} while {key} requires so"
                     )
 
-    def transitive_reduction(self, deps_dict):
+    def transitive_reduction(self):
         """Returns transitive reduction of a directed graph
 
         The transitive reduction of G = (V,E) is a graph G- = (V,E-) such that
         for all v,w in V there is an edge (v,w) in E- if and only if (v,w) is
         in E and there is no path from v to w in G with length greater than 1.
 
+        needs to be run after _sort_processes
         References
         ----------
         https://en.wikipedia.org/wiki/Transitive_reduction
@@ -581,7 +584,7 @@ class _ModelBuilder:
         for p_name in self._dep_processes:
             p_nbrs = set(self._dep_processes[p_name])
             for dep_p in self._dep_processes[p_name]:
-                p_nbrs -= deps_dict[dep_p]
+                p_nbrs -= self._deps_dict[dep_p]
             self._dep_processes[p_name] = list(p_nbrs)
 
     def _sort_processes(self):
@@ -604,7 +607,7 @@ class _ModelBuilder:
 
         """
         ordered = []
-        descendants = {p: set() for p in self._dep_processes}
+        self._deps_dict = {p: set() for p in self._dep_processes}
 
         # Nodes whose descendents have been completely explored.
         # These nodes are guaranteed to not be part of a cycle.
@@ -644,8 +647,8 @@ class _ModelBuilder:
                         cycle = "->".join(cycle)
                         raise RuntimeError(f"Cycle detected in process graph: {cycle}")
                     if nxt in completed:
-                        descendants[cur].add(nxt)
-                        descendants[cur].update(descendants[nxt])
+                        self._deps_dict[cur].add(nxt)
+                        self._deps_dict[cur].update(self._deps_dict[nxt])
                     else:
                         next_nodes.append(nxt)
 
@@ -658,20 +661,12 @@ class _ModelBuilder:
                     completed.add(cur)
                     seen.remove(cur)
                     nodes.pop()
-        return ordered, descendants
+        return ordered
 
-    def get_sorted_processes_check_treduce(
-        self, strict_check=False, transitive_reduce=False
-    ):
-        self._sorted_processes, deps_dict = self._sort_processes()
-
-        if strict_check:
-            self._check_inout_vars(deps_dict)
-        if transitive_reduce:
-            self.transitive_reduction(deps_dict)
+    def get_sorted_processes(self, strict_check=False, transitive_reduce=False):
 
         self._sorted_processes = OrderedDict(
-            [(p_name, self._processes_obj[p_name]) for p_name in self._sorted_processes]
+            [(p_name, self._processes_obj[p_name]) for p_name in self._sort_processes()]
         )
         return self._sorted_processes
 
@@ -745,11 +740,13 @@ class Model(AttrMapping):
         self._custom_dependencies = custom_dependencies
         self._dep_processes = builder.get_process_dependencies(custom_dependencies)
 
-        self._processes = builder.get_sorted_processes_check_treduce(
-            strict_check, transitive_reduce
-        )  # change here to incorporate
+        self._processes = builder.get_sorted_processes()
 
-        # builder.get_dependencies_dict()  # transitive_reduction()
+        # these depend on the deps_dict created in sort_processes:
+        if strict_check:
+            builder._check_inout_vars()
+        if transitive_reduce:
+            builder.transitive_reduction()
 
         super(Model, self).__init__(self._processes)
         self._initialized = True
