@@ -115,7 +115,7 @@ class _GraphBuilder:
                 # test if the variable is inout
                 if (
                     var.metadata["intent"] == VarIntent.INOUT
-                    and var.metadata["var_type"] == VarType.VARIABLE
+                    and var.metadata["var_type"] != VarType.FOREIGN
                 ):
                     target_keys = _get_target_keys(p_obj, var_name)
 
@@ -123,17 +123,17 @@ class _GraphBuilder:
                     for p2_name, p2_obj in self.model._processes.items():
                         p2_cls = type(p2_obj)
 
-                        # skip this if it is a dependent process
-                        if p_name in self.model.dependent_processes[p2_name]:
+                        # skip this if it is a dependent process or the process itself
+                        if (
+                            p_name in self.model.dependent_processes[p2_name]
+                            or p_name == p2_name
+                        ):
                             continue
 
                         for var2_name, var2 in variables_dict(p2_cls).items():
                             # if the variable is
                             target2_keys = _get_target_keys(p2_obj, var2_name)
-                            if (
-                                len(set(target_keys) & set(target2_keys))
-                                and var2.metadata["intent"] == VarIntent.IN
-                            ):
+                            if len(set(target_keys) & set(target2_keys)):
                                 edge_ends = p_name, p2_name
                                 self.g.edge(
                                     *edge_ends, weight="200", **INOUT_EDGE_ATTRS

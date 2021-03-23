@@ -406,7 +406,7 @@ class _ModelBuilder:
         values are lists of the names of dependent processes (or empty
         lists for processes that have no dependencies).
 
-        inputs: dependencies: a {('p_name','var_name'):'dep_p_name'} dictionary
+        inputs: dependencies: a {'p_name':['dep_p_name','dep2_p_name']} dictionary
 
         Process 1 depends on process 2 if the later declares a
         variable (resp. a foreign variable) with intent='out' that
@@ -416,7 +416,6 @@ class _ModelBuilder:
         self._dep_processes = {k: set() for k in self._processes_obj}
 
         d_keys = {}  # all state/on-demand keys for each process
-        skip_deps = {}  # dict of dependencies to skip {'p_name':key}
 
         for p_name, p_obj in self._processes_obj.items():
             d_keys[p_name] = _flatten_keys(
@@ -427,16 +426,14 @@ class _ModelBuilder:
             )
 
         if custom_dependencies is not None:
-            for dep_key in custom_dependencies:
-                # this is all just necessary to not add this variable to dependencies.
-                p_name, var_name = as_variable_key(dep_key)
-                dep_p_name = custom_dependencies[dep_key]
-                # TODO: fix also for on-demand variables
-                skip_deps[p_name] = self._processes_obj[p_name].__xsimlab_state_keys__[
-                    var_name
-                ]
+            for p_name in custom_dependencies:
+                deps = custom_dependencies[p_name]
+                if type(deps) == str:
+                    deps = [deps]
+
                 # actually add to dependencies
-                self._dep_processes[p_name].add(dep_p_name)
+                for dep_p_name in deps:
+                    self._dep_processes[p_name].add(dep_p_name)
 
         for p_name, p_obj in self._processes_obj.items():
             for var in filter_variables(p_obj, intent=VarIntent.OUT).values():
@@ -445,21 +442,207 @@ class _ModelBuilder:
                 else:
                     key = p_obj.__xsimlab_state_keys__[var.name]
 
-                # iterate through all processes names out_var->pn
                 for pn in self._processes_obj:
-                    # check if this is a different process and the process key is the same
-                    # -> then we have an out process that is used as input here!
-                    # here also check if the process is not in the dependencies list (how?)
                     if pn != p_name and key in d_keys[pn]:
-                        if pn in skip_deps:
-                            if skip_deps[pn] == key:
-                                # do not add this process, since it is in the dependencies list
-                                continue
                         self._dep_processes[pn].add(p_name)
 
         self._dep_processes = {k: list(v) for k, v in self._dep_processes.items()}
-
+        self._check_inout_vars()
         return self._dep_processes
+
+    def _check_inout_vars(self):
+        """
+        checks if all inout variables and corresponding in variables are explicitly set in the dependencies
+        Out variables always come first, since the get_process_dependencies checks for that.
+        A well-behaved graph looks like:
+        ```
+         inout1->inout2
+          ^ \    ^  \
+         /   \  /    \
+        in    in      in
+        ```
+        """
+        # create dictionaries with all inout variables and input variables
+        inout_dict = {}  # dict of {key:{p1_name,p2_name}} for inout variables
+        in_dict = {}
+
+        for p_name, p_obj in self._processes_obj.items():
+            # create {key:{p1_name,p2_name}} dicts for in and inout vars.
+            for var in filter_variables(p_obj, intent=VarIntent.INOUT):
+                if var in p_obj.__xsimlab_state_keys__:
+                    keys = p_obj.__xsimlab_state_keys__[var]
+                else:
+                    keys = p_obj.__xsimlab_od_keys__[var]
+
+                for key in keys:
+                    if not key in inout_dict:
+                        inout_dict[key] = {p_name}
+                    else:
+                        inout_dict[key].add(p_name)
+
+            for var in filter_variables(p_obj, intent=VarIntent.IN):
+                if var in p_obj.__xsimlab_state_keys__:
+                    keys = p_obj.__xsimlab_state_keys__[var]
+                else:
+                    keys = p_obj.__xsimlab_od_keys__[var]
+
+                for key in keys:
+                    if not key in in_dict:
+                        in_dict[key] = {p_name}
+                    else:
+                        in_dict[key].add(p_name)
+
+        # filter out variables that do not need to be checked:
+        inout_dict = {k: v for k, v in inout_dict.items() if k in in_dict}
+
+        # get a dict of all dependent processes for easier processing
+        deps_dict = self.get_dependency_dict()
+
+        for key, inout_ps in inout_dict.items():
+            in_ps = in_dict[key]
+
+            verified_ios = []
+
+            # now we only have to search and verify all inout variables
+            print("checking ", key, " with io processes ", inout_ps)
+            for io_p in inout_ps:
+                io_stack = [io_p]
+                while io_stack:
+                    cur = io_stack[-1]
+                    if cur in verified_ios:
+                        io_stack.pop()
+                        continue
+
+                    child_ios = deps_dict[io_p].intersection(inout_ps - {cur})
+                    if child_ios:
+                        # TODO: fix this with intersections
+                        # lost_children = child_ios.symetric_difference(set(verified_ios))
+                        if len(child_ios) == len(verified_ios):
+                            child_ins = in_ps.intersection(deps_dict[cur])
+                            # verify that all children have the previous io as dependency
+                            for child_in in child_ins:
+                                if not verified_ios[-1] in deps_dict[child_in]:
+                                    raise RuntimeError(
+                                        f"inout process {verified_ios[-1]} not in {child_in}'s "
+                                        + "dependencies, could not establish strict dependency order"
+                                    )
+                            # we can now safely remove these in nodes
+                            in_ps -= child_ins
+                            verified_ios.append(cur)
+                            io_stack.pop()
+                        elif len(child_ios) > len(verified_ios):
+                            # we need to search deeper: add to the stack.
+                            io_stack.extend(
+                                [io for io in child_ios if io not in verified_ios]
+                            )
+                        else:
+                            raise RuntimeError(
+                                f"inout process {cur} depends on {child_ios}, but should depend on all of {verified_ios}, especially {verified_ios[-1]}"
+                            )
+                    else:
+                        # we are at the bottom inout process: remove in variables from the set
+                        # this can only happen if we are the first process at the bottom
+                        if verified_ios:
+                            # impor
+                            raise RuntimeError(
+                                f"inout process {cur} has no dependencies with variable {key}, but {verified_ios} should be one",
+                            )
+                        in_ps -= deps_dict[cur]
+                        verified_ios.append(cur)
+                        io_stack.pop()
+            # print("finished searching ios, now have: ", in_ps, verified_ios)
+            for p in in_ps:
+                if not verified_ios[-1] in deps_dict[p]:
+                    raise RuntimeError(
+                        f"process {verified_ios[-1]} not in depdendencies of {p} while {key} requires so"
+                    )
+
+    def get_dependency_dict(self):
+        """
+        IMPORTANT: assumes no cycles in the graph -> this is actually for the dependency_dict can be undone
+        generate a {'p_name':{dep1_p_name,dep2_p_name}} list for all processes, for easier validation
+        TODO: incorporate this into the other DFS algorithm
+        """
+        # this is to ensure that we do not encounter a cycle
+        seen = set()
+        descendants = {p: set() for p in self._dep_processes}
+        completed_d = set()
+        for p_name in self._dep_processes:
+            # create the descendants using DFS only if they are not yet there yet
+            if p_name not in completed_d:
+                # implement a DFS algorithm
+                nodes = [p_name]
+                while nodes:
+                    cur = nodes[-1]
+                    if cur in completed_d:
+                        nodes.pop()
+                        continue
+                    seen.add(cur)
+
+                    next_nodes = []
+                    for nxt in self._dep_processes[cur]:
+                        if nxt in seen:
+                            # Cycle detected!
+                            cycle = [nxt]
+                            while nodes[-1] != nxt:
+                                cycle.append(nodes.pop())
+                            cycle.append(nodes.pop())
+                            cycle.reverse()
+                            cycle = "->".join(cycle)
+                            raise RuntimeError(
+                                f"Cycle detected in process graph: {cycle}"
+                            )
+                        if nxt in completed_d:
+                            descendants[cur].add(nxt)
+                            descendants[cur].update(descendants[nxt])
+                        else:
+                            next_nodes.append(nxt)
+                    if next_nodes:
+                        nodes.extend(next_nodes)
+                    else:
+                        # it has no more depndencies, so we can add it to the descendants
+                        completed_d.add(cur)
+                        seen.remove(cur)
+                        nodes.pop()
+
+        return descendants
+
+    def transitive_reduction(self):
+        """Returns transitive reduction of a directed graph
+
+        The transitive reduction of G = (V,E) is a graph G- = (V,E-) such that
+        for all v,w in V there is an edge (v,w) in E- if and only if (v,w) is
+        in E and there is no path from v to w in G with length greater than 1.
+
+        Parameters
+        ----------
+        G : NetworkX DiGraph
+            A directed acyclic graph (DAG)
+
+        Returns
+        -------
+        NetworkX DiGraph
+            The transitive reduction of `G`
+
+        Raises
+        ------
+        NetworkXError
+            If `G` is not a directed acyclic graph (DAG) transitive reduction is
+            not uniquely defined and a :exc:`NetworkXError` exception is raised.
+
+        References
+        ----------
+        https://en.wikipedia.org/wiki/Transitive_reduction
+        adapted from networkx: https://networkx.org/documentation/stable/_modules/networkx/algorithms/dag.html#transitive_reduction
+
+        """
+        dep_dict = self.get_dependency_dict()
+
+        for p_name in self._dep_processes:
+            p_nbrs = set(self._dep_processes[p_name])
+            for dep_p in self._dep_processes[p_name]:
+                p_nbrs -= dep_dict[dep_p]
+            self._dep_processes[p_name] = list(p_nbrs)
 
     def _sort_processes(self):
         """Sort processes based on their dependencies (return a list of sorted
@@ -602,6 +785,8 @@ class Model(AttrMapping):
         self._custom_dependencies = custom_dependencies
         self._dep_processes = builder.get_process_dependencies(custom_dependencies)
         self._processes = builder.get_sorted_processes()
+
+        # builder.get_dependencies_dict()  # transitive_reduction()
 
         super(Model, self).__init__(self._processes)
         self._initialized = True
@@ -1086,7 +1271,7 @@ class Model(AttrMapping):
         """
         processes_cls = {k: type(obj) for k, obj in self._processes.items()}
         processes_cls.update(processes)
-        return type(self)(processes_cls)
+        return type(self)(processes_cls, self._custom_dependencies)
 
     def drop_processes(self, keys):
         """Drop processe(s) from this model.
@@ -1108,7 +1293,7 @@ class Model(AttrMapping):
         processes_cls = {
             k: type(obj) for k, obj in self._processes.items() if k not in keys
         }
-        return type(self)(processes_cls)
+        return type(self)(processes_cls, self._custom_dependencies)
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
