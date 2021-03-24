@@ -304,6 +304,12 @@ In this latter case, users will have to provide initial values of
    processes. Both methods ``.update_processes()`` and
    ``.drop_processes()`` always return new instances of ``Model``.
 
+Process ordering and dependencies
+---------------------------------
+The execution order is uniquely determined based on process ordering, which is
+derived from the intent of variables in different processes. 
+blah blah blah stuff about inout variables and everything
+
 Customize existing processes
 ----------------------------
 
