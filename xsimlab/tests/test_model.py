@@ -289,34 +289,47 @@ class TestModelBuilder:
                 strict_order_check=True,
             )
 
-    def test_strict_check_multi(self):
+    def test_strict_check_multiple_vars_in_process(self):
+        # in|->|io|->|in|->|io|
+        #   |  |in|->|io|->|in|
+        @xs.process
+        class Out:
+            foo = xs.on_demand()
+            bar = xs.variable(intent="out")
+
+            @foo.compute
+            def method(self):
+                pass
+
         @xs.process
         class FooInBarInout:
-            foo = xs.variable()
-            bar = xs.variable(intent="inout")
+            foo = xs.foreign(Out, "foo")
+            bar = xs.foreign(Out, "bar", intent="inout")
 
         @xs.process
         class FooInoutBarIn:
-            foo = xs.foreign(FooInBarInout, "foo")
-            bar = xs.foreign(FooInBarInout, "bar", intent="inout")
+            foo = xs.foreign(Out, "foo")
+            bar = xs.foreign(Out, "bar", intent="inout")
 
         @xs.process
         class FooIn:
-            foo = xs.foreign(FooInBarInout, "foo")
+            foo = xs.foreign(Out, "foo")
 
         @xs.process
-        class BarIn:
-            bar = xs.foreign(FooInBarInout, "bar")
+        class BarInFooInout:
+            bar = xs.foreign(Out, "bar")
+            foo = xs.foreign(Out, "foo", intent="inout")
 
         xs.Model(
             {
+                "out": Out,
                 "f_i_b_io": FooInBarInout,
                 "f_io_b_i": FooInoutBarIn,
                 "f_i": FooIn,
-                "b_i": BarIn,
+                "b_i_f_io": BarInFooInout,
             },
             custom_dependencies={
-                "b_i": "f_i_b_io",
+                "b_i_f_io": "f_i_b_io",
                 "f_i_b_io": "f_io_b_i",
                 "f_io_b_i": "f_i",
             },

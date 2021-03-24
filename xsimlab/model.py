@@ -516,6 +516,49 @@ class _ModelBuilder:
 
         return ordered
 
+    def _get_inout_in_dicts(self):
+        """
+        prepares dictionaries for _strict_order_check
+        returns:
+            inout_dict : {key:{p1_name,p2_name}}
+            in_dict : {key:{p3_name,p4_name}}
+        """
+        inout_dict = {}  # dict of {key:{p1_name,p2_name}} for inout variables
+        # TODO: improve this: the aim is to create a {key:{p1,p2,p3}} dict,
+        # where p1,p2,p3 are process names that have the key var as inout, resp. in vars
+        # some problems are that we can have on_demand and state varibles,
+        # that key can return a tuple or list,
+        for p_name, p_obj in self._processes_obj.items():
+            # create {key:{p1_name,p2_name}} dicts for in and inout vars.
+            for var in filter_variables(p_obj, intent=VarIntent.INOUT).values():
+                state_key, od_key = self._get_var_key(p_name, var)
+                if state_key is not None:
+                    if not state_key in inout_dict:
+                        inout_dict[state_key] = {p_name}
+                    else:
+                        inout_dict[state_key].add(p_name)
+                if od_key is not None:
+                    if not od_key in inout_dict:
+                        inout_dict[od_key] = {p_name}
+                    else:
+                        inout_dict[od_key].add(p_name)
+
+        in_dict = {key: set() for key in inout_dict}
+        print(self._processes_obj.items(), in_dict)
+        for p_name, p_obj in self._processes_obj.items():
+            print("now adding: ", p_name)
+            for var in filter_variables(p_obj, intent=VarIntent.IN).values():
+                state_key, od_key = self._get_var_key(p_name, var)
+                print("state key: ", state_key, "od key: ", od_key)
+                if state_key in in_dict:
+                    in_dict[state_key].add(p_name)
+                if od_key in in_dict:
+                    in_dict[od_key].add(p_name)
+
+            print("io dict: ", inout_dict, "in dict: ", in_dict)
+        return inout_dict, in_dict
+        # end TODO
+
     def _strict_order_check(self):
         """
         IMPORTANT: _sort_processes should be run first
@@ -531,49 +574,7 @@ class _ModelBuilder:
         needs to be run after _sort_processes
         """
         # create dictionaries with all inout variables and input variables
-        inout_dict = {}  # dict of {key:{p1_name,p2_name}} for inout variables
-        in_dict = {}
-
-        # TODO: improve this: the aim is to create a {key:{p1,p2,p3}} dict,
-        # where p1,p2,p3 are process names that have the key var as inout, resp. in vars
-        # some problems are that we can have on_demand and state varibles,
-        # that key can return a tuple or list,
-        for p_name, p_obj in self._processes_obj.items():
-            # create {key:{p1_name,p2_name}} dicts for in and inout vars.
-            for var in filter_variables(p_obj, intent=VarIntent.INOUT):
-                if var in p_obj.__xsimlab_state_keys__:
-                    keys = p_obj.__xsimlab_state_keys__[var]
-                else:
-                    keys = p_obj.__xsimlab_od_keys__[var]
-
-                if type(keys) == tuple:
-                    keys = [keys]
-
-                for key in keys:
-                    if not key in inout_dict:
-                        inout_dict[key] = {p_name}
-                    else:
-                        inout_dict[key].add(p_name)
-
-            # create an entry in inputs dict
-            if key in inout_dict:
-                in_dict[key] = set()
-
-            for var in filter_variables(p_obj, intent=VarIntent.IN):
-                if var in p_obj.__xsimlab_state_keys__:
-                    keys = p_obj.__xsimlab_state_keys__[var]
-                else:
-                    keys = p_obj.__xsimlab_od_keys__[var]
-
-                if type(keys) == tuple:
-                    keys = [keys]
-
-                for key in keys:
-                    if not key in in_dict:
-                        in_dict[key] = {p_name}
-                    else:
-                        in_dict[key].add(p_name)
-        # end TODO
+        inout_dict, in_dict = self._get_inout_in_dicts()
 
         # filter out variables that do not need to be checked (without inputs):
         # inout_dict = {k: v for k, v in inout_dict.items() if k in in_dict}
