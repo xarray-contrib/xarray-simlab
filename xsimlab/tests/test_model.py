@@ -148,6 +148,36 @@ class TestModelBuilder:
             # order of dependencies is not ensured
             assert set(actual[p_name]) == set(expected[p_name])
 
+    def test_get_process_dependencies_custom(self, model):
+        @xs.process
+        class A:
+            pass
+
+        @xs.process
+        class B:
+            pass
+
+        @xs.process
+        class C:
+            pass
+
+        actual = xs.Model(
+            {"a": A, "b": B}, custom_dependencies={"a": "b"}
+        ).dependent_processes
+        expected = {"a": ["b"], "b": []}
+
+        for p_name in expected:
+            assert set(actual[p_name]) == set(expected[p_name])
+
+        # also test with a list
+        actual = xs.Model(
+            {"a": A, "b": B, "c": C}, custom_dependencies={"a": ["b", "c"]}
+        ).dependent_processes
+        expected = {"a": ["b", "c"], "b": [], "c": []}
+
+        for p_name in expected:
+            assert set(actual[p_name]) == set(expected[p_name])
+
     @pytest.mark.parametrize(
         "p_name,dep_p_name",
         [
@@ -293,6 +323,30 @@ class TestModel:
     def test_drop_processes(self, no_init_model, simple_model, p_names):
         m = no_init_model.drop_processes(p_names)
         assert m == simple_model
+
+    def test_drop_processes_custom(self):
+        @xs.process
+        class A:
+            pass
+
+        @xs.process
+        class B:
+            pass
+
+        @xs.process
+        class C:
+            pass
+
+        @xs.process
+        class D:
+            pass
+
+        model = xs.Model(
+            {"a": A, "b": B, "c": C, "d": D},
+            custom_dependencies={"d": "c", "c": "b", "b": "a"},
+        )
+        model = model.drop_processes(["b", "c"])
+        assert model.dependent_processes["d"] == ["a"]
 
     def test_visualize(self, model):
         pytest.importorskip("graphviz")

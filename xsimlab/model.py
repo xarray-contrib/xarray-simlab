@@ -401,7 +401,7 @@ class _ModelBuilder:
 
         return {k: list(v) for k, v in processes_to_validate.items()}
 
-    def get_process_dependencies(self):
+    def get_process_dependencies(self, custom_dependencies={}):
         """Return a dictionary where keys are each process of the model and
         values are lists of the names of dependent processes (or empty
         lists for processes that have no dependencies).
@@ -422,6 +422,10 @@ class _ModelBuilder:
                     p_obj.__xsimlab_od_keys__.values(),
                 ]
             )
+
+        # actually add custom dependencies
+        for p_name, deps in custom_dependencies.items():
+            self._dep_processes[p_name].update(deps)
 
         for p_name, p_obj in self._processes_obj.items():
             for var in filter_variables(p_obj, intent=VarIntent.OUT).values():
@@ -534,7 +538,7 @@ class Model(AttrMapping):
 
     active = []
 
-    def __init__(self, processes):
+    def __init__(self, processes, custom_dependencies={}):
         """
         Parameters
         ----------
@@ -572,7 +576,17 @@ class Model(AttrMapping):
 
         self._processes_to_validate = builder.get_processes_to_validate()
 
-        self._dep_processes = builder.get_process_dependencies()
+        # clean custom dependencies
+        self._custom_dependencies = {}
+        for p_name, c_deps in custom_dependencies.items():
+            c_deps = (
+                {c_deps} if isinstance(c_deps, str) else {c_dep for c_dep in c_deps}
+            )
+            self._custom_dependencies[p_name] = c_deps
+
+        self._dep_processes = builder.get_process_dependencies(
+            self._custom_dependencies
+        )
         self._processes = builder.get_sorted_processes()
 
         super(Model, self).__init__(self._processes)
@@ -1074,13 +1088,52 @@ class Model(AttrMapping):
             New Model instance with dropped processes.
 
         """
-        if isinstance(keys, str):
-            keys = [keys]
+        keys = {keys} if isinstance(keys, str) else {key for key in keys}
 
         processes_cls = {
             k: type(obj) for k, obj in self._processes.items() if k not in keys
         }
-        return type(self)(processes_cls)
+
+        # we also should check for chains of deps e.g.
+        # a->b->c->d->e where {b,c,d} are removed
+        # then we have a->e left over.
+        # perform a depth-first search on custom dependencies
+        # and let the custom deps propagate forward
+        completed = set()
+        for key in self._custom_dependencies:
+            if key in completed:
+                continue
+            key_stack = [key]
+            while key_stack:
+                cur = key_stack[-1]
+                if cur in completed:
+                    key_stack.pop()
+                    continue
+
+                # if we have custom dependencies that are removed
+                # and are fully traversed, add their deps to the current
+                child_keys = keys.intersection(self._custom_dependencies[cur])
+                if child_keys.issubset(completed):
+                    # all children are added, so we are safe
+                    self._custom_dependencies[cur].update(
+                        *[
+                            self._custom_dependencies[child_key]
+                            for child_key in child_keys
+                        ]
+                    )
+                    self._custom_dependencies[cur] -= child_keys
+                    completed.add(cur)
+                    key_stack.pop()
+                else:  # if child_keys - completed:
+                    # we need to search deeper: add to the stack.
+                    key_stack.extend([k for k in child_keys - completed])
+
+        # now also remove keys from custom deps
+        for key in keys:
+            if key in self._custom_dependencies:
+                del self._custom_dependencies[key]
+
+        return type(self)(processes_cls, self._custom_dependencies)
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
