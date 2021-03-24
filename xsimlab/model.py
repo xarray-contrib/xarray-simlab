@@ -543,8 +543,11 @@ class Model(AttrMapping):
         Parameters
         ----------
         processes : dict
-            Dictionnary with process names as keys and classes (decorated with
+            Dictionary with process names as keys and classes (decorated with
             :func:`process`) as values.
+        custom_dependencies : dict
+            Dictionary of custom dependencies.
+            keys are process names and values iterable of process names that it depends on
 
         Raises
         ------
@@ -579,9 +582,7 @@ class Model(AttrMapping):
         # clean custom dependencies
         self._custom_dependencies = {}
         for p_name, c_deps in custom_dependencies.items():
-            c_deps = (
-                {c_deps} if isinstance(c_deps, str) else {c_dep for c_dep in c_deps}
-            )
+            c_deps = {c_deps} if isinstance(c_deps, str) else set(c_deps)
             self._custom_dependencies[p_name] = c_deps
 
         self._dep_processes = builder.get_process_dependencies(
@@ -1079,7 +1080,7 @@ class Model(AttrMapping):
 
         Parameters
         ----------
-        keys : str or list of str
+        keys : str or iterable of str
             Name(s) of the processes to drop.
 
         Returns
@@ -1088,7 +1089,7 @@ class Model(AttrMapping):
             New Model instance with dropped processes.
 
         """
-        keys = {keys} if isinstance(keys, str) else {key for key in keys}
+        keys = {keys} if isinstance(keys, str) else set(keys)
 
         processes_cls = {
             k: type(obj) for k, obj in self._processes.items() if k not in keys
