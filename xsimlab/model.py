@@ -661,6 +661,15 @@ class Model(AttrMapping):
         custom_dependencies : dict
             Dictionary of custom dependencies.
             keys are process names and values iterable of process names that it depends on
+        strict_order_check : bool
+            if True, aggresively check for correct ordering. (default: False)
+            For a variable with processes for which it is an inout variable, it should look like:
+            ```
+             inout1->inout2
+              ^ \    ^  \
+             /   \  /    \
+            in    in      in
+            ```
 
         Raises
         ------
