@@ -516,13 +516,21 @@ class _ModelBuilder:
 
         return ordered
 
-    def _get_inout_in_dicts(self):
+    def _strict_order_check(self):
         """
-        prepares dictionaries for _strict_order_check
-        returns:
-            inout_dict : {key:{p1_name,p2_name}}
-            in_dict : {key:{p3_name,p4_name}}
+        IMPORTANT: _sort_processes should be run first
+        checks if all inout variables and corresponding in variables are explicitly set in the dependencies
+        Out variables always come first, since the get_process_dependencies checks for that.
+        A well-behaved graph looks like:
+        ```
+         inout1->inout2
+          ^ \    ^  \
+         /   \  /    \
+        in    in      in
+        ```
+        needs to be run after _sort_processes
         """
+        # create dictionaries with all inout variables and input variables
         inout_dict = {}  # dict of {key:{p1_name,p2_name}} for inout variables
         # TODO: improve this: the aim is to create a {key:{p1,p2,p3}} dict,
         # where p1,p2,p3 are process names that have the key var as inout, resp. in vars
@@ -544,37 +552,13 @@ class _ModelBuilder:
                         inout_dict[od_key].add(p_name)
 
         in_dict = {key: set() for key in inout_dict}
-        print(self._processes_obj.items(), in_dict)
         for p_name, p_obj in self._processes_obj.items():
-            print("now adding: ", p_name)
             for var in filter_variables(p_obj, intent=VarIntent.IN).values():
                 state_key, od_key = self._get_var_key(p_name, var)
-                print("state key: ", state_key, "od key: ", od_key)
                 if state_key in in_dict:
                     in_dict[state_key].add(p_name)
                 if od_key in in_dict:
                     in_dict[od_key].add(p_name)
-
-            print("io dict: ", inout_dict, "in dict: ", in_dict)
-        return inout_dict, in_dict
-        # end TODO
-
-    def _strict_order_check(self):
-        """
-        IMPORTANT: _sort_processes should be run first
-        checks if all inout variables and corresponding in variables are explicitly set in the dependencies
-        Out variables always come first, since the get_process_dependencies checks for that.
-        A well-behaved graph looks like:
-        ```
-         inout1->inout2
-          ^ \    ^  \
-         /   \  /    \
-        in    in      in
-        ```
-        needs to be run after _sort_processes
-        """
-        # create dictionaries with all inout variables and input variables
-        inout_dict, in_dict = self._get_inout_in_dicts()
 
         # filter out variables that do not need to be checked (without inputs):
         # inout_dict = {k: v for k, v in inout_dict.items() if k in in_dict}

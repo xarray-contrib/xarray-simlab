@@ -290,8 +290,8 @@ class TestModelBuilder:
             )
 
     def test_strict_check_multiple_vars_in_process(self):
-        # in|->|io|->|in|->|io|
-        #   |  |in|->|io|->|in|
+        # in|->|io|->|in|->|io| - foo variable
+        #   |  |in|->|io|->|in| - bar variable
         @xs.process
         class Out:
             foo = xs.on_demand()
@@ -323,15 +323,15 @@ class TestModelBuilder:
         xs.Model(
             {
                 "out": Out,
-                "f_i_b_io": FooInBarInout,
-                "f_io_b_i": FooInoutBarIn,
-                "f_i": FooIn,
-                "b_i_f_io": BarInFooInout,
+                "foo_in_bar_inout": FooInBarInout,
+                "foo_inout_bar_in": FooInoutBarIn,
+                "foo_in": FooIn,
+                "boo_in_foo_inout": BarInFooInout,
             },
             custom_dependencies={
-                "b_i_f_io": "f_i_b_io",
-                "f_i_b_io": "f_io_b_i",
-                "f_io_b_i": "f_i",
+                "boo_in_foo_inout": "foo_in_bar_inout",
+                "foo_in_bar_inout": "foo_inout_bar_in",
+                "foo_inout_bar_in": "foo_in",
             },
             strict_order_check=True,
         )
