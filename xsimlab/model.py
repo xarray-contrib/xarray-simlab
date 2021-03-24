@@ -459,6 +459,7 @@ class _ModelBuilder:
 
         """
         ordered = []
+        self._deps_dict = {p: set() for p in self._dep_processes}
 
         # Nodes whose descendents have been completely explored.
         # These nodes are guaranteed to not be part of a cycle.
@@ -488,18 +489,19 @@ class _ModelBuilder:
                 # Add direct descendants of cur to nodes stack
                 next_nodes = []
                 for nxt in self._dep_processes[cur]:
-                    if nxt not in completed:
-                        if nxt in seen:
-                            # Cycle detected!
-                            cycle = [nxt]
-                            while nodes[-1] != nxt:
-                                cycle.append(nodes.pop())
+                    if nxt in seen:
+                        # Cycle detected!
+                        cycle = [nxt]
+                        while nodes[-1] != nxt:
                             cycle.append(nodes.pop())
-                            cycle.reverse()
-                            cycle = "->".join(cycle)
-                            raise RuntimeError(
-                                f"Cycle detected in process graph: {cycle}"
-                            )
+                        cycle.append(nodes.pop())
+                        cycle.reverse()
+                        cycle = "->".join(cycle)
+                        raise RuntimeError(f"Cycle detected in process graph: {cycle}")
+                    if nxt in completed:
+                        self._deps_dict[cur].add(nxt)
+                        self._deps_dict[cur].update(self._deps_dict[nxt])
+                    else:
                         next_nodes.append(nxt)
 
                 if next_nodes:
@@ -511,7 +513,133 @@ class _ModelBuilder:
                     completed.add(cur)
                     seen.remove(cur)
                     nodes.pop()
+
         return ordered
+
+    def _strict_order_check(self):
+        """
+        IMPORTANT: _sort_processes should be run first
+        checks if all inout variables and corresponding in variables are explicitly set in the dependencies
+        Out variables always come first, since the get_process_dependencies checks for that.
+        A well-behaved graph looks like:
+        ```
+         inout1->inout2
+          ^ \    ^  \
+         /   \  /    \
+        in    in      in
+        ```
+        needs to be run after _sort_processes
+        """
+        # create dictionaries with all inout variables and input variables
+        inout_dict = {}  # dict of {key:{p1_name,p2_name}} for inout variables
+        in_dict = {}
+
+        # TODO: improve this: the aim is to create a {key:{p1,p2,p3}} dict,
+        # where p1,p2,p3 are process names that have the key var as inout, resp. in vars
+        # some problems are that we can have on_demand and state varibles,
+        # that key can return a tuple or list,
+        for p_name, p_obj in self._processes_obj.items():
+            # create {key:{p1_name,p2_name}} dicts for in and inout vars.
+            for var in filter_variables(p_obj, intent=VarIntent.INOUT):
+                if var in p_obj.__xsimlab_state_keys__:
+                    keys = p_obj.__xsimlab_state_keys__[var]
+                else:
+                    keys = p_obj.__xsimlab_od_keys__[var]
+
+                if type(keys) == tuple:
+                    keys = [keys]
+
+                for key in keys:
+                    if not key in inout_dict:
+                        inout_dict[key] = {p_name}
+                    else:
+                        inout_dict[key].add(p_name)
+
+            # create an entry in inputs dict
+            if key in inout_dict:
+                in_dict[key] = set()
+
+            for var in filter_variables(p_obj, intent=VarIntent.IN):
+                if var in p_obj.__xsimlab_state_keys__:
+                    keys = p_obj.__xsimlab_state_keys__[var]
+                else:
+                    keys = p_obj.__xsimlab_od_keys__[var]
+
+                if type(keys) == tuple:
+                    keys = [keys]
+
+                for key in keys:
+                    if not key in in_dict:
+                        in_dict[key] = {p_name}
+                    else:
+                        in_dict[key].add(p_name)
+        # end TODO
+
+        # filter out variables that do not need to be checked (without inputs):
+        # inout_dict = {k: v for k, v in inout_dict.items() if k in in_dict}
+
+        for key, inout_ps in inout_dict.items():
+            in_ps = in_dict[key]
+
+            verified_ios = []
+            # now we only have to search and verify all inout variables
+            for io_p in inout_ps:
+                io_stack = [io_p]
+                while io_stack:
+                    cur = io_stack[-1]
+                    if cur in verified_ios:
+                        io_stack.pop()
+                        continue
+
+                    child_ios = self._deps_dict[cur].intersection(inout_ps - {cur})
+                    if child_ios:
+                        if child_ios == set(verified_ios):
+                            child_ins = in_ps.intersection(self._deps_dict[cur])
+                            # verify that all children have the previous io as dependency
+                            for child_in in child_ins:
+                                # we want to list all processes that should depend on the previous
+                                # io-io
+                                #    /
+                                #  in
+                                if not verified_ios[-1] in self._deps_dict[child_in]:
+                                    raise RuntimeError(
+                                        f"process {child_in} with variable {key} is executed \
+                                        before {cur}, but not necessarily after {verified_ios[-1]}\
+                                        please add either {child_in}:{verified_ios[-1]} to `custom_dependencies`\
+                                        or {verified_ios[-1]}:{child_in}"
+                                    )
+                            # we can now safely remove these in nodes
+                            in_ps -= child_ins
+                            verified_ios.append(cur)
+                            io_stack.pop()
+                        elif child_ios - set(verified_ios):
+                            io_stack.extend(child_ios)
+                        else:
+                            # the problem here is that
+                            # io-io
+                            #  \
+                            #  io
+                            raise RuntimeError(
+                                f"order of inout process {cur} compared to {verified_ios} could not be established"
+                            )
+                    else:
+                        # we are at the bottom inout process: remove in variables from the set
+                        # this can only happen if we are the first process at the bottom
+                        if verified_ios:
+                            raise RuntimeError(
+                                f"inout process {cur} has no dependencies with variable {key}, but {verified_ios} should be one",
+                            )
+                        in_ps -= self._deps_dict[cur]
+                        verified_ios.append(cur)
+                        io_stack.pop()
+
+            # we finished all inout, and inputs that are descendants of inout
+            # vars, so all remaining input vars shoudl depend on the last inout var
+            for p in in_ps:
+                if not verified_ios[-1] in self._deps_dict[p]:
+                    raise RuntimeError(
+                        f"process {verified_ios[-1]} not in depdendencies of {p} while {key} requires so"
+                    )
 
     def get_sorted_processes(self):
         self._sorted_processes = OrderedDict(
@@ -538,7 +666,7 @@ class Model(AttrMapping):
 
     active = []
 
-    def __init__(self, processes, custom_dependencies={}):
+    def __init__(self, processes, custom_dependencies={}, strict_order_check=False):
         """
         Parameters
         ----------
@@ -589,6 +717,10 @@ class Model(AttrMapping):
             self._custom_dependencies
         )
         self._processes = builder.get_sorted_processes()
+
+        self._strict_order_check = strict_order_check
+        if self._strict_order_check:
+            builder._strict_order_check()
 
         super(Model, self).__init__(self._processes)
         self._initialized = True

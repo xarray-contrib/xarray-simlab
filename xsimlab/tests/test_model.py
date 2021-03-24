@@ -205,6 +205,124 @@ class TestModelBuilder:
         with pytest.raises(RuntimeError, match=r"Cycle detected.*"):
             xs.Model({"foo": Foo, "bar": Bar})
 
+    def test_strict_check(self):
+        # also give the variable different names
+        @xs.process
+        class Inout1:
+            v = xs.variable(intent="inout")
+
+        @xs.process
+        class Inout2:
+            va = xs.foreign(Inout1, "v", intent="inout")
+
+        @xs.process
+        class Inout3:
+            var = xs.foreign(Inout1, "v", intent="inout")
+
+        @xs.process
+        class In1:
+            var = xs.foreign(Inout1, "v")
+
+        # io # equivalent to # io-..-io
+        # in #               #  in              #where any io can be in in deps
+        with pytest.raises(
+            RuntimeError, match=r"process io1 not in depdendencies of in1 while*"
+        ):
+            xs.Model({"io1": Inout1, "in1": In1}, strict_order_check=True)
+        # io-in #eq. to io-..-io-in
+        xs.Model(
+            {"io1": Inout1, "in1": In1},
+            strict_order_check=True,
+            custom_dependencies={"in1": "io1"},
+        )
+        # in-io #eq to in-io-..-io
+        xs.Model(
+            {"io1": Inout1, "in1": In1},
+            strict_order_check=True,
+            custom_dependencies={"io1": "in1"},
+        )
+        # io
+        # io
+        with pytest.raises(RuntimeError, match=r"inout process *"):
+            xs.Model({"io1": Inout1, "io2": Inout2}, strict_order_check=True)
+        # io-io
+        xs.Model(
+            {"io1": Inout1, "io2": Inout2},
+            custom_dependencies={"io2": "io1"},
+            strict_order_check=True,
+        )
+        # io-io
+        #    /
+        #  in
+        with pytest.raises(RuntimeError, match=r"process in1 with *"):
+            xs.Model(
+                {"io1": Inout1, "io2": Inout2, "in1": In1},
+                custom_dependencies={"io2": ["io1", "in1"]},
+                strict_order_check=True,
+            )
+        # io io
+        # \ /
+        # in
+        xs.Model(
+            {"io1": Inout1, "io2": Inout2, "in1": In1},
+            custom_dependencies={"io2": "in1", "in1": "io1"},
+        )
+
+        # the following is a bit arbitrary which raises: 2 or 3 based on the ordering of dicts
+        # io2-io1
+        #     /
+        #  io3   This raises in first tree traversal: should be equivalent to
+        with pytest.raises(RuntimeError, match=r"inout process io*"):
+            xs.Model(
+                {"io1": Inout1, "io2": Inout2, "io3": Inout3},
+                custom_dependencies={"io1": ["io2", "io3"]},
+                strict_order_check=True,
+            )
+
+        # io-io
+        #  \
+        #  io
+        with pytest.raises(RuntimeError, match=r"order of inout process *"):
+            xs.Model(
+                {"io1": Inout1, "io2": Inout2, "io3": Inout3},
+                custom_dependencies={"io1": "io2", "io3": "io2"},
+                strict_order_check=True,
+            )
+
+    def test_strict_check_multi(self):
+        @xs.process
+        class FooInBarInout:
+            foo = xs.variable()
+            bar = xs.variable(intent="inout")
+
+        @xs.process
+        class FooInoutBarIn:
+            foo = xs.foreign(FooInBarInout, "foo")
+            bar = xs.foreign(FooInBarInout, "bar", intent="inout")
+
+        @xs.process
+        class FooIn:
+            foo = xs.foreign(FooInBarInout, "foo")
+
+        @xs.process
+        class BarIn:
+            bar = xs.foreign(FooInBarInout, "bar")
+
+        xs.Model(
+            {
+                "f_i_b_io": FooInBarInout,
+                "f_io_b_i": FooInoutBarIn,
+                "f_i": FooIn,
+                "b_i": BarIn,
+            },
+            custom_dependencies={
+                "b_i": "f_i_b_io",
+                "f_i_b_io": "f_io_b_i",
+                "f_io_b_i": "f_i",
+            },
+            strict_order_check=True,
+        )
+
     def test_process_inheritance(self, model):
         @xs.process
         class InheritedProfile(Profile):
