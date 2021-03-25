@@ -1202,7 +1202,8 @@ class Model(AttrMapping):
         Returns
         -------
         cloned : Model
-            New Model instance with the same processes.
+            New Model instance with the same processes, custom dependencies and
+            checking behaviour.
 
         """
         processes_cls = {k: type(obj) for k, obj in self._processes.items()}
@@ -1229,7 +1230,8 @@ class Model(AttrMapping):
         Returns
         -------
         updated : Model
-            New Model instance with updated processes.
+            New Model instance with updated processes, custom dependencies and
+            checking behaviour.
 
         """
         processes_cls = {k: type(obj) for k, obj in self._processes.items()}
@@ -1248,8 +1250,9 @@ class Model(AttrMapping):
 
         return type(self)(processes_cls, new_c_deps, strict_order_check)
 
-    def drop_processes(self, keys, strict_order_check=None):
-        """Drop processe(s) from this model.
+    def drop_processes(self, keys):
+        """Drop processe(s) from this model. Also establishes new custom
+        dependencies if they would be lost.
 
         Parameters
         ----------
