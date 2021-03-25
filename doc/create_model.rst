@@ -468,6 +468,8 @@ It is also possible to provide a list of dependent processes as follows:
    xs.Model({'inout':Inout1,'in1':In1,'in2':In2},
              custom_dependencies={'inout':['in1','in2']})
 
+Internally, this is converted to a Python ``set``
+
 **Dropping processes**
 
 When dropping processes, *custom* dependencies of dropped processes are
