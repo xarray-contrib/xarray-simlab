@@ -448,6 +448,34 @@ class TestModel:
         )
         assert m == model
 
+    def test_update_processes_strict_check(self):
+        m = xs.Model({}, strict_order_check=True)
+        assert m.update_processes({})._strict_order_check == True
+        assert (
+            m.update_processes({}, strict_order_check=False)._strict_order_check
+            == False
+        )
+
+    def test_update_processes_custom(self):
+        @xs.process
+        class A:
+            pass
+
+        @xs.process
+        class B:
+            pass
+
+        @xs.process
+        class C:
+            pass
+
+        ma = xs.Model({"a": A})
+        mab = xs.Model({"a": A, "b": B}, custom_dependencies={"b": "a"})
+        mabc = xs.Model({"a": A, "b": B, "c": C}, custom_dependencies={"b": {"a", "c"}})
+
+        assert ma.update_processes({"b": B}, custom_dependencies={"b": "a"}) == mab
+        assert mab.update_processes({"c": C}, custom_dependencies={"b": "c"}) == mabc
+
     @pytest.mark.parametrize("p_names", ["add", ["add"]])
     def test_drop_processes(self, no_init_model, simple_model, p_names):
         m = no_init_model.drop_processes(p_names)
@@ -470,12 +498,16 @@ class TestModel:
         class D:
             pass
 
+        @xs.process
+        class E:
+            pass
+
         model = xs.Model(
-            {"a": A, "b": B, "c": C, "d": D},
-            custom_dependencies={"d": "c", "c": "b", "b": "a"},
+            {"a": A, "b": B, "c": C, "d": D, "e": E},
+            custom_dependencies={"d": "c", "c": "b", "b": {"a", "e"}},
         )
         model = model.drop_processes(["b", "c"])
-        assert model.dependent_processes["d"] == ["a"]
+        assert set(model.dependent_processes["d"]) == {"a", "e"}
 
     def test_visualize(self, model):
         pytest.importorskip("graphviz")
