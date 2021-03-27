@@ -154,7 +154,7 @@ class _GraphBuilder:
                 target_keys = tuple(_get_target_keys(p_obj, var_name))
                 if (
                     var.metadata["intent"] == VarIntent.IN
-                    and not target_keys in inout_vars
+                    and not target_keys in inout_vars  # only in->inout vars
                 ):
                     if target_keys in in_vars:
                         in_vars[target_keys].add(p_name)
