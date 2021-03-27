@@ -823,6 +823,7 @@ class Model(AttrMapping):
     def visualize(
         self,
         show_only_variable=None,
+        show_variable_stages=None,
         show_inputs=False,
         show_variables=False,
         show_feedbacks=True,
@@ -856,6 +857,7 @@ class Model(AttrMapping):
         return dot_graph(
             self,
             show_only_variable=show_only_variable,
+            show_variable_stages=show_variable_stages,
             show_inputs=show_inputs,
             show_variables=show_variables,
             show_feedbacks=show_feedbacks,
