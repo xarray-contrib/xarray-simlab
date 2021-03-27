@@ -55,7 +55,7 @@ def _ensure_not_exists(filename):
 
 
 def test_to_graphviz(model):
-    g = to_graphviz(model)
+    g = to_graphviz(model, show_feedbacks=False)
     actual_nodes = _get_graph_nodes(g)
     actual_edges = _get_graph_edges(g)
     expected_nodes = list(model)
