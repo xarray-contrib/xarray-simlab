@@ -152,18 +152,23 @@ class _GraphBuilder:
             p_cls = type(p_obj)
             for var_name, var in variables_dict(p_cls).items():
                 target_keys = tuple(_get_target_keys(p_obj, var_name))
+                if var.metadata["intent"] == VarIntent.OUT:
+                    in_vars[target_keys] = {p_name}
+                    # also put a placeholder in inout_vars so we do not add
+                    # anymore in processes
+                    inout_vars[target_keys] = None
                 if (
                     var.metadata["intent"] == VarIntent.IN
                     and not target_keys in inout_vars  # only in->inout vars
                 ):
-                    if target_keys in in_vars:
-                        in_vars[target_keys].add(p_name)
-                    else:
-                        in_vars[target_keys] = {p_name}
+                    in_vars.setdefault(target_keys, set()).add(p_name)
                 if var.metadata["intent"] == VarIntent.INOUT:
                     inout_vars[target_keys] = p_name
 
         for target_keys, io_p in inout_vars.items():
+            # skip this if there are no inout processes
+            if io_p is None:
+                continue
             for in_p in in_vars[target_keys]:
                 self.g.edge(io_p, in_p, weight="200", style="dashed")
 
