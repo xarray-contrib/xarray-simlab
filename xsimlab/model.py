@@ -533,10 +533,7 @@ class _ModelBuilder:
             # create {key:{p1_name,p2_name}} dicts for in and inout vars.
             for var in filter_variables(p_obj, intent=VarIntent.INOUT).values():
                 target_keys = self._get_var_key(p_name, var)
-                if not target_keys in inout_dict:
-                    inout_dict[target_keys] = {p_name}
-                else:
-                    inout_dict[target_keys].add(p_name)
+                inout_dict.setdefault(target_keys, set()).add(p_name)
 
         in_dict = {key: set() for key in inout_dict}
         for p_name, p_obj in self._processes_obj.items():
@@ -585,7 +582,7 @@ class _ModelBuilder:
                                     f"While checking {key}, {cur} updates it"
                                     f" and depends on some processes that use"
                                     f" it, but they do not depend on {verified_ios[-1]}"
-                                    f" place them somewhere between or before "
+                                    f". Place them somewhere between or before "
                                     f"their values: {problem_children}"
                                 )
                             # we can now safely remove these in nodes
@@ -605,7 +602,8 @@ class _ModelBuilder:
                             raise RuntimeError(
                                 f"while checking {key}, order of inout process "
                                 f"{cur} compared to {problem_ios} could not be "
-                                f"established"
+                                f"established. Place it before {problem_ios[0]}"
+                                f" in between, or after {problem_ios[-1]}"
                             )
                     else:
                         # we are at the bottom inout process: remove in
@@ -623,7 +621,7 @@ class _ModelBuilder:
                             raise RuntimeError(
                                 f"While checking {key}, inout process "
                                 f"{verified_ios[-1]} has two branch dependencies."
-                                f" Place {cur} before or somewhere between "
+                                f" Place {cur} before, after or somewhere between "
                                 f"{verified_ios[:-1]}"
                             )
                         in_ps -= self._deps_dict[cur]
@@ -641,10 +639,14 @@ class _ModelBuilder:
                     ]
 
             if problem_ins:
+                #
+                #   io->io->io->io
+                #    \        \
+                # in   in      in
                 raise RuntimeError(
                     f"while checking {key}, some input processes do not depend "
                     f"on {verified_ios[-1]}, with all inout processes {verified_ios}"
-                    f" place them somewhere in between or before their values: {problem_ins}"
+                    f" place them somewhere in between, before or after their values: {problem_ins}"
                 )
 
     def get_sorted_processes(self):
