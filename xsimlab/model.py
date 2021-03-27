@@ -532,26 +532,18 @@ class _ModelBuilder:
         for p_name, p_obj in self._processes_obj.items():
             # create {key:{p1_name,p2_name}} dicts for in and inout vars.
             for var in filter_variables(p_obj, intent=VarIntent.INOUT).values():
-                state_key, od_key = self._get_var_key(p_name, var)
-                if state_key is not None:
-                    if not state_key in inout_dict:
-                        inout_dict[state_key] = {p_name}
-                    else:
-                        inout_dict[state_key].add(p_name)
-                if od_key is not None:
-                    if not od_key in inout_dict:
-                        inout_dict[od_key] = {p_name}
-                    else:
-                        inout_dict[od_key].add(p_name)
+                target_keys = self._get_var_key(p_name, var)
+                if not target_keys in inout_dict:
+                    inout_dict[target_keys] = {p_name}
+                else:
+                    inout_dict[target_keys].add(p_name)
 
         in_dict = {key: set() for key in inout_dict}
         for p_name, p_obj in self._processes_obj.items():
             for var in filter_variables(p_obj, intent=VarIntent.IN).values():
-                state_key, od_key = self._get_var_key(p_name, var)
-                if state_key in in_dict:
-                    in_dict[state_key].add(p_name)
-                if od_key in in_dict:
-                    in_dict[od_key].add(p_name)
+                target_keys = self._get_var_key(p_name, var)
+                if target_keys in in_dict:
+                    in_dict[target_keys].add(p_name)
 
         # filter out variables that do not need to be checked (without inputs):
         # inout_dict = {k: v for k, v in inout_dict.items() if k in in_dict}
