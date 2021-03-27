@@ -15,6 +15,9 @@ v0.6.0 (Unreleased)
    This will be set to the main clock when storing the dataset.
  - Changed default ``fill_value`` in the zarr stores to maximum dtype value 
    for integer dtypes and ``np.nan`` for floating-point variables.
+ - Added feedback arrows from the last process that updates a variable to all
+ processes that use it before it is updated, for all variables. Can be used as:
+ ``model.visualize(show_feedbacks=True)`` default: ``True``
 
 v0.5.0 (26 January 2021)
 ------------------------
