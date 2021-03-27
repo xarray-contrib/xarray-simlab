@@ -821,7 +821,11 @@ class Model(AttrMapping):
         return self._dep_processes
 
     def visualize(
-        self, show_only_variable=None, show_inputs=False, show_variables=False
+        self,
+        show_only_variable=None,
+        show_inputs=False,
+        show_variables=False,
+        show_feedbacks=True,
     ):
         """Render the model as a graph using dot (require graphviz).
 
@@ -837,6 +841,10 @@ class Model(AttrMapping):
         show_variables : bool, optional
             If True, show also the other variables (default: False).
             Ignored if ``show_only_variable`` is not None.
+        show_feedbacks: bool, optional
+            if True, draws dotted arrows to indicate what processes use updated
+            variables in the next timestep. (default: True)
+            Ignored if `show_variables` is not None
 
         See Also
         --------
@@ -850,6 +858,7 @@ class Model(AttrMapping):
             show_only_variable=show_only_variable,
             show_inputs=show_inputs,
             show_variables=show_variables,
+            show_feedbacks=show_feedbacks,
         )
 
     @property
