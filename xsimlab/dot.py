@@ -13,6 +13,8 @@ import os
 from functools import partial
 
 from .utils import variables_dict, import_required, maybe_to_list
+
+# from .process import filter_variables
 from .variable import VarIntent, VarType
 
 
@@ -136,6 +138,35 @@ class _GraphBuilder:
                 ):
                     self._add_var(var, p_name)
 
+    def add_feedback_arrows(self):
+        """
+        adds dotted arrows from the last inout processes to all in processes
+        before the first inout process
+        """
+        # in->inout1->inout2
+        # ^            /
+        #  \- - - - - /
+        in_vars = {}
+        inout_vars = {}
+        for p_name, p_obj in self.model._processes.items():
+            p_cls = type(p_obj)
+            for var_name, var in variables_dict(p_cls).items():
+                target_keys = tuple(_get_target_keys(p_obj, var_name))
+                if (
+                    var.metadata["intent"] == VarIntent.IN
+                    and not target_keys in inout_vars
+                ):
+                    if target_keys in in_vars:
+                        in_vars[target_keys].add(p_name)
+                    else:
+                        in_vars[target_keys] = {p_name}
+                if var.metadata["intent"] == VarIntent.INOUT:
+                    inout_vars[target_keys] = p_name
+
+        for target_keys, io_p in inout_vars.items():
+            for in_p in in_vars[target_keys]:
+                self.g.edge(io_p, in_p, weight="200", style="dashed")
+
     def get_graph(self):
         return self.g
 
@@ -146,6 +177,7 @@ def to_graphviz(
     show_only_variable=None,
     show_inputs=False,
     show_variables=False,
+    show_feedbacks=True,
     graph_attr={},
     **kwargs,
 ):
@@ -166,6 +198,9 @@ def to_graphviz(
 
     elif show_inputs:
         builder.add_inputs()
+
+    elif show_feedbacks:
+        builder.add_feedback_arrows()
 
     return builder.get_graph()
 
@@ -211,6 +246,7 @@ def dot_graph(
     show_only_variable=None,
     show_inputs=False,
     show_variables=False,
+    show_feedbacks=True,
     **kwargs,
 ):
     """
@@ -236,6 +272,10 @@ def dot_graph(
     show_variables : bool, optional
         If True, show also the other variables (default: False).
         Ignored if `show_only_variable` is not None.
+    show_feedbacks: bool, optional
+        if True, draws dotted arrows to indicate what processes use updated
+        variables in the next timestep. (default: True)
+        Ignored if `show_variables` is not None
     **kwargs
         Additional keyword arguments to forward to `to_graphviz`.
 
@@ -262,6 +302,7 @@ def dot_graph(
         show_only_variable=show_only_variable,
         show_inputs=show_inputs,
         show_variables=show_variables,
+        show_feedbacks=show_feedbacks,
         **kwargs,
     )
 
