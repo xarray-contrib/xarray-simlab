@@ -149,6 +149,7 @@ class _GraphBuilder:
         in_vars = {}
         inout_vars = {}
         for p_name, p_obj in self.model._processes.items():
+            print(in_vars,inout_vars)
             p_cls = type(p_obj)
             for var_name, var in variables_dict(p_cls).items():
                 target_keys = tuple(_get_target_keys(p_obj, var_name))
@@ -165,6 +166,7 @@ class _GraphBuilder:
 
         for target_keys, io_p in inout_vars.items():
             for in_p in in_vars[target_keys]:
+                print("adding edge: ", io_p,in_p)
                 self.g.edge(io_p, in_p, weight="200", style="dashed")
 
     def get_graph(self):
@@ -190,6 +192,7 @@ def to_graphviz(
     builder.add_processes()
 
     if show_only_variable is not None:
+        print(show_only_variable)
         p_name, var_name = show_only_variable
         builder.add_var_and_targets(p_name, var_name)
 
