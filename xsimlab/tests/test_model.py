@@ -225,9 +225,7 @@ class TestModelBuilder:
 
         # io # equivalent to # io-..-io
         # in #               #  in              #where any io can be in in deps
-        with pytest.raises(
-            RuntimeError, match=r"process io1 not in depdendencies of in1 while*"
-        ):
+        with pytest.raises(RuntimeError, match="some input processes do not"):
             xs.Model({"io1": Inout1, "in1": In1}, strict_order_check=True)
         # io-in #eq. to io-..-io-in
         xs.Model(
@@ -243,7 +241,7 @@ class TestModelBuilder:
         )
         # io
         # io
-        with pytest.raises(RuntimeError, match=r"inout process *"):
+        with pytest.raises(RuntimeError, match="has two branch dependencies"):
             xs.Model({"io1": Inout1, "io2": Inout2}, strict_order_check=True)
         # io-io
         xs.Model(
@@ -254,7 +252,7 @@ class TestModelBuilder:
         # io-io
         #    /
         #  in
-        with pytest.raises(RuntimeError, match=r"process in1 with *"):
+        with pytest.raises(RuntimeError, match="io2 updates it and depends"):
             xs.Model(
                 {"io1": Inout1, "io2": Inout2, "in1": In1},
                 custom_dependencies={"io2": ["io1", "in1"]},
@@ -272,7 +270,7 @@ class TestModelBuilder:
         # io2-io1
         #     /
         #  io3   This raises in first tree traversal: should be equivalent to
-        with pytest.raises(RuntimeError, match=r"inout process io*"):
+        with pytest.raises(RuntimeError, match="has two branch dependencies"):
             xs.Model(
                 {"io1": Inout1, "io2": Inout2, "io3": Inout3},
                 custom_dependencies={"io1": ["io2", "io3"]},
@@ -282,7 +280,7 @@ class TestModelBuilder:
         # io-io
         #  \
         #  io
-        with pytest.raises(RuntimeError, match=r"order of inout process *"):
+        with pytest.raises(RuntimeError, match="order of inout process"):
             xs.Model(
                 {"io1": Inout1, "io2": Inout2, "io3": Inout3},
                 custom_dependencies={"io1": "io2", "io3": "io2"},

@@ -521,14 +521,7 @@ class _ModelBuilder:
         IMPORTANT: _sort_processes should be run first
         checks if all inout variables and corresponding in variables are explicitly set in the dependencies
         Out variables always come first, since the get_process_dependencies checks for that.
-        A well-behaved graph looks like:
-        ```
-         inout1->inout2
-          ^ \    ^  \
-         /   \  /    \
-        in    in      in
-        ```
-        needs to be run after _sort_processes
+        A well-behaved graph looks like: ``in0->inout1->in1->inout2->in2``
         """
         # create dictionaries with all inout variables and input variables
         inout_dict = {}  # dict of {key:{p1_name,p2_name}} for inout variables
@@ -580,19 +573,29 @@ class _ModelBuilder:
                     if child_ios:
                         if child_ios == set(verified_ios):
                             child_ins = in_ps.intersection(self._deps_dict[cur])
-                            # verify that all children have the previous io as dependency
+                            # verify that all children have the previous io as
+                            # dependency
+                            problem_children = {}
                             for child_in in child_ins:
-                                # we want to list all processes that should depend on the previous
+                                # we want to list all processes that should
+                                # depend on the previous
                                 # io-io
                                 #    /
                                 #  in
                                 if not verified_ios[-1] in self._deps_dict[child_in]:
-                                    raise RuntimeError(
-                                        f"process {child_in} with variable {key} is executed \
-                                        before {cur}, but not necessarily after {verified_ios[-1]}\
-                                        please add either {child_in}:{verified_ios[-1]} to `custom_dependencies`\
-                                        or {verified_ios[-1]}:{child_in}"
-                                    )
+                                    problem_children[child_in] = [
+                                        p
+                                        for p in verified_ios
+                                        if p not in self._deps_dict[child_in]
+                                    ]
+                            if problem_children:
+                                raise RuntimeError(
+                                    f"While checking {key}, {cur} updates it"
+                                    f" and depends on some processes that use"
+                                    f" it, but they do not depend on {verified_ios[-1]}"
+                                    f" place them somewhere between or before "
+                                    f"their values: {problem_children}"
+                                )
                             # we can now safely remove these in nodes
                             in_ps -= child_ins
                             verified_ios.append(cur)
@@ -601,30 +604,56 @@ class _ModelBuilder:
                             io_stack.extend(child_ios)
                         else:
                             # the problem here is that
-                            # io-io
+                            # io-..-io
                             #  \
                             #  io
+                            problem_ios = [
+                                p for p in verified_ios if p not in child_ios
+                            ]
                             raise RuntimeError(
-                                f"order of inout process {cur} compared to {verified_ios} could not be established"
+                                f"while checking {key}, order of inout process "
+                                f"{cur} compared to {problem_ios} could not be "
+                                f"established"
                             )
                     else:
-                        # we are at the bottom inout process: remove in variables from the set
-                        # this can only happen if we are the first process at the bottom
+                        # we are at the bottom inout process: remove in
+                        # variables from the set
+                        # this can only happen if we are the first process at
+                        # the bottom
                         if verified_ios:
+                            # the problem here is
+                            # io->..->io
+                            #         /
+                            #        io
+                            problem_ios = [
+                                p for p in verified_ios if cur not in self._deps_dict[p]
+                            ]
                             raise RuntimeError(
-                                f"inout process {cur} has no dependencies with variable {key}, but {verified_ios} should be one",
+                                f"While checking {key}, inout process "
+                                f"{verified_ios[-1]} has two branch dependencies."
+                                f" Place {cur} before or somewhere between "
+                                f"{verified_ios[:-1]}"
                             )
                         in_ps -= self._deps_dict[cur]
                         verified_ios.append(cur)
                         io_stack.pop()
 
             # we finished all inout, and inputs that are descendants of inout
-            # vars, so all remaining input vars shoudl depend on the last inout var
+            # vars, so all remaining input vars should depend on the last inout
+            # var
+            problem_ins = {}
             for p in in_ps:
                 if not verified_ios[-1] in self._deps_dict[p]:
-                    raise RuntimeError(
-                        f"process {verified_ios[-1]} not in depdendencies of {p} while {key} requires so"
-                    )
+                    problem_ins[p] = [
+                        prob for prob in verified_ios if prob not in self._deps_dict[p]
+                    ]
+
+            if problem_ins:
+                raise RuntimeError(
+                    f"while checking {key}, some input processes do not depend "
+                    f"on {verified_ios[-1]}, with all inout processes {verified_ios}"
+                    f" place them somewhere in between or before their values: {problem_ins}"
+                )
 
     def get_sorted_processes(self):
         self._sorted_processes = OrderedDict(
@@ -640,8 +669,9 @@ class Model(AttrMapping):
     This collection is ordered such that the computational flow is
     consistent with process inter-dependencies.
 
-    Ordering doesn't need to be explicitly provided ; it is dynamically
-    computed using the processes interfaces.
+    Ordering doesn't always need to be explicitly provided ; it is dynamically
+    computed using the processes interfaces. For other cases, custom
+    dependencies can be supplied.
 
     Processes interfaces are also used for automatically retrieving
     the model inputs, i.e., all the variables that require setting a
@@ -660,20 +690,16 @@ class Model(AttrMapping):
             :func:`process`) as values.
         custom_dependencies : dict
             Dictionary of custom dependencies.
-            keys are process names and values iterable of process names that it depends on
+            keys are process names and values iterable of process names that it
+            depends on.
         strict_order_check : bool
             if True, aggresively check for correct ordering. (default: False)
-            For a variable with processes for which it is an inout variable, it should look like:
-            ```
-             inout1->inout2
-              ^ \    ^  \
-             /   \  /    \
-            in    in      in
-            ```
+            For a variable with processes for which it is an inout variable, it
+            should look like: ``ins0->inout1->ins1->inout2->ins2``
 
         Raises
         ------
-        :exc:`NoteAProcessClassError`
+        :exc:`NotAProcessClassError`
             If values in ``processes`` are not classes decorated with
             :func:`process`.
 
@@ -795,7 +821,12 @@ class Model(AttrMapping):
         return self._dep_processes
 
     def visualize(
-        self, show_only_variable=None, show_inputs=False, show_variables=False
+        self,
+        show_only_variable=None,
+        show_variable_stages=None,
+        show_inputs=False,
+        show_variables=False,
+        show_feedbacks=True,
     ):
         """Render the model as a graph using dot (require graphviz).
 
@@ -811,6 +842,10 @@ class Model(AttrMapping):
         show_variables : bool, optional
             If True, show also the other variables (default: False).
             Ignored if ``show_only_variable`` is not None.
+        show_feedbacks: bool, optional
+            if True, draws dotted arrows to indicate what processes use updated
+            variables in the next timestep. (default: True)
+            Ignored if `show_variables` is not None
 
         See Also
         --------
@@ -822,8 +857,10 @@ class Model(AttrMapping):
         return dot_graph(
             self,
             show_only_variable=show_only_variable,
+            show_variable_stages=show_variable_stages,
             show_inputs=show_inputs,
             show_variables=show_variables,
+            show_feedbacks=show_feedbacks,
         )
 
     @property
