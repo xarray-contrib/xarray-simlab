@@ -12,9 +12,9 @@ Part of the code below is copied and modified from:
 import os
 from functools import partial
 
-from .utils import variables_dict, import_required, maybe_to_list
+from .utils import variables_dict, import_required, maybe_to_list, has_method
 
-# from .process import filter_variables
+from .process import SimulationStage
 from .variable import VarIntent, VarType
 
 
@@ -144,8 +144,8 @@ class _GraphBuilder:
 
     def add_feedback_arrows(self):
         """
-        adds dotted arrows from the last inout processes to all in processes
-        before the first inout process
+        adds dotted arrows from the last inout processes to all processes that
+        use it in the next timestep before it is changed.
         """
         # in->inout1->inout2
         # ^            /
@@ -156,20 +156,29 @@ class _GraphBuilder:
         inout_vars = {}
         for p_name, p_obj in self.model._processes.items():
             p_cls = type(p_obj)
+            if not has_method(p_obj, SimulationStage.RUN_STEP.value) and not has_method(
+                p_obj, SimulationStage.FINALIZE_STEP.value
+            ):
+                continue
             for var_name, var in variables_dict(p_cls).items():
                 target_keys = tuple(_get_target_keys(p_obj, var_name))
+                if var.metadata["intent"] == VarIntent.OUT:
+                    in_vars[target_keys] = {p_name}
+                    # also put a placeholder in inout_vars so we do not add
+                    # anymore in processes
+                    inout_vars[target_keys] = None
                 if (
                     var.metadata["intent"] == VarIntent.IN
-                    and not target_keys in inout_vars
+                    and not target_keys in inout_vars  # only in->inout vars
                 ):
-                    if target_keys in in_vars:
-                        in_vars[target_keys].add(p_name)
-                    else:
-                        in_vars[target_keys] = {p_name}
+                    in_vars.setdefault(target_keys, set()).add(p_name)
                 if var.metadata["intent"] == VarIntent.INOUT:
                     inout_vars[target_keys] = p_name
 
         for target_keys, io_p in inout_vars.items():
+            # skip this if there are no inout processes
+            if io_p is None:
+                continue
             for in_p in in_vars[target_keys]:
                 self.g.edge(io_p, in_p, **feedback_edge_attrs)
 
