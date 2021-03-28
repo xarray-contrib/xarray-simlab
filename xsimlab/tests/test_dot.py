@@ -89,50 +89,100 @@ def test_to_graphviz(model):
     assert sorted(actual_nodes) == sorted(expected_nodes)
 
 
-def test_to_graphviz_feedback_edges():
-    #  /< - - - - - - \
+def test_to_graphviz_attributes(model):
+    assert to_graphviz(model).graph_attr["rankdir"] == "LR"
+    assert to_graphviz(model, rankdir="BT").graph_attr["rankdir"] == "BT"
+
+
+# create processes for feedback edges test -> also for show_stages
+@xs.process
+class In1:
+    v = xs.variable()
+
+    def run_step(self):
+        pass
+
+
+@xs.process
+class In2:
+    v = xs.foreign(In1, "v")
+
+    def finalize_step(self):
+        pass
+
+
+@xs.process
+class In3:
+    v = xs.foreign(In1, "v")
+
+    def run_step(self):
+        pass
+
+
+@xs.process
+class InNot:
+
+    v = xs.foreign(In1, "v")
+
+
+@xs.process
+class Inout1:
+    v = xs.foreign(In1, "v", intent="inout")
+
+    def run_step(self):
+        pass
+
+
+@xs.process
+class Inout2:
+    v = xs.foreign(In1, "v", intent="inout")
+
+    def finalize_step(self):
+        pass
+
+
+@xs.process
+class Out1:
+    v = xs.foreign(In1, "v", intent="out")
+
+    def run_step(self):
+        pass
+
+
+def test_feedback_edges():
+    #  /< - - - - - - \<-test
     # in1->io1->in3->io2
-    #      /          /
-    #    in2< - - - -/
-    @xs.process
-    class In1:
-        v = xs.variable()
-
-    @xs.process
-    class In2:
-        v = xs.foreign(In1, "v")
-
-    @xs.process
-    class In3:
-        v = xs.foreign(In1, "v")
-
-    @xs.process
-    class Inout1:
-        v = xs.foreign(In1, "v", intent="inout")
-
-    @xs.process
-    class Inout2:
-        v = xs.foreign(In1, "v", intent="inout")
-
-    @xs.process
-    class Out1:
-        v = xs.foreign(In1, "v", intent="out")
+    # in_not/         /
+    #    in2< - - - -/<-test
 
     model = xs.Model(
-        {"in1": In1, "in2": In2, "in3": In3, "io1": Inout1, "io2": Inout2},
-        custom_dependencies={"io2": "in3", "in3": "io1", "io1": {"in2", "in1"}},
+        {
+            "in1": In1,
+            "in2": In2,
+            "in_not": InNot,
+            "in3": In3,
+            "io1": Inout1,
+            "io2": Inout2,
+        },
+        custom_dependencies={
+            "io2": "in3",
+            "in3": "io1",
+            "io1": {"in2", "in1", "in_not"},
+        },
     )
     g = to_graphviz(model)
-    actual_nodes = _get_graph_nodes(g)
     actual_edges = _get_graph_edges(g)
-    expected_nodes = list(model)
     expected_edges = [
         (dep_p_name, p_name)
         for p_name, p_deps in model.dependent_processes.items()
         for dep_p_name in p_deps
     ] + [("io2", "in1"), ("io2", "in2")]
-    assert sorted(actual_nodes) == sorted(expected_nodes)
     assert set(actual_edges) == set(expected_edges)
+
+    # /<- - - - - - - - \
+    # out-in1->io1->in3->io2
+    #   in_not/
+    #      in2
 
     model = xs.Model(
         {
@@ -146,21 +196,13 @@ def test_to_graphviz_feedback_edges():
         custom_dependencies={"io2": "in3", "in3": "io1", "io1": {"in2", "in1"}},
     )
     g = to_graphviz(model)
-    actual_nodes = _get_graph_nodes(g)
     actual_edges = _get_graph_edges(g)
-    expected_nodes = list(model)
     expected_edges = [
         (dep_p_name, p_name)
         for p_name, p_deps in model.dependent_processes.items()
         for dep_p_name in p_deps
     ] + [("io2", "out1")]
-    assert sorted(actual_nodes) == sorted(expected_nodes)
     assert set(actual_edges) == set(expected_edges)
-
-
-def test_to_graphviz_attributes(model):
-    assert to_graphviz(model).graph_attr["rankdir"] == "LR"
-    assert to_graphviz(model, rankdir="BT").graph_attr["rankdir"] == "BT"
 
 
 @pytest.mark.skipif(not ipython_installed, reason="IPython is not installed")
