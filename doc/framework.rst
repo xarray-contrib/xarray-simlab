@@ -279,7 +279,7 @@ process ``B`` (``A->B``) if and only if ``B`` has a variable with
 For processes that update a variable (``inout``), no automatic sorting is done, 
 which can mean that no definite order can be established. In this case, the user
 has to add custom dependencies, but a checking system is provided, see Section
-:ref:`create_model_ordering`. 
+:ref:`create_model_strict`. 
 
 To determine the ordering from dependencies, a depth-first search is applied.
 The graph is traverset, starting from a random process, until a process is found
