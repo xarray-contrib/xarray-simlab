@@ -205,6 +205,28 @@ def test_feedback_edges():
     assert set(actual_edges) == set(expected_edges)
 
 
+def test_show_stages():
+    # we don't need to add custom dependencies,
+    # with only in and inout processes, no edges are added and processes are
+    # added in the order they are declared in the  model.
+    #             r
+    # in1->inout1->inout2->in3
+    #     g    g\   /g    g
+    #            in2
+    model = xs.Model(
+        {"in1": In1, "inout1": Inout1, "in2": In2, "inout2": Inout2, "in3": In3},
+        strict_order_check=False,
+    )
+    g = to_graphviz(model, show_variable_stages=("in1", "v"))
+    expected_edges = [
+        ("inout1", "inout2"),
+        ("in1", "inout1"),
+        ("inout1", "in2"),
+        ("in2", "inout2"),
+        ("inout2", "in3"),
+    ]
+
+
 @pytest.mark.skipif(not ipython_installed, reason="IPython is not installed")
 @pytest.mark.parametrize(
     "format,typ",
