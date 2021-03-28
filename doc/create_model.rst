@@ -384,8 +384,8 @@ order in the following model is automatically determined:
 
 .. image:: savefig/ordering_out_inout.png
 
-The order would have been the same when `inout` had had an ``intent=in``
-variable. Here, the ``out`` variable is always calculated first. Both processes
+The order would have been the same when `inout` had had ``intent=in``
+for ``var``. Here, the ``out`` variable is always calculated first. Both processes
 can change the value for ``var``. However, the ``out`` process will only use the
 calculated value from ``inout`` in the next timestep. In this way, feedback
 loops can be implemented in xarray-simlab.
@@ -422,12 +422,18 @@ depending on how the graph is traversed. In the case of parallel processing, all
 processes that can be calculated simultaneously are calculated simultaneously 
 by Dask.
 
+.. note::
+   The order described above is executed on every runtime stage, so separately
+   for :func:`initialize`, :func:`run_step`, :func:`finalize_step` (to be
+   deprecated) and :func:`finalize`.
+   
 
 Custom dependencies
 ~~~~~~~~~~~~~~~~~~~
 It may be necessary to add custom dependencies to a model. For example, when a
 process that updates a variable (``inout``) is used by another process (``in``
-or ``inout``), but there is no ordering determined in the model. 
+or ``inout``), but there is no ordering determined in the model based on other
+variables. 
 
 .. literalinclude:: scripts/process_ordering.py
    :lines: 4-11
@@ -512,10 +518,11 @@ It can be enabled at model creation as:
             custom_dependencies={'in':'inout'},
             strict_order_check=True)
 
-and raises an error whenever a strict order cannot be determined. When multiple processes update a variable, they should be in a linear order. 
+and raises an error whenever a strict order cannot be determined. When multiple 
+processes update a variable, they should be in a linear order. 
 Furthermore, all processes that use that variable (``in``) should either be
 before all ``inout`` processes, strictly in between two ``inout`` processes, or
-after the last ``inout`` process. Additional dependencies are also allowed.
+after the last ``inout`` process. Additional interdependencies are also allowed.
 
 **Checking processes that update a variable**
 
@@ -591,7 +598,14 @@ A full correct example with multiple redundant edges can be:
 .. ipython:: python
    :suppress:
 
-   model = xs.Model({'in1':In1,'other':Other,'inout1':Inout1,'in2':In2,'inout2':Inout2,'in3':In3},custom_dependencies={'in3':['inout2','in2','inout1','in1'],'inout2':['in2','in1'],'in2':['inout1','in1'],'inout1':'other','other':'in1'})
+   model = xs.Model({'in1':In1,'other':Other,'inout1':Inout1,'in2':In2,'inout2':Inout2,'in3':In3},
+                    custom_dependencies={
+                                         'in3':['inout2','in2',
+                                         'inout1','in1'],
+                                         'inout2':['in2','in1'],
+                                         'in2':['inout1','in1'],
+                                         'inout1':'other',
+                                         'other':'in1'})
    dot_graph(model, filename='savefig/strict_mayhem.png')
    
 .. image:: savefig/strict_mayhem.png
