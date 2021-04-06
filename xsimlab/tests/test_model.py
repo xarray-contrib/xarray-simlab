@@ -341,12 +341,16 @@ class TestModel:
         class D:
             pass
 
+        @xs.process
+        class E:
+            pass
+
         model = xs.Model(
-            {"a": A, "b": B, "c": C, "d": D},
-            custom_dependencies={"d": "c", "c": "b", "b": "a"},
+            {"a": A, "b": B, "c": C, "d": D, "e": E},
+            custom_dependencies={"d": "c", "c": "b", "b": {"a", "e"}},
         )
         model = model.drop_processes(["b", "c"])
-        assert model.dependent_processes["d"] == ["a"]
+        assert set(model.dependent_processes["d"]) == {"a", "e"}
 
     def test_visualize(self, model):
         pytest.importorskip("graphviz")
