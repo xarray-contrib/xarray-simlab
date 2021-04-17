@@ -205,6 +205,15 @@ def test_feedback_edges():
     assert set(actual_edges) == set(expected_edges)
 
 
+@xs.process
+class InoutOnly:
+    var = xs.variable(intent="inout")
+
+
+def test_feedback_edges_one_inout():
+    xs.Model({"inout": InoutOnly}).visualize(show_feedbacks=True)
+
+
 @pytest.mark.skipif(not ipython_installed, reason="IPython is not installed")
 @pytest.mark.parametrize(
     "format,typ",

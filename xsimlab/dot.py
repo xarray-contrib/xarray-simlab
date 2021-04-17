@@ -170,8 +170,8 @@ class _GraphBuilder:
                     inout_vars[target_keys] = p_name
 
         for target_keys, io_p in inout_vars.items():
-            # skip this if there are no inout processes
-            if io_p is None:
+            # skip this if there are no inout or in processes
+            if io_p is None or target_keys not in in_vars:
                 continue
             for in_p in in_vars[target_keys]:
                 self.g.edge(io_p, in_p, weight="200", style="dashed")
