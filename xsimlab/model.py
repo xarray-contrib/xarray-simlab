@@ -1213,13 +1213,18 @@ class Model(AttrMapping):
         Returns
         -------
         cloned : Model
-            New Model instance with the same processes.
+            New Model instance with the same processes, custom dependencies and
+            checking behaviour.
 
         """
         processes_cls = {k: type(obj) for k, obj in self._processes.items()}
-        return type(self)(processes_cls)
+        return type(self)(
+            processes_cls, self._custom_dependencies, self._strict_order_check
+        )
 
-    def update_processes(self, processes):
+    def update_processes(
+        self, processes, custom_dependencies={}, strict_order_check=None
+    ):
         """Add or replace processe(s) in this model.
 
         Parameters
@@ -1227,19 +1232,38 @@ class Model(AttrMapping):
         processes : dict
             Dictionnary with process names as keys and process classes
             as values.
+        custom_dependencies : dict
+            Dictionary with addtional custom dependencies
+        strict_order_check : bool
+            Whether to strictly check for ordering in the new model, by default
+            retains the setting.
 
         Returns
         -------
         updated : Model
-            New Model instance with updated processes.
+            New Model instance with updated processes, custom dependencies and
+            checking behaviour.
 
         """
         processes_cls = {k: type(obj) for k, obj in self._processes.items()}
         processes_cls.update(processes)
-        return type(self)(processes_cls)
+
+        new_c_deps = {p: deps for p, deps in self._custom_dependencies.items()}
+        for p, deps in custom_dependencies.items():
+            deps = {deps} if isinstance(deps, str) else set(deps)
+            if p in new_c_deps:
+                new_c_deps[p].update(deps)
+            else:
+                new_c_deps[p] = deps
+
+        if strict_order_check is None:
+            strict_order_check = self._strict_order_check
+
+        return type(self)(processes_cls, new_c_deps, strict_order_check)
 
     def drop_processes(self, keys):
-        """Drop processe(s) from this model.
+        """Drop processe(s) from this model. Also establishes new custom
+        dependencies if they would be lost.
 
         Parameters
         ----------
